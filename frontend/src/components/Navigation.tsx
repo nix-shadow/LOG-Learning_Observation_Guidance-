@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Home, LineChart, Compass, LogIn, LogOut, ShieldAlert, Library } from 'lucide-react';
+import { BookOpen, Home, LineChart, Compass, LogIn, LogOut, ShieldAlert, Library, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { user, logout, isAdmin } = useAuth();
+  const isModerator = user?.role === "MODERATOR" || user?.role === "ADMIN";
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home, show: !!user },
@@ -15,6 +16,7 @@ export default function Navigation() {
     { name: 'Catalog', path: '/courses', icon: Library, show: !!user }, // NEW CATALOG PAGE
     { name: 'Observation', path: '/observation', icon: LineChart, show: !!user },
     { name: 'Guidance', path: '/guidance', icon: Compass, show: !!user },
+    { name: 'Teacher', path: '/moderator', icon: Users, show: isModerator },
     { name: 'Admin', path: '/admin', icon: ShieldAlert, show: isAdmin },
   ].filter(item => item.show);
 

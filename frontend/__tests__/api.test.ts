@@ -7,11 +7,13 @@ jest.mock('idb', () => ({
   openDB: jest.fn().mockResolvedValue({
     get: jest.fn().mockResolvedValue({ test: 'data' }),
     put: jest.fn().mockResolvedValue(true),
+    add: jest.fn().mockResolvedValue(true),
+    getAll: jest.fn().mockResolvedValue([]),
+    delete: jest.fn().mockResolvedValue(true),
     objectStoreNames: { contains: () => true },
   }),
 }));
 
-// Mock react-hot-toast so it doesn't complain in jest environment
 jest.mock('react-hot-toast', () => ({
   __esModule: true,
   default: Object.assign(jest.fn(), {
@@ -23,7 +25,6 @@ jest.mock('react-hot-toast', () => ({
 describe('fetchWithCache', () => {
   beforeEach(() => {
     mockFetch.mockClear();
-    // Simulate being online by default
     window.dispatchEvent(new Event('online'));
   });
 
@@ -47,11 +48,9 @@ describe('fetchWithCache', () => {
   });
 
   it('uses cache immediately when offline', async () => {
-    // Simulate going offline
     window.dispatchEvent(new Event('offline'));
 
     const result = await fetchWithCache('/test-offline');
-    // fetch should NOT be called if we know we are offline
     expect(mockFetch).not.toHaveBeenCalled();
     expect(result).toEqual({ test: 'data' });
   });

@@ -2,25 +2,29 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Role string
 
 const (
-	RoleLearner Role = "LEARNER"
-	RoleAdmin   Role = "ADMIN"
+	RoleStudent   Role = "STUDENT"
+	RoleModerator Role = "MODERATOR" // Teacher
+	RoleAdmin     Role = "ADMIN"     // Principal/HOD
 )
 
 type User struct {
-	ID           string    `json:"id" gorm:"primaryKey"`
-	Name         string    `json:"name"`
-	Email        string    `json:"email" gorm:"unique"`
-	Phone        string    `json:"phone" gorm:"unique"`
-	PasswordHash string    `json:"-"`
-	Role         Role      `json:"role"`
-	IsVerified   bool      `json:"is_verified"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           string         `json:"id" gorm:"primaryKey"`
+	Name         string         `json:"name"`
+	Email        string         `json:"email" gorm:"uniqueIndex"`
+	Phone        string         `json:"phone" gorm:"uniqueIndex"`
+	PasswordHash string         `json:"-"`
+	Role         Role           `json:"role"`
+	IsVerified   bool           `json:"is_verified"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type OTPRecord struct {
@@ -30,14 +34,15 @@ type OTPRecord struct {
 }
 
 type Activity struct {
-	ID          string    `json:"id" gorm:"primaryKey"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Status      string    `json:"status"`
-	Topic       string    `json:"topic"`
-	Order       int       `json:"order"`
-	ContentJSON string    `json:"content_json"` // Expanded content format
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string         `json:"id" gorm:"primaryKey"`
+	Title       string         `json:"title"`
+	Description string         `json:"description"`
+	Status      string         `json:"status"`
+	Topic       string         `json:"topic"`
+	Order       int            `json:"order"`
+	ContentJSON string         `json:"content_json"`
+	CreatedAt   time.Time      `json:"created_at"`
+	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type Progress struct {
@@ -50,7 +55,7 @@ type Progress struct {
 
 type Observation struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
-	LearnerID string    `json:"learner_id"`
+	LearnerID string    `json:"learner_id" gorm:"index"`
 	Category  string    `json:"category"`
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
@@ -58,14 +63,13 @@ type Observation struct {
 
 type Guidance struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
-	LearnerID string    `json:"learner_id"`
+	LearnerID string    `json:"learner_id" gorm:"index"`
 	Text      string    `json:"text"`
 	Action    string    `json:"action"`
 	Type      string    `json:"type"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Admin specific models
 type SystemAnalytics struct {
 	TotalUsers       int `json:"total_users"`
 	ActiveDaily      int `json:"active_daily"`
