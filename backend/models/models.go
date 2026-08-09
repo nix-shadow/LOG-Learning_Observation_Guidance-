@@ -10,12 +10,12 @@ type Learner struct {
 }
 
 type Activity struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Status      string    `json:"status"` // "Not started", "In progress", "Completed"
-	Topic       string    `json:"topic"`
-	Order       int       `json:"order"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Status      string `json:"status"` // "Not started", "In progress", "Completed"
+	Topic       string `json:"topic"`
+	Order       int    `json:"order"`
 }
 
 type Progress struct {

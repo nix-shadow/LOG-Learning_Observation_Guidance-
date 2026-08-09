@@ -26,6 +26,7 @@ func main() {
 		apiRoutes.GET("/ping", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
 		apiRoutes.GET("/dashboard", api.GetDashboard)
 		apiRoutes.GET("/learning-journey", api.GetLearningJourney)
+		apiRoutes.GET("/chart-data", api.GetChartData)
 	}
 
 	r.Run(":8080")

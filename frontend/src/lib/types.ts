@@ -50,3 +50,9 @@ export interface DashboardData {
 export interface LearningJourneyData {
   activities: Activity[];
 }
+
+export interface ChartDataPoint {
+  name: string;
+  score: number;
+  duration: number;
+}

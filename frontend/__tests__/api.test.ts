@@ -1,6 +1,5 @@
 import { fetchWithCache } from '../src/lib/api';
 
-// Mock IndexedDB and fetch for testing
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
@@ -12,9 +11,20 @@ jest.mock('idb', () => ({
   }),
 }));
 
+// Mock react-hot-toast so it doesn't complain in jest environment
+jest.mock('react-hot-toast', () => ({
+  __esModule: true,
+  default: Object.assign(jest.fn(), {
+    success: jest.fn(),
+    error: jest.fn(),
+  }),
+}));
+
 describe('fetchWithCache', () => {
   beforeEach(() => {
     mockFetch.mockClear();
+    // Simulate being online by default
+    window.dispatchEvent(new Event('online'));
   });
 
   it('attempts to fetch from network first when online', async () => {
@@ -23,8 +33,6 @@ describe('fetchWithCache', () => {
       json: async () => ({ status: 'success' }),
     });
 
-    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
-
     const result = await fetchWithCache('/test');
     expect(mockFetch).toHaveBeenCalled();
     expect(result).toEqual({ status: 'success' });
@@ -32,7 +40,6 @@ describe('fetchWithCache', () => {
 
   it('falls back to cache when network fails', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
-    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
 
     const result = await fetchWithCache('/test');
     expect(mockFetch).toHaveBeenCalled();
@@ -40,9 +47,10 @@ describe('fetchWithCache', () => {
   });
 
   it('uses cache immediately when offline', async () => {
-    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+    // Simulate going offline
+    window.dispatchEvent(new Event('offline'));
 
-    const result = await fetchWithCache('/test');
+    const result = await fetchWithCache('/test-offline');
     // fetch should NOT be called if we know we are offline
     expect(mockFetch).not.toHaveBeenCalled();
     expect(result).toEqual({ test: 'data' });

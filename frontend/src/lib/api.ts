@@ -1,9 +1,22 @@
 import { openDB } from 'idb';
+import toast from 'react-hot-toast';
 
 const DB_NAME = 'log-db';
 const STORE_NAME = 'api-cache';
 
-// Initialize IndexedDB
+let isAppOnline = true;
+if (typeof window !== 'undefined') {
+  isAppOnline = navigator.onLine;
+  window.addEventListener('online', () => {
+    isAppOnline = true;
+    toast.success('Back online! Syncing data...');
+  });
+  window.addEventListener('offline', () => {
+    isAppOnline = false;
+    toast('You are offline. Serving cached content.', { icon: '📡' });
+  });
+}
+
 const initDB = async () => {
   return openDB(DB_NAME, 1, {
     upgrade(db) {
@@ -16,21 +29,16 @@ const initDB = async () => {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
-/**
- * Fetch data from network, fallback to IndexedDB if offline.
- */
 export async function fetchWithCache(endpoint: string, options: RequestInit = {}) {
   const url = `${BASE_URL}${endpoint}`;
-  const isOnline = typeof window !== 'undefined' && navigator.onLine;
 
-  if (isOnline) {
+  if (isAppOnline) {
     try {
       const response = await fetch(url, options);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
 
-      // Cache the successful response
       if (options.method === 'GET' || !options.method) {
         const db = await initDB();
         await db.put(STORE_NAME, data, endpoint);
@@ -58,5 +66,3 @@ async function getFromCache(endpoint: string) {
     throw error;
   }
 }
-
-// Ensure the local dev server knows how to fetch from our backend

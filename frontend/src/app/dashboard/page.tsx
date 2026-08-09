@@ -1,10 +1,13 @@
 "use client";
-import { DashboardData, Activity as ActivityType, Guidance as GuidanceType, Observation as ObservationType } from "@/lib/types";
 
 import { useEffect, useState } from 'react';
 import { fetchWithCache } from '@/lib/api';
 import Link from 'next/link';
-import { CheckCircle2, ArrowRight, Activity, TrendingUp } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Activity, TrendingUp, Medal, Flame } from 'lucide-react';
+import { DashboardData, Activity as ActivityType, Guidance as GuidanceType, Observation as ObservationType } from "@/lib/types";
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+import { motion } from 'framer-motion';
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -30,14 +33,43 @@ export default function Dashboard() {
     </div>
   );
 
+  const dailyGoalPercentage = 75; // Hardcoded for MVP, ideally fetched from backend
+
   return (
     <div className="space-y-8">
       {/* Welcome Area */}
-      <section className="bg-brand-blue text-white rounded-3xl p-8 shadow-lg relative overflow-hidden">
-        <div className="relative z-10">
+      <section className="bg-brand-blue text-white rounded-3xl p-8 shadow-lg relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+        <div className="relative z-10 w-full md:w-2/3">
           <h1 className="text-3xl font-bold mb-2">Hello, {data.learner.name}</h1>
-          <p className="text-brand-gray/80 text-lg">You are on a {data.progress.current_streak}-day learning streak. Keep it up!</p>
+          <p className="text-brand-gray/80 text-lg mb-4">You are on a {data.progress.current_streak}-day learning streak. Keep it up!</p>
+
+          <div className="flex flex-wrap gap-3">
+             <div className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm border border-white/20">
+                <Flame className="w-5 h-5 text-brand-amber" />
+                <span className="font-semibold">{data.progress.current_streak} Day Streak</span>
+             </div>
+             <div className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm border border-white/20">
+                <Medal className="w-5 h-5 text-brand-teal" />
+                <span className="font-semibold">Logic Master Badge</span>
+             </div>
+          </div>
         </div>
+
+        <div className="relative z-10 w-32 h-32 flex-shrink-0 bg-white rounded-full p-2">
+            <CircularProgressbar
+              value={dailyGoalPercentage}
+              text={`${dailyGoalPercentage}%`}
+              styles={buildStyles({
+                pathColor: '#00B4D8',
+                textColor: '#0A2540',
+                trailColor: '#E9ECEF',
+                textSize: '24px',
+                pathTransitionDuration: 1.5
+              })}
+            />
+            <div className="text-center mt-2 text-xs font-bold uppercase text-brand-teal absolute -bottom-6 left-0 right-0">Daily Goal</div>
+        </div>
+
         <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-brand-teal/20 rounded-full blur-3xl"></div>
       </section>
 
@@ -51,15 +83,21 @@ export default function Dashboard() {
               <TrendingUp className="w-5 h-5 mr-2 text-brand-teal" /> Current Focus
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {data.guidance.map((g: GuidanceType) => (
-                <div key={g.id} className="card border-l-4 border-l-brand-amber">
+              {data.guidance.map((g: GuidanceType, i) => (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  key={g.id}
+                  className="card border-l-4 border-l-brand-amber hover:shadow-md transition-shadow"
+                >
                   <p className="text-brand-text font-medium mb-3">{g.text}</p>
                   {g.action && (
                     <Link href={g.action} className="text-brand-teal text-sm font-semibold flex items-center hover:underline">
                       Take action <ArrowRight className="w-4 h-4 ml-1" />
                     </Link>
                   )}
-                </div>
+                </motion.div>
               ))}
             </div>
           </section>
