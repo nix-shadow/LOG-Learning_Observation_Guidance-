@@ -4,6 +4,7 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 import { Toaster } from "react-hot-toast";
 import PageTransition from "@/components/PageTransition";
+import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 
@@ -21,27 +22,29 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} min-h-screen flex flex-col bg-brand-white text-brand-text font-sans antialiased`}>
-        <Navigation />
-        <main className="flex-1 flex flex-col w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-          <PageTransition>
-            {children}
-          </PageTransition>
-        </main>
-        <Toaster
-          position="bottom-center"
-          toastOptions={{
-            style: {
-              background: '#333',
-              color: '#fff',
-              borderRadius: '999px',
-            },
-            success: {
+        <AuthProvider>
+          <Navigation />
+          <main className="flex-1 flex flex-col w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+            <PageTransition>
+              {children}
+            </PageTransition>
+          </main>
+          <Toaster
+            position="bottom-center"
+            toastOptions={{
               style: {
-                background: '#00B4D8',
+                background: '#333',
+                color: '#fff',
+                borderRadius: '999px',
               },
-            },
-          }}
-        />
+              success: {
+                style: {
+                  background: '#00B4D8',
+                },
+              },
+            }}
+          />
+        </AuthProvider>
       </body>
     </html>
   );

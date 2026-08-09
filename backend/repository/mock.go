@@ -6,10 +6,12 @@ import (
 )
 
 var (
-	MockLearner = models.Learner{
+	MockLearner = models.User{
 		ID:        "user-123",
 		Name:      "Aisha",
 		Email:     "aisha@example.com",
+		Phone:     "+9779800000000",
+		Role:      models.RoleLearner,
 		CreatedAt: time.Now().AddDate(0, -1, 0),
 	}
 

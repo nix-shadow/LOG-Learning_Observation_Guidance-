@@ -56,3 +56,14 @@ export interface ChartDataPoint {
   score: number;
   duration: number;
 }
+
+export interface SystemAnalytics {
+  total_users: number;
+  active_daily: number;
+  total_completions: number;
+}
+
+export interface AdminData {
+  analytics: SystemAnalytics;
+  recent_users: Learner[];
+}
