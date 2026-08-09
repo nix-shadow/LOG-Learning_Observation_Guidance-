@@ -11,16 +11,23 @@ The application revolves around the LOG cycle:
 5. **Improve:** Apply guidance to build knowledge.
 
 ## Tech Stack
-* **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS, Lucide Icons.
-* **Offline Layer:** `next-pwa` for Service Workers, `idb` for IndexedDB caching.
+* **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS, Lucide Icons, Recharts, Framer Motion.
+* **Offline Layer:** `next-pwa` for Service Workers, `idb` for IndexedDB caching and mutation queues.
 * **Backend:** Go, Gin framework.
-* **Database:** PostgreSQL (with a robust in-memory mock layer currently configured for local dev).
+* **Database:** SQLite via GORM (auto-migrated and seeded).
+
+## Advanced Architecture
+- **Multi-tier RBAC:** Secure Role-Based Access Control supporting `ADMIN`, `MODERATOR`, and `STUDENT` roles.
+- **Offline Mutating:** The `src/lib/api.ts` wrapper queues POST/PUT/DELETE requests when offline and syncs them automatically when the connection is restored.
+- **Security:** Strict JWT HMAC validation, Bcrypt password hashing, Input validation via Gin binding, and comprehensive HTTP security headers.
 
 ## Setup Instructions
 
 ### Environment Variables
 For local development, create a `.env` file in the frontend directory:
-`NEXT_PUBLIC_API_URL=http://localhost:8080/api`
+```
+NEXT_PUBLIC_API_URL=http://localhost:8080/api
+```
 
-## Offline Support
-This application uses a custom API wrapper (`src/lib/api.ts`) that intercepts requests. If the network is available, it fetches from the Go backend and caches the result in IndexedDB. If the network fails or the user goes offline, it seamlessly serves the cached data to keep the app functional.
+### Running the Application
+Read the `AGENTS.md` file for detailed instructions on running, testing, and developing the application.
