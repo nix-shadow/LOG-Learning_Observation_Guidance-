@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { fetchWithCache } from '@/lib/api';
+import { fetchWithCache, logout } from '@/lib/api';
 import Link from 'next/link';
-import { CheckCircle2, ArrowRight, Activity, TrendingUp, Medal, Flame } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Activity, TrendingUp, Medal, Flame, Download, Upload, LogOut } from 'lucide-react';
 import { DashboardData, Activity as ActivityType, Guidance as GuidanceType, Observation as ObservationType } from "@/lib/types";
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+import SkeletonLoader from '@/components/SkeletonLoader';
 import { motion } from 'framer-motion';
+import { downloadSyncFile, importSyncFile } from '@/lib/syncExport';
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -21,16 +24,26 @@ export default function Dashboard() {
   }, []);
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-teal"></div>
+    <div className="space-y-8">
+      <SkeletonLoader type="card" count={1} />
+      <SkeletonLoader type="stats" count={3} />
+      <SkeletonLoader type="card" count={2} />
     </div>
   );
 
-  if (!data) return (
-    <div className="text-center py-20">
+  if (!data || !data.learner) return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center py-20 card flex flex-col items-center justify-center max-w-2xl mx-auto mt-10"
+    >
+      <div className="w-16 h-16 bg-brand-gray rounded-full flex items-center justify-center mb-4">
+        <Activity className="w-8 h-8 text-brand-teal opacity-50" />
+      </div>
       <h2 className="text-2xl font-bold text-brand-blue mb-2">Welcome to LOG</h2>
       <p className="text-gray-600 mb-6">Your learning journey starts here. (Offline mode active, no cached data found).</p>
-    </div>
+      <Link href="/learning" className="btn-primary">Start Learning</Link>
+    </motion.div>
   );
 
   const dailyGoalPercentage = 75; // Hardcoded for MVP, ideally fetched from backend
@@ -42,8 +55,7 @@ export default function Dashboard() {
         <div className="relative z-10 w-full md:w-2/3">
           <h1 className="text-3xl font-bold mb-2">Hello, {data.learner.name}</h1>
           <p className="text-brand-gray/80 text-lg mb-4">You are on a {data.progress.current_streak}-day learning streak. Keep it up!</p>
-
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
              <div className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm border border-white/20">
                 <Flame className="w-5 h-5 text-brand-amber" />
                 <span className="font-semibold">{data.progress.current_streak} Day Streak</span>
@@ -52,6 +64,14 @@ export default function Dashboard() {
                 <Medal className="w-5 h-5 text-brand-teal" />
                 <span className="font-semibold">Logic Master Badge</span>
              </div>
+             <button
+               onClick={() => logout()}
+               className="bg-white/10 hover:bg-white/20 transition-colors px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm border border-white/20 text-white text-sm font-semibold"
+               title="Logout"
+             >
+               <LogOut className="w-4 h-4" />
+               <span>Logout</span>
+             </button>
           </div>
         </div>
 
@@ -142,6 +162,51 @@ export default function Dashboard() {
               ))}
               <div className="pt-2">
                 <Link href="/observation" className="text-sm font-semibold text-brand-teal hover:underline">View full observation</Link>
+              </div>
+            </div>
+          </section>
+
+          {/* Sync Offline Progress */}
+          <section>
+            <h2 className="text-xl font-bold text-brand-blue mb-4">Offline Sync</h2>
+            <div className="card space-y-4">
+              <p className="text-sm text-gray-600">
+                Working offline? Download your progress and bring it to school on a USB drive.
+              </p>
+              <button 
+                onClick={async () => {
+                  try {
+                    await downloadSyncFile();
+                    toast.success('Sync file downloaded successfully!');
+                  } catch (e: unknown) {
+                    toast.error((e as Error).message || 'Failed to download sync file.');
+                  }
+                }}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" /> Export Progress
+              </button>
+              
+              <div className="relative">
+                <input 
+                  type="file" 
+                  accept=".logsync"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const count = await importSyncFile(file);
+                      toast.success(`Imported ${count} actions from sync file!`);
+                    } catch {
+                      toast.error('Failed to import sync file.');
+                    }
+                    e.target.value = ''; // Reset
+                  }}
+                />
+                <button className="btn-secondary w-full flex items-center justify-center gap-2 bg-brand-gray/10 text-brand-blue hover:bg-brand-gray/20">
+                  <Upload className="w-4 h-4" /> Import Progress
+                </button>
               </div>
             </div>
           </section>

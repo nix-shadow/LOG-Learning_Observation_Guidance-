@@ -19,7 +19,9 @@ The application revolves around the LOG cycle:
 ## Advanced Architecture
 - **Multi-tier RBAC:** Secure Role-Based Access Control supporting `ADMIN`, `MODERATOR`, and `STUDENT` roles.
 - **Offline Mutating:** The `src/lib/api.ts` wrapper queues POST/PUT/DELETE requests when offline and syncs them automatically when the connection is restored.
-- **Security:** Strict JWT HMAC validation, Bcrypt password hashing, Input validation via Gin binding, and comprehensive HTTP security headers.
+- **Sneakernet Sync:** Export `.logsync` files on an unconnected device and import them anywhere for `POST /api/sync/bulk` upload.
+- **Real Data Everywhere:** Dashboards, catalogs, rosters, and analytics are computed from database records — no hardcoded mock telemetry.
+- **Security:** Strict JWT HMAC validation with `jti` revocation, Bcrypt password & OTP hashing, rate limiting, Input validation via Gin binding, and comprehensive HTTP security headers.
 
 ## Setup Instructions
 
@@ -31,3 +33,30 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api
 
 ### Running the Application
 Read the `AGENTS.md` file for detailed instructions on running, testing, and developing the application.
+
+## Documentation & Architecture Specifications
+
+### 📚 Modular Markdown Documentation Suite (`docs/`)
+- [System Architecture & Overview](./docs/ARCHITECTURE.md)
+- [Offline Sync & PWA Engine](./docs/OFFLINE_SYNC.md)
+- [REST API Specification](./docs/API_SPECIFICATION.md)
+- [Security & Multi-Tier RBAC](./docs/SECURITY_AND_RBAC.md)
+- [Database Schema & Data Models](./docs/DATABASE_SCHEMA.md)
+- [Frontend Architecture & UI Guide](./docs/FRONTEND_GUIDE.md)
+- [Developer Implementation Guide](./docs/IMPLEMENTATION_GUIDE.md)
+- [Full Monolithic Specification](./DOCUMENTATION.md)
+
+### 📄 Professional Word Documents (.docx)
+- **Master Project Documentation:** [LOG_Project_Documentation.docx](./LOG_Project_Documentation.docx)
+- **Technical Implementation Guide:** [LOG_Implementation_Guide.docx](./LOG_Implementation_Guide.docx)
+
+### 🔄 Regenerate / Update All DOCX Files
+```bash
+# Update Master Project Documentation DOCX
+python3 scripts/generate_docs.py
+
+# Update Implementation Guide DOCX
+python3 scripts/generate_implementation_docx.py
+```
+
+

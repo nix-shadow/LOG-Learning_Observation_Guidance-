@@ -1,7 +1,9 @@
 package database
 
 import (
-	"log"
+	"log/slog"
+	"os"
+	"time"
 	"log-backend/models"
 
 	"gorm.io/driver/sqlite"
@@ -17,7 +19,8 @@ func InitDB() {
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		slog.Error("Failed to connect to database:", "error", err)
+		os.Exit(1)
 	}
 
 	// Auto Migrate
@@ -28,10 +31,18 @@ func InitDB() {
 		&models.Progress{},
 		&models.Observation{},
 		&models.Guidance{},
+		&models.Course{},
+		&models.DailyActivity{},
+		&models.MicroModule{},
+		&models.TokenBlocklist{},
 	)
 	if err != nil {
-		log.Fatal("Failed to migrate database:", err)
+		slog.Error("Failed to migrate database:", "error", err)
+		os.Exit(1)
 	}
+
+	// Purge expired blocklist entries on startup to keep the table lean
+	DB.Where("expires_at < ?", time.Now()).Delete(&models.TokenBlocklist{})
 
 	seedData()
 }
@@ -73,6 +84,57 @@ func seedData() {
 		}
 		for _, g := range gui {
 			DB.Create(&g)
+		}
+	}
+
+	// Seed Micro-Modules independently of users, so existing databases
+	// also receive the bite-sized module content on next startup.
+	var mmCount int64
+	DB.Model(&models.MicroModule{}).Count(&mmCount)
+	if mmCount == 0 {
+		microModules := []models.MicroModule{
+			{ID: "mm-1", ActivityID: "act-1", Title: "What is Logic?", ContentText: "Logic is the study of reasoning. In computing, logic gates make every decision your computer makes — from checking a password to rendering a page.", Order: 1},
+			{ID: "mm-2", ActivityID: "act-1", Title: "Truth Values", ContentText: "Every logical statement resolves to one of two values: True or False. Think of them as the two possible answers to any yes/no question.", Order: 2},
+			{ID: "mm-3", ActivityID: "act-2", Title: "The AND Operator", ContentText: "AND returns True only when BOTH inputs are True. A strict bouncer: you need an ID AND a ticket to enter.", Order: 1},
+			{ID: "mm-4", ActivityID: "act-2", Title: "The OR Operator", ContentText: "OR returns True when AT LEAST ONE input is True. A flexible cashier: you can pay with Cash OR Card.", Order: 2},
+			{ID: "mm-5", ActivityID: "act-2", Title: "Your Turn!", ContentText: "Now practice: what does (True AND False) evaluate to? It's False — both inputs must be True. Great job thinking it through!", Order: 3},
+		}
+		for _, m := range microModules {
+			DB.Create(&m)
+		}
+	}
+
+	// Seed Courses
+	var courseCount int64
+	DB.Model(&models.Course{}).Count(&courseCount)
+	if courseCount == 0 {
+		courses := []models.Course{
+			{ID: "course-1", Title: "Fundamentals of Logic & Gates", Category: "Computer Science", Difficulty: "Beginner", Duration: "3 hours", Rating: 4.9, Enrolled: 1250},
+			{ID: "course-2", Title: "Boolean Algebra & Truth Tables", Category: "Computer Science", Difficulty: "Intermediate", Duration: "4 hours", Rating: 4.8, Enrolled: 980},
+			{ID: "course-3", Title: "Data Structures & Offline Caching", Category: "Backend", Difficulty: "Advanced", Duration: "6 hours", Rating: 4.9, Enrolled: 740},
+			{ID: "course-4", Title: "Modern Frontend & Micro-Animations", Category: "Frontend", Difficulty: "Intermediate", Duration: "5 hours", Rating: 4.7, Enrolled: 1120},
+			{ID: "course-5", Title: "UI/UX Accessibility for Low-Bandwidth", Category: "Design", Difficulty: "Beginner", Duration: "2.5 hours", Rating: 5.0, Enrolled: 890},
+		}
+		for _, c := range courses {
+			DB.Create(&c)
+		}
+	}
+
+	// Seed Daily Activity
+	var actCount int64
+	DB.Model(&models.DailyActivity{}).Count(&actCount)
+	if actCount == 0 {
+		dailyActivities := []models.DailyActivity{
+			{ID: "da-1", LearnerID: "user-123", DayName: "Mon", Score: 65, Duration: 20},
+			{ID: "da-2", LearnerID: "user-123", DayName: "Tue", Score: 70, Duration: 25},
+			{ID: "da-3", LearnerID: "user-123", DayName: "Wed", Score: 68, Duration: 15},
+			{ID: "da-4", LearnerID: "user-123", DayName: "Thu", Score: 75, Duration: 30},
+			{ID: "da-5", LearnerID: "user-123", DayName: "Fri", Score: 85, Duration: 45},
+			{ID: "da-6", LearnerID: "user-123", DayName: "Sat", Score: 82, Duration: 40},
+			{ID: "da-7", LearnerID: "user-123", DayName: "Sun", Score: 88, Duration: 50},
+		}
+		for _, da := range dailyActivities {
+			DB.Create(&da)
 		}
 	}
 }

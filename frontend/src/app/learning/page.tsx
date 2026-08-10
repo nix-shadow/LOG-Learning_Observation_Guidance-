@@ -2,8 +2,9 @@
 import { LearningJourneyData, Activity } from "@/lib/types";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { fetchWithCache } from '@/lib/api';
-import { CheckCircle2, Circle, PlayCircle } from 'lucide-react';
+import { CheckCircle2, Circle, PlayCircle, ChevronRight } from 'lucide-react';
 
 export default function Learning() {
   const [data, setData] = useState<LearningJourneyData | null>(null);
@@ -57,13 +58,17 @@ export default function Learning() {
                   </div>
 
                   <div>
-                    <button className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                      act.status === 'Completed' ? 'bg-gray-100 text-gray-600' :
-                      act.status === 'In progress' ? 'bg-brand-amber text-white' :
-                      'bg-brand-teal text-white'
-                    }`}>
+                    <Link
+                      href={`/learning/${act.id}`}
+                      className={`inline-flex items-center gap-1 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                        act.status === 'Completed' ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' :
+                        act.status === 'In progress' ? 'bg-brand-amber text-white hover:bg-brand-amber/90' :
+                        'bg-brand-teal text-white hover:bg-brand-teal/90'
+                      }`}
+                    >
                       {act.status === 'Completed' ? 'Review' : 'Continue'}
-                    </button>
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
                   </div>
                 </div>
               </div>

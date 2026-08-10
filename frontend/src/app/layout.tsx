@@ -5,6 +5,8 @@ import Navigation from "@/components/Navigation";
 import { Toaster } from "react-hot-toast";
 import PageTransition from "@/components/PageTransition";
 import { AuthProvider } from "@/context/AuthContext";
+import OfflineBanner from "@/components/OfflineBanner";
+import InstallPrompt from "@/components/InstallPrompt";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 
@@ -23,6 +25,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} min-h-screen flex flex-col bg-brand-white text-brand-text font-sans antialiased`}>
         <AuthProvider>
+          <OfflineBanner />
           <Navigation />
           <main className="flex-1 flex flex-col w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
             <PageTransition>
@@ -44,6 +47,7 @@ export default function RootLayout({
               },
             }}
           />
+          <InstallPrompt />
         </AuthProvider>
       </body>
     </html>

@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import confetti from 'canvas-confetti';
+import { fetchWithCache } from '@/lib/api';
+import MicroModuleViewer, { MicroModuleData } from '@/components/MicroModuleViewer';
+import SkeletonLoader from '@/components/SkeletonLoader';
 
 // Mock content for the interactive learning module
 const lessonContent = [
@@ -39,18 +43,88 @@ const lessonContent = [
 
 export default function LessonModule() {
   const router = useRouter();
+  const params = useParams();
+  const activityId = params?.id as string || 'act-2';
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [modules, setModules] = useState<MicroModuleData[]>([]);
+  const [activityTitle, setActivityTitle] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch the real micro-modules for this activity (cached for offline replay).
+    fetchWithCache(`/activities/${activityId}/modules`)
+      .then((res) => {
+        setModules((res.modules || []).map((m: MicroModuleData) => ({
+          id: m.id,
+          title: m.title,
+          content_text: m.content_text,
+          media_url: m.media_url,
+        })));
+        setActivityTitle(res.activity?.title || '');
+      })
+      .catch((err) => {
+        console.warn('No micro-modules for this activity — using demo lesson', err);
+      })
+      .finally(() => setLoading(false));
+  }, [activityId]);
+
+  // Server modules take priority; the demo lesson is only an offline/catalog fallback.
+  if (loading) return (
+    <div className="max-w-3xl mx-auto w-full space-y-6">
+      <div className="flex items-center justify-between text-sm font-medium text-gray-500">
+        <span><ArrowLeft className="inline w-4 h-4 mr-2" /> Loading module...</span>
+      </div>
+      <SkeletonLoader type="card" count={2} />
+    </div>
+  );
+
+  if (modules.length > 0) {
+    const handleComplete = async () => {
+      try {
+        await fetchWithCache(`/activities/${activityId}/complete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        toast.success('Lesson marked as completed! Progress recorded.', { icon: '🎉' });
+      } catch (e) {
+        console.warn('Offline completion queued or sync in progress', e);
+      }
+      router.push('/learning');
+    };
+
+    return (
+      <div className="max-w-3xl mx-auto w-full">
+        <button onClick={() => router.back()} className="text-gray-500 hover:text-brand-blue flex items-center mb-6 transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Journey
+        </button>
+        {activityTitle && (
+          <h1 className="text-2xl font-bold text-brand-blue mb-4">{activityTitle}</h1>
+        )}
+        <MicroModuleViewer modules={modules} onComplete={handleComplete} />
+      </div>
+    );
+  }
 
   const step = lessonContent[currentStep];
   const progress = ((currentStep) / (lessonContent.length - 1)) * 100;
 
   const handleNext = () => {
     if (currentStep < lessonContent.length - 1) {
-      setCurrentStep(prev => prev + 1);
+      const nextStepIndex = currentStep + 1;
+      setCurrentStep(nextStepIndex);
       setSelectedAnswer(null);
       setIsCorrect(null);
+      
+      if (lessonContent[nextStepIndex].type === 'completion') {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#00B4D8', '#4285F4', '#34A853', '#FBBC05', '#EA4335']
+        });
+      }
     }
   };
 
@@ -65,8 +139,16 @@ export default function LessonModule() {
     }
   };
 
-  const handleFinish = () => {
-    toast.success('Lesson marked as completed!', { icon: '🎉' });
+  const handleFinish = async () => {
+    try {
+      await fetchWithCache(`/activities/${activityId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      toast.success('Lesson marked as completed! Progress recorded.', { icon: '🎉' });
+    } catch (e) {
+      console.warn('Offline completion queued or sync in progress', e);
+    }
     router.push('/learning');
   };
 

@@ -1,16 +1,29 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: log_user
-      POSTGRES_PASSWORD: log_password
-      POSTGRES_DB: log_db
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
-      - "5432:5432"
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - CORS_ORIGIN=http://localhost:3000
+      - JWT_SECRET=this-is-a-secure-secret-for-compose-deploy-32-chars
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - log_data:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8080/api
+    depends_on:
+      - backend
 
 volumes:
-  pgdata:
+  log_data:

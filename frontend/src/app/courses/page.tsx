@@ -1,39 +1,63 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Search, Filter, Star, Clock, Users, ArrowRight, PlayCircle } from 'lucide-react';
+import { BookOpen, Search, Filter, Star, Clock, Users, ArrowRight, PlayCircle, WifiOff } from 'lucide-react';
 import Link from 'next/link';
+import { fetchWithCache } from '@/lib/api';
+import SkeletonLoader from '@/components/SkeletonLoader';
 
-// Expanded catalog data simulating a large application
-const CATALOG = Array.from({ length: 24 }).map((_, i) => ({
-  id: `course-${i}`,
-  title: [
-    'Advanced Boolean Logic', 'Data Structures in Go', 'React Performance Patterns',
-    'PostgreSQL Indexing', 'System Design Basics', 'UI/UX Fundamentals',
-    'Microservices Architecture', 'Network Protocols'
-  ][i % 8] + ` ${Math.floor(i / 8) > 0 ? `(Part ${Math.floor(i / 8) + 1})` : ''}`,
-  category: ['Computer Science', 'Frontend', 'Backend', 'Design'][i % 4],
-  difficulty: ['Beginner', 'Intermediate', 'Advanced'][i % 3],
-  rating: (Math.random() * 1 + 4).toFixed(1), // 4.0 - 5.0
-  duration: `${Math.floor(Math.random() * 10) + 2} hours`,
-  enrolled: Math.floor(Math.random() * 10000) + 500,
-  imageColor: ['bg-brand-blue', 'bg-brand-teal', 'bg-brand-amber', 'bg-purple-600', 'bg-indigo-600'][i % 5],
-}));
+interface Course {
+  id: string;
+  title: string;
+  category: string;
+  difficulty: string;
+  duration: string;
+  rating: number;
+  enrolled: number;
+}
+
+const CATEGORY_COLORS = ['bg-brand-blue', 'bg-brand-teal', 'bg-brand-amber', 'bg-purple-600', 'bg-indigo-600'];
 
 export default function CoursesCatalog() {
   useAuth();
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [offlineFallback, setOfflineFallback] = useState(false);
 
-  const categories = ['All', 'Computer Science', 'Frontend', 'Backend', 'Design'];
+  useEffect(() => {
+    fetchWithCache('/courses?page=1&limit=100')
+      .then((res) => {
+        setCourses(res.courses || []);
+        setTotal(res.pagination?.total ?? 0);
+      })
+      .catch((err) => {
+        console.warn('Failed to load courses — showing cached/default data', err);
+        setOfflineFallback(true);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filteredCourses = CATALOG.filter(c => {
+  const categories = useMemo(() => {
+    const set = new Set<string>(courses.map((c) => c.category));
+    return ['All', ...Array.from(set)];
+  }, [courses]);
+
+  const filteredCourses = courses.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = activeCategory === 'All' || c.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
+
+  if (loading) return (
+    <div className="w-full space-y-8">
+      <SkeletonLoader type="card" count={3} />
+    </div>
+  );
 
   return (
     <div className="w-full space-y-8">
@@ -42,8 +66,11 @@ export default function CoursesCatalog() {
         <div className="relative z-10 max-w-2xl">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Explore the Catalog</h1>
           <p className="text-brand-gray/80 text-lg mb-8">
-            Discover hundreds of expertly crafted modules designed to help you master new skills, even offline.
+            Discover expertly crafted modules designed to help you master new skills, even offline.
           </p>
+          {total > 0 && (
+            <p className="text-brand-gray/70 text-sm mb-2">{total} courses available · Refresh to see the latest</p>
+          )}
           <div className="relative max-w-md">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -84,6 +111,13 @@ export default function CoursesCatalog() {
         </div>
       </section>
 
+      {offlineFallback && (
+        <div className="flex items-center gap-2 text-sm text-brand-amber bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <WifiOff className="w-4 h-4" />
+          Couldn&apos;t reach the network and no cached catalog is available yet. Reconnect to browse the latest courses.
+        </div>
+      )}
+
       {/* Grid */}
       <section>
         <AnimatePresence mode="popLayout">
@@ -98,7 +132,7 @@ export default function CoursesCatalog() {
                 key={course.id}
                 className="card p-0 overflow-hidden flex flex-col group hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
-                <div className={`h-40 w-full ${course.imageColor} relative overflow-hidden flex items-center justify-center`}>
+                <div className={`h-40 w-full ${CATEGORY_COLORS[stringToIndex(course.id)]} relative overflow-hidden flex items-center justify-center`}>
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
                   <PlayCircle className="w-16 h-16 text-white/50 group-hover:text-white/90 transition-colors transform group-hover:scale-110 duration-300" />
                   <div className="absolute top-4 left-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
@@ -115,7 +149,7 @@ export default function CoursesCatalog() {
                       {course.difficulty}
                     </span>
                     <span className="flex items-center text-sm font-medium text-gray-600">
-                      <Star className="w-4 h-4 text-brand-amber mr-1 fill-current" /> {course.rating}
+                      <Star className="w-4 h-4 text-brand-amber mr-1 fill-current" /> {Number(course.rating).toFixed(1)}
                     </span>
                   </div>
 
@@ -151,4 +185,13 @@ export default function CoursesCatalog() {
       </section>
     </div>
   );
+}
+
+// Deterministic color assignment from a course ID (stable across renders/offline)
+function stringToIndex(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash % CATEGORY_COLORS.length;
 }

@@ -34,15 +34,27 @@ type OTPRecord struct {
 }
 
 type Activity struct {
+	ID            string         `json:"id" gorm:"primaryKey"`
+	Title         string         `json:"title"`
+	Description   string         `json:"description"`
+	Status        string         `json:"status"`
+	Topic         string         `json:"topic"`
+	Order         int            `json:"order"`
+	ContentJSON   string         `json:"content_json"`
+	Difficulty    string         `json:"difficulty"`    // e.g. "Beginner", "Intermediate", "Advanced"
+	Prerequisites string         `json:"prerequisites"` // comma-separated list of required Activity IDs
+	CreatedAt     time.Time      `json:"created_at"`
+	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+type MicroModule struct {
 	ID          string         `json:"id" gorm:"primaryKey"`
+	ActivityID  string         `json:"activity_id" gorm:"index"`
 	Title       string         `json:"title"`
-	Description string         `json:"description"`
-	Status      string         `json:"status"`
-	Topic       string         `json:"topic"`
+	ContentText string         `json:"content_text"` // extremely compressed text
+	MediaURL    string         `json:"media_url"`    // optional low-res WebP image
 	Order       int            `json:"order"`
-	ContentJSON string         `json:"content_json"`
 	CreatedAt   time.Time      `json:"created_at"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type Progress struct {
@@ -55,23 +67,53 @@ type Progress struct {
 
 type Observation struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
-	LearnerID string    `json:"learner_id" gorm:"index"`
+	LearnerID string    `json:"learner_id" gorm:"index:idx_learner_created"`
 	Category  string    `json:"category"`
 	Text      string    `json:"text"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at" gorm:"index:idx_learner_created"`
 }
 
 type Guidance struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
-	LearnerID string    `json:"learner_id" gorm:"index"`
+	LearnerID string    `json:"learner_id" gorm:"index:idx_guidance_learner"`
 	Text      string    `json:"text"`
 	Action    string    `json:"action"`
 	Type      string    `json:"type"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at" gorm:"index:idx_guidance_learner"`
 }
 
 type SystemAnalytics struct {
 	TotalUsers       int `json:"total_users"`
 	ActiveDaily      int `json:"active_daily"`
 	TotalCompletions int `json:"total_completions"`
+}
+
+// TokenBlocklist stores revoked JWT IDs so that logged-out tokens are rejected
+// even before their natural expiry time.
+type TokenBlocklist struct {
+	JTI       string    `json:"jti" gorm:"primaryKey"`           // JWT ID claim
+	UserID    string    `json:"user_id" gorm:"index"`            // which user revoked
+	ExpiresAt time.Time `json:"expires_at" gorm:"index"`         // mirrors JWT exp — for cleanup
+	RevokedAt time.Time `json:"revoked_at"`
+}
+
+type Course struct {
+	ID         string         `json:"id" gorm:"primaryKey"`
+	Title      string         `json:"title"`
+	Category   string         `json:"category"`
+	Difficulty string         `json:"difficulty"`
+	Duration   string         `json:"duration"`
+	Rating     float64        `json:"rating"`
+	Enrolled   int            `json:"enrolled"`
+	CreatedAt  time.Time      `json:"created_at"`
+	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+type DailyActivity struct {
+	ID        string    `json:"id" gorm:"primaryKey"`
+	LearnerID string    `json:"learner_id" gorm:"index"`
+	Date      time.Time `json:"date" gorm:"index"`
+	DayName   string    `json:"name"` // e.g. "Mon"
+	Score     float64   `json:"score"`
+	Duration  int       `json:"duration"` // in minutes
 }

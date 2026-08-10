@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchWithCache } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -13,7 +13,16 @@ export default function Login() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const { login } = useAuth();
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const handleRequestOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +35,7 @@ export default function Login() {
       });
       toast.success('OTP sent! Check your messages.');
       setStep('otp');
+      setCountdown(60); // start 60s cooldown
     } catch {
       toast.error('Failed to send OTP. Are you offline?');
     }
@@ -113,9 +123,19 @@ export default function Login() {
             <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-lg mt-2">
               {loading ? 'Verifying...' : 'Verify & Login'}
             </button>
-            <button type="button" onClick={() => setStep('phone')} className="w-full text-sm text-gray-500 hover:text-brand-blue mt-2">
-              Use a different number
-            </button>
+            <div className="flex flex-col items-center gap-2 mt-4">
+              <button 
+                type="button" 
+                onClick={handleRequestOTP} 
+                disabled={countdown > 0 || loading}
+                className="text-sm font-medium text-brand-teal hover:underline disabled:text-gray-400 disabled:no-underline transition-colors"
+              >
+                {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
+              </button>
+              <button type="button" onClick={() => { setStep('phone'); setCountdown(0); }} className="text-sm text-gray-500 hover:text-brand-blue">
+                Use a different number
+              </button>
+            </div>
           </form>
         )}
 
