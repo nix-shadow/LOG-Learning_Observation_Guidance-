@@ -9,8 +9,9 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
-      - CORS_ORIGIN=http://localhost:3000
-      - JWT_SECRET=this-is-a-secure-secret-for-compose-deploy-32-chars
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      # Secret is injected from the environment — never commit a real value.
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your .env (see .env.example)}
     volumes:
       - log_data:/app
 

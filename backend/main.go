@@ -93,9 +93,18 @@ func main() {
 	}
 
 	// ---------------------------------------------------------------------------
-	// Public Health Probe
+	// Public Health Probes
 	// ---------------------------------------------------------------------------
 	r.GET("/api/ping", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
+	r.GET("/healthz", func(c *gin.Context) {
+		sqlDB, err := database.DB.DB()
+		if err != nil || sqlDB.Ping() != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	r.GET("/readyz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ready"}) })
 
 	// ---------------------------------------------------------------------------
 	// Protected Student Routes — requires valid JWT with STUDENT role minimum

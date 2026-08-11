@@ -74,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
+    // Clear the auth cookie so the middleware doesn't bounce /login -> /dashboard.
+    setTokenCookie(null);
     // Full lifecycle: revoke JWT server-side, clear localStorage + cookie,
     // wipe the IndexedDB cache (so the next user sees no stale data), redirect.
     serverLogout().catch(() => {

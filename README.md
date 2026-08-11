@@ -44,6 +44,7 @@ Read the `AGENTS.md` file for detailed instructions on running, testing, and dev
 - [Database Schema & Data Models](./docs/DATABASE_SCHEMA.md)
 - [Frontend Architecture & UI Guide](./docs/FRONTEND_GUIDE.md)
 - [Developer Implementation Guide](./docs/IMPLEMENTATION_GUIDE.md)
+- [Research Findings & Improvement Plan](./docs/ENHANCEMENT.md)
 - [Full Monolithic Specification](./DOCUMENTATION.md)
 
 ### 📄 Professional Word Documents (.docx)

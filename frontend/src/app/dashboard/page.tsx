@@ -46,7 +46,10 @@ export default function Dashboard() {
     </motion.div>
   );
 
-  const dailyGoalPercentage = 75; // Hardcoded for MVP, ideally fetched from backend
+  // Daily goal = actual completion progress, derived from backend data.
+  const dailyGoalPercentage = data.progress.total_topics > 0
+    ? Math.min(100, Math.round((data.progress.completed / data.progress.total_topics) * 100))
+    : 0;
 
   return (
     <div className="space-y-8">

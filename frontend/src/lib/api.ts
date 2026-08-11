@@ -63,6 +63,8 @@ export async function logout(): Promise<void> {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('log_token');
       localStorage.removeItem('log_user');
+      // Clear the auth cookie so the middleware doesn't bounce /login -> /dashboard
+      document.cookie = 'log_token=; path=/; max-age=0';
       // Clear IndexedDB API cache so next user doesn't see stale data
       try {
         const db = await initDB();
@@ -212,6 +214,12 @@ async function invalidateRelatedCache(endpoint: string) {
       await db.delete(CACHE_STORE, '/learning-journey');
       await db.delete(CACHE_STORE, '/chart-data');
     }
+    // Bulk sync (sneakernet import) can also complete activities
+    if (endpoint.includes('/sync/bulk')) {
+      await db.delete(CACHE_STORE, '/dashboard');
+      await db.delete(CACHE_STORE, '/learning-journey');
+      await db.delete(CACHE_STORE, '/chart-data');
+    }
   } catch (e) {
     console.warn('Cache invalidation failed (non-critical)', e);
   }
@@ -236,9 +244,16 @@ async function syncQueue() {
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
+          // Re-attach the current token so records queued under an expired
+          // session can still sync after the user logs back in.
+          const replayHeaders: Record<string, string> = { ...(req.headers || {}) };
+          if (typeof window !== 'undefined') {
+            const freshToken = localStorage.getItem('log_token');
+            if (freshToken) replayHeaders['Authorization'] = `Bearer ${freshToken}`;
+          }
           const response = await fetch(`${BASE_URL}${req.endpoint}`, {
             method: req.method,
-            headers: req.headers,
+            headers: replayHeaders,
             body: req.body,
           });
 
@@ -255,7 +270,17 @@ async function syncQueue() {
             throw new Error(`Server error: ${response.status}`);
           }
 
-          // Client error (4xx) — don't retry, remove from queue
+          // 401: the stored token expired while offline. KEEP the queued records —
+          // deleting them would lose the learner's work silently. Stop the flush
+          // and ask the user to log in again (the queue survives the re-login).
+          if (response.status === 401) {
+            console.error(`Auth expired while syncing ${req.endpoint} — queue preserved`);
+            toast('Session expired. Please log in to sync your saved changes.', { icon: '🔒' });
+            failedCount++;
+            return;
+          }
+
+          // Other client error (4xx) — don't retry, remove from queue
           console.error(`Client error syncing ${req.endpoint}: ${response.status}`);
           await db.delete(QUEUE_STORE, req.id);
           failedCount++;

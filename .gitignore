@@ -1,0 +1,21 @@
+# Secrets & local config
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Generated PWA artifacts — rebuilt on every `next build`
+frontend/public/sw.js
+frontend/public/workbox-*.js
+frontend/.next/
+
+# Build artifacts
+backend/server
+
+# Databases (dev data)
+backend/log.db
+backend/log.db-*
+
+# Dependencies
+node_modules/

@@ -79,20 +79,20 @@ export default function ModeratorDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card border-t-4 border-t-brand-teal">
            <h3 className="text-gray-500 font-medium mb-1 uppercase tracking-wider text-sm flex items-center"><Users className="w-4 h-4 mr-2"/> Active Students</h3>
-           <p className="text-4xl font-bold text-brand-blue">{rosterData?.active_students ?? 124}</p>
-           <p className="text-sm text-green-600 mt-2">↑ 12% from last week</p>
+           <p className="text-4xl font-bold text-brand-blue">{rosterData?.active_students ?? 0}</p>
+           <p className="text-sm text-gray-500 mt-2">Students in your class</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{delay: 0.1}} className="card border-t-4 border-t-brand-amber">
            <h3 className="text-gray-500 font-medium mb-1 uppercase tracking-wider text-sm flex items-center"><AlertCircle className="w-4 h-4 mr-2"/> Needs Attention</h3>
-           <p className="text-4xl font-bold text-brand-blue">{rosterData?.needs_attention ?? 8}</p>
+           <p className="text-4xl font-bold text-brand-blue">{rosterData?.needs_attention ?? 0}</p>
            <p className="text-sm text-brand-amber mt-2">Students falling behind</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{delay: 0.2}} className="card border-t-4 border-t-brand-blue">
            <h3 className="text-gray-500 font-medium mb-1 uppercase tracking-wider text-sm flex items-center"><BookOpen className="w-4 h-4 mr-2"/> Assignments Due</h3>
-           <p className="text-4xl font-bold text-brand-blue">{rosterData?.assignments_due ?? 3}</p>
-           <p className="text-sm text-gray-500 mt-2">To be graded by Friday</p>
+           <p className="text-4xl font-bold text-brand-blue">{rosterData?.assignments_due ?? 0}</p>
+           <p className="text-sm text-gray-500 mt-2">Activities awaiting completion</p>
         </motion.div>
       </div>
 
