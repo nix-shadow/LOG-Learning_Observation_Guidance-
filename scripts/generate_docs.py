@@ -512,8 +512,9 @@ def generate_full_documentation(output_path="LOG_Project_Documentation.docx"):
     add_heading_2(doc, "5.3 Automatic Recovery & Queue Flushing")
     add_body_p(doc, "When the browser detects network restoration (via window.addEventListener('online')), the syncQueue() worker executes:")
     add_bullet_item(doc, "Retrieves all pending mutations in FIFO order from the 'sync-queue' store.")
-    add_bullet_item(doc, "Re-issues each HTTP request to the backend with original headers and payloads.")
-    add_bullet_item(doc, "Deletes successfully processed requests from the queue.")
+    add_bullet_item(doc, "Re-issues each HTTP request to the backend, re-attaching the CURRENT JWT from localStorage at flush time so records queued under an expired session sync after re-login.")
+    add_bullet_item(doc, "Deletes successfully processed requests from the queue and invalidates the cached /dashboard, /learning-journey, and /chart-data payloads.")
+    add_bullet_item(doc, "Never deletes queued records on 401 — the flush pauses and prompts the learner to log in again, preserving their offline work.")
     add_bullet_item(doc, "Displays a confirmation toast ('Offline changes synced successfully!') to the learner.")
 
     # ==========================================
@@ -539,6 +540,8 @@ def generate_full_documentation(output_path="LOG_Project_Documentation.docx"):
     add_bullet_item(doc, "Stateless authentication via HMAC-SHA256 signed JSON Web Tokens (72-hour validity). Tokens are verified per request via the AuthMiddleware handler.", "HMAC-SHA256 JWT Tokens: ")
     add_bullet_item(doc, "All incoming JSON payloads are strictly validated using Gin binding struct tags (e.g. binding:\"required,min=10,max=15\"). Malformed requests are rejected with 400 Bad Request.", "Strict Schema Binding: ")
     add_bullet_item(doc, "Global middleware injects X-Content-Type-Options: nosniff, X-Frame-Options: DENY, and X-XSS-Protection: 1; mode=block.", "Hardened Security Headers: ")
+    add_bullet_item(doc, "JWT_SECRET is loaded exclusively from the environment — never committed to the repository. The project ships .env.example templates only, and docker-compose requires JWT_SECRET to be set at deploy time.", "Environment-Only Secrets: ")
+    add_bullet_item(doc, "Liveness (/api/ping), DB health (/healthz — real SQLite ping), and readiness (/readyz) probes are publicly reachable and must never be moved behind authentication.", "Health Probes: ")
 
     # ==========================================
     # 7. BACKEND API SPECIFICATION & REFERENCE
@@ -555,7 +558,9 @@ def generate_full_documentation(output_path="LOG_Project_Documentation.docx"):
 ["POST", "/api/auth/request-otp", "Public", "Generates & sends 6-digit OTP", "{ phone: string }"],
                  ["POST", "/api/auth/verify-otp", "Public", "Validates OTP and issues JWT", "{ phone: string, otp: string }"],
                  ["POST", "/api/auth/logout", "Auth", "Revokes JWT via jti blocklist", "Bearer Token Header"],
-                 ["GET", "/api/ping", "Public", "Health check probe", "None (Returns 200 pong)"],
+                 ["GET", "/api/ping", "Public", "Liveness probe", "None (Returns 200 pong)"],
+                 ["GET", "/healthz", "Public", "SQLite reachability probe", "None (200 ok / 503 unhealthy)"],
+                 ["GET", "/readyz", "Public", "Readiness probe", "None (Returns 200 ready)"],
                  ["GET", "/api/dashboard", "Student+", "Fetches learner profile, progress & guidance", "Bearer Token Header"],
                  ["GET", "/api/learning-journey", "Student+", "Lists all learning modules in sequence", "Bearer Token Header"],
                  ["GET", "/api/chart-data", "Student+", "Weekly performance & duration telemetry", "Bearer Token Header"],
