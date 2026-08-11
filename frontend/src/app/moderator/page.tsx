@@ -109,12 +109,13 @@ export default function ModeratorDashboard() {
               </tr>
             </thead>
             <tbody>
-              {(rosterData?.roster || [
-                { id: '1', name: 'Aisha Student', completion: 85, streak: 4 },
-                { id: '2', name: 'Bikash Thapa', completion: 75, streak: 3 },
-                { id: '3', name: 'Chandan Gurung', completion: 60, streak: 2 },
-                { id: '4', name: 'Dawa Sherpa', completion: 90, streak: 5 },
-              ]).map((st) => (
+              {(rosterData?.roster || []).length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-8 px-4 text-center text-gray-500">
+                    No student data available yet. Reconnect to load the latest roster.
+                  </td>
+                </tr>
+              ) : (rosterData?.roster || []).map((st) => (
                 <tr key={st.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                   <td className="py-4 px-4 font-medium text-brand-blue flex items-center">
                     <div className="w-8 h-8 rounded-full bg-brand-teal/20 text-brand-teal flex items-center justify-center mr-3 font-bold">
