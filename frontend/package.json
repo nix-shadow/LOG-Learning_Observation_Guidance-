@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.5",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^13.0.0",

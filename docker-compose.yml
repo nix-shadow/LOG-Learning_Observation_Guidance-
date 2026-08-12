@@ -12,17 +12,21 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:6100}
       # Secret is injected from the environment — never commit a real value.
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your .env (see .env.example)}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     volumes:
       - log_data:/app
 
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       dockerfile: Dockerfile
     ports:
       - "6100:6100"
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:6101/api
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     depends_on:
       - backend
 

@@ -13,7 +13,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Set environment variables for build
-ENV NEXT_PUBLIC_API_URL=http://localhost:6101/api
+ARG NEXT_PUBLIC_API_URL=http://localhost:6101/api
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
 RUN npm run build
 
 # Production image, copy all the files and run next

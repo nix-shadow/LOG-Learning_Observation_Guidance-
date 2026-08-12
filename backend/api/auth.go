@@ -12,7 +12,9 @@ import (
 	"os"
 	"sync"
 	"time"
+	"context"
 
+	"google.golang.org/api/idtoken"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -245,20 +247,37 @@ func ForgotPassword(c *gin.Context) {
 
 func GoogleAuth(c *gin.Context) {
 	var req struct {
-		Email string `json:"email" binding:"required,email"`
-		Name  string `json:"name"`
+		Token string `json:"token" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		slog.Error("JSON binding failed in GoogleAuth", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload", "details": err.Error()})
 		return
 	}
 
+	clientID := os.Getenv("GOOGLE_CLIENT_ID")
+	if clientID == "" || clientID == "YOUR_GOOGLE_CLIENT_ID_HERE" {
+		slog.Warn("GOOGLE_CLIENT_ID is not set or is a placeholder. Rejecting Google Auth.")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Google Auth is not configured on the server."})
+		return
+	}
+
+	payload, err := idtoken.Validate(context.Background(), req.Token, clientID)
+	if err != nil {
+		slog.Error("Invalid Google ID token", "error", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Google token"})
+		return
+	}
+
+	email := payload.Claims["email"].(string)
+	name, _ := payload.Claims["name"].(string)
+
 	var user models.User
-	if err := database.DB.First(&user, "email = ?", req.Email).Error; err != nil {
+	if err := database.DB.First(&user, "email = ?", email).Error; err != nil {
 		user = models.User{
 			ID:         GenerateSecureID("user-g"),
-			Name:       req.Name,
-			Email:      req.Email,
+			Name:       name,
+			Email:      email,
 			Role:       models.RoleStudent,
 			IsVerified: true,
 			CreatedAt:  time.Now(),

@@ -121,7 +121,16 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
   if (isAppOnline) {
     try {
       const response = await fetch(url, options);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        // If it's a 4xx client error (e.g. 400 Bad Request, 401 Unauthorized), do NOT queue it.
+        // It's a real failure from the server.
+        if (response.status >= 400 && response.status < 500) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+        }
+        // For 5xx errors, we treat it like offline and queue it.
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -131,8 +140,22 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
         await db.put(CACHE_STORE, { data, cachedAt: Date.now() }, endpoint);
       }
       return data;
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('Network fetch failed...', error);
+      
+      // If it's a 4xx error we threw above, propagate it immediately.
+      // We know it's a 4xx error if we caught it and it's not a generic TypeError (network error)
+      // and not a 5xx error. Let's rely on the error message structure or a custom property.
+      // A simpler way: if the app is online and we got a response, don't queue 4xx.
+      // Wait, we already threw it. We can check if error is our custom 4xx throw.
+      if (error instanceof Error && !error.message.includes('HTTP error! status: 5')) {
+         // Network error usually throws TypeError("Failed to fetch")
+         // Our 4xx throws Error("error message" or "HTTP error! status: 4xx")
+         if (error.message !== 'Failed to fetch' && !error.message.includes('HTTP error! status: 5')) {
+             throw error; 
+         }
+      }
+
       if (method === 'GET') return getFromCache(endpoint);
       return queueRequest(endpoint, options);
     }

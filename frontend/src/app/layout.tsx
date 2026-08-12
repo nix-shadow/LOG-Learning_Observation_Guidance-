@@ -7,6 +7,7 @@ import PageTransition from "@/components/PageTransition";
 import { AuthProvider } from "@/context/AuthContext";
 import OfflineBanner from "@/components/OfflineBanner";
 import InstallPrompt from "@/components/InstallPrompt";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 
@@ -24,7 +25,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} min-h-screen flex flex-col bg-brand-white text-brand-text font-sans antialiased`}>
-        <AuthProvider>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE'}>
+          <AuthProvider>
           <OfflineBanner />
           <Navigation />
           <main className="flex-1 flex flex-col w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
@@ -48,7 +50,8 @@ export default function RootLayout({
             }}
           />
           <InstallPrompt />
-        </AuthProvider>
+          </AuthProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );
