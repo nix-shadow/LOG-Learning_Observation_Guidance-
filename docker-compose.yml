@@ -14,7 +14,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your .env (see .env.example)}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     volumes:
-      - log_data:/app
+      - log_data:/app/data
 
   frontend:
     build:

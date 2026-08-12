@@ -90,6 +90,8 @@ func main() {
 		authRoutes.POST("/verify-otp", api.VerifyOTP)
 		authRoutes.POST("/forgot-password", api.ForgotPassword)
 		authRoutes.POST("/google", api.GoogleAuth)
+		authRoutes.POST("/register", api.Register)
+		authRoutes.POST("/login", api.Login)
 	}
 
 	// ---------------------------------------------------------------------------

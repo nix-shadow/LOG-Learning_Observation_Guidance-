@@ -1,65 +1,70 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchWithCache } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import Image from 'next/image';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  
+  // Form states
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const { login } = useAuth();
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [countdown]);
-
-  const handleRequestOTP = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await fetchWithCache('/auth/request-otp', {
+      const res = await fetchWithCache('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
-      });
-      toast.success('OTP sent! Check your messages.');
-      setStep('otp');
-      setCountdown(60); // start 60s cooldown
-    } catch {
-      toast.error('Failed to send OTP. Are you offline?');
-    }
-    setLoading(false);
-  };
-
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetchWithCache('/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp })
+        body: JSON.stringify({ email, password })
       });
       if (res.token) {
         toast.success('Logged in successfully!');
         login(res.user, res.token);
       } else {
-        toast.error('Invalid OTP');
+        toast.error(res.error || 'Login failed');
       }
     } catch {
       toast.error('Login failed.');
+    }
+    setLoading(false);
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetchWithCache('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+      if (res.token) {
+        toast.success('Registered successfully!');
+        login(res.user, res.token);
+      } else {
+        toast.error(res.error || 'Registration failed');
+      }
+    } catch {
+      toast.error('Registration failed.');
     }
     setLoading(false);
   };
@@ -94,54 +99,128 @@ export default function Login() {
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="card w-full max-w-md p-8 shadow-2xl"
       >
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <Image src="/assets/log-logo.png" alt="LOG Logo" width={150} height={60} className="mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-brand-blue">Welcome Back</h2>
-          <p className="text-gray-500">Sign in to continue your learning journey.</p>
+          <h2 className="text-2xl font-bold text-brand-blue">Welcome</h2>
+          <p className="text-gray-500">Sign in or create an account to continue.</p>
         </div>
 
-        {step === 'phone' ? (
-          <form onSubmit={handleRequestOTP} className="space-y-4">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 mb-6">
+          <button
+            className={`flex-1 pb-2 text-center text-sm font-medium transition-colors ${
+              activeTab === 'login' 
+                ? 'text-brand-teal border-b-2 border-brand-teal' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('login')}
+          >
+            Login
+          </button>
+          <button
+            className={`flex-1 pb-2 text-center text-sm font-medium transition-colors ${
+              activeTab === 'register' 
+                ? 'text-brand-teal border-b-2 border-brand-teal' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('register')}
+          >
+            Register
+          </button>
+        </div>
+
+        {activeTab === 'login' ? (
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
-                type="tel" required
-                value={phone} onChange={(e) => setPhone(e.target.value)}
-                placeholder="+977 9800000000"
+                type="email" required
+                value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"} required
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all pr-12"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
             <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-lg mt-2">
-              {loading ? 'Sending...' : 'Send OTP'}
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyOTP} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Enter 6-digit OTP</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
               <input
-                type="text" required maxLength={6}
-                value={otp} onChange={(e) => setOtp(e.target.value)}
-                placeholder="123456"
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all text-center tracking-widest text-lg"
+                type="text" required
+                value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Jane Doe"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all"
               />
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-lg mt-2">
-              {loading ? 'Verifying...' : 'Verify & Login'}
-            </button>
-            <div className="flex flex-col items-center gap-2 mt-4">
-              <button 
-                type="button" 
-                onClick={handleRequestOTP} 
-                disabled={countdown > 0 || loading}
-                className="text-sm font-medium text-brand-teal hover:underline disabled:text-gray-400 disabled:no-underline transition-colors"
-              >
-                {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
-              </button>
-              <button type="button" onClick={() => { setStep('phone'); setCountdown(0); }} className="text-sm text-gray-500 hover:text-brand-blue">
-                Use a different number
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email" required
+                value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all"
+              />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"} required minLength={6}
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="•••••••• (Min 6 chars)"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all pr-12"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"} required minLength={6}
+                  value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all pr-12"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-lg mt-2">
+              {loading ? 'Registering...' : 'Register'}
+            </button>
           </form>
         )}
 
@@ -156,10 +235,6 @@ export default function Login() {
             onSuccess={handleGoogleSuccess}
             onError={handleGoogleError}
           />
-        </div>
-
-        <div className="mt-6 text-center">
-          <Link href="/forgot-password" className="text-sm text-brand-teal hover:underline">Forgot password?</Link>
         </div>
       </motion.div>
     </div>

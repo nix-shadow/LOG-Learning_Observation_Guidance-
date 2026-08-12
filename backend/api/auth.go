@@ -294,6 +294,100 @@ func GoogleAuth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": t, "user": user})
 }
 
+// Register a new user via email and password
+func Register(c *gin.Context) {
+	var req struct {
+		Name     string `json:"name" binding:"required"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=6"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload", "details": err.Error()})
+		return
+	}
+
+	// Check if user exists
+	var count int64
+	database.DB.Model(&models.User{}).Where("email = ?", req.Email).Count(&count)
+	if count > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "User with this email already exists"})
+		return
+	}
+
+	hashedPassword, err := HashPassword(req.Password)
+	if err != nil {
+		slog.Error("Failed to hash password", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	user := models.User{
+		ID:           GenerateSecureID("usr"),
+		Name:         req.Name,
+		Email:        req.Email,
+		Phone:        GenerateSecureID("dummy-phone"), // prevent unique constraint violation
+		PasswordHash: hashedPassword,
+		Role:         models.RoleStudent, // Default role
+		IsVerified:   true,               // Auto-verify for testing
+		CreatedAt:    time.Now(),
+	}
+
+	if err := database.DB.Create(&user).Error; err != nil {
+		slog.Error("Failed to create user", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
+		return
+	}
+
+	token, err := generateJWT(user.ID, user.Role)
+	if err != nil {
+		slog.Error("Failed to generate JWT", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Login failed after registration"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"token": token,
+		"user":  user,
+	})
+}
+
+// Login an existing user via email and password
+func Login(c *gin.Context) {
+	var req struct {
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload", "details": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		return
+	}
+
+	if !CheckPasswordHash(req.Password, user.PasswordHash) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		return
+	}
+
+	token, err := generateJWT(user.ID, user.Role)
+	if err != nil {
+		slog.Error("Failed to generate JWT", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Login failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user":  user,
+	})
+}
+
 // ---------------------------------------------------------------------------
 // JWT Generation Helper
 // ---------------------------------------------------------------------------

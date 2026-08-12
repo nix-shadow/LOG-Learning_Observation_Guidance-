@@ -15,7 +15,14 @@ var DB *gorm.DB
 
 func InitDB() {
 	var err error
-	DB, err = gorm.Open(sqlite.Open("log.db"), &gorm.Config{
+
+	// Ensure data directory exists
+	if err := os.MkdirAll("data", 0755); err != nil {
+		slog.Error("Failed to create data directory:", "error", err)
+		os.Exit(1)
+	}
+
+	DB, err = gorm.Open(sqlite.Open("data/log.db"), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
