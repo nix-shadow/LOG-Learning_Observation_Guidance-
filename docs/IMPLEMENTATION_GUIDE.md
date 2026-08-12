@@ -27,7 +27,7 @@ go build -o server main.go
 ./server
 ```
 
-The Gin engine will start listening on `http://localhost:8080`.
+The Gin engine will start listening on `http://localhost:6001`.
 
 ---
 
@@ -40,13 +40,13 @@ cd frontend
 npm install
 
 # Create environment configuration file
-echo "NEXT_PUBLIC_API_URL=http://localhost:8080/api" > .env.local
+echo "NEXT_PUBLIC_API_URL=http://localhost:6001/api" > .env.local
 
 # Run development server
 npm run dev
 ```
 
-Visit `http://localhost:3000` in your web browser.
+Visit `http://localhost:6000` in your web browser.
 
 ---
 

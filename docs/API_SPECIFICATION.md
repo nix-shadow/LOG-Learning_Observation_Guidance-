@@ -1,8 +1,8 @@
 # REST API Specification & Endpoint Reference
 
 ## 1. Base Configuration
-- **Base URL:** `http://localhost:8080/api`
-- **Default Port:** `8080`
+- **Base URL:** `http://localhost:6001/api`
+- **Default Port:** `6001`
 - **Content Type:** `application/json`
 - **Authentication:** `Bearer <JWT_TOKEN>` in `Authorization` header
 

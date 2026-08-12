@@ -548,7 +548,7 @@ def generate_full_documentation(output_path="LOG_Project_Documentation.docx"):
     # ==========================================
     add_heading_1(doc, "7. Backend API Specification & Reference")
 
-    add_body_p(doc, "The Go backend runs on port 8080 by default. Below is the complete endpoint reference:")
+    add_body_p(doc, "The Go backend runs on port 6001 by default. Below is the complete endpoint reference:")
 
     api_table = doc.add_table(rows=1, cols=5)
     format_table(api_table,
@@ -654,16 +654,14 @@ npx jest
 go mod download
 go build -o server main.go
 ./server
-# Backend starts on http://localhost:8080 with auto-seeded database log.db""")
+# Backend starts on http://localhost:6001 with auto-seeded database log.db""")
 
     add_heading_2(doc, "11.2 Frontend Setup")
-    add_code_block(doc, 
-"""cd frontend
+    add_code_block(doc, """cd frontend
+# Create .env file: NEXT_PUBLIC_API_URL=http://localhost:6001/api
 npm install
-# Create .env file: NEXT_PUBLIC_API_URL=http://localhost:8080/api
-npm run build
-npm start
-# Frontend starts on http://localhost:3000""")
+npm run dev
+# Frontend starts on http://localhost:6000""")
 
     add_heading_2(doc, "11.3 Docker Compose Deployment")
     add_code_block(doc, 
