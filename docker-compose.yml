@@ -6,10 +6,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "6001:6001"
+      - "6101:6101"
     environment:
-      - PORT=6001
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:6000}
+      - PORT=6101
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:6100}
       # Secret is injected from the environment — never commit a real value.
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your .env (see .env.example)}
     volumes:
@@ -20,9 +20,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "6000:6000"
+      - "6100:6100"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:6001/api
+      - NEXT_PUBLIC_API_URL=http://backend:6101/api
     depends_on:
       - backend
 
