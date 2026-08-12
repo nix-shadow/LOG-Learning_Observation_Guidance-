@@ -135,7 +135,7 @@ All responses include the following headers (enforced globally in `main.go`):
 CORS is restricted to a single configured origin:
 
 ```bash
-# Set in environment — defaults to http://localhost:6000
+# Set in environment — defaults to http://localhost:6100
 export CORS_ORIGIN=https://log.edu.np
 ```
 
@@ -240,6 +240,6 @@ The `/api/auth/forgot-password` endpoint always returns success regardless of wh
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `JWT_SECRET` | Yes (prod) | Dev fallback with warning | HMAC signing key, ≥ 32 characters |
-| `PORT` | No | `6001` | Backend listen port |
-| `CORS_ORIGIN` | No | `http://localhost:6000` | Allowed CORS origin |
-| `NEXT_PUBLIC_API_URL` | No | `http://localhost:6001/api` | Frontend API base URL |
+| `PORT` | No | `6101` | Backend listen port |
+| `CORS_ORIGIN` | No | `http://localhost:6100` | Allowed CORS origin |
+| `NEXT_PUBLIC_API_URL` | No | `http://localhost:6101/api` | Frontend API base URL |
