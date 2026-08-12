@@ -49,8 +49,8 @@ func main() {
 	// ---------------------------------------------------------------------------
 	corsOrigin := os.Getenv("CORS_ORIGIN")
 	if corsOrigin == "" {
-		corsOrigin = "http://localhost:6000"
-		slog.Info("CORS_ORIGIN not set, defaulting to http://localhost:6000")
+		corsOrigin = "http://localhost:6100"
+		slog.Info("CORS_ORIGIN not set, defaulting to http://localhost:6100")
 	}
 
 	r.Use(func(c *gin.Context) {
@@ -149,8 +149,8 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "6001"
-		slog.Info("PORT not set, defaulting to 6001")
+		port = "6101"
+		slog.Info("PORT not set, defaulting to 6101")
 	}
 
 	srv := &http.Server{

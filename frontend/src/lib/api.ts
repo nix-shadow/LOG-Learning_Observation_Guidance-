@@ -40,7 +40,7 @@ export const initDB = async () => {
   });
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6001/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6101/api';
 
 /**
  * Logs the user out by:

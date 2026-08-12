@@ -13,7 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Set environment variables for build
-ENV NEXT_PUBLIC_API_URL=http://localhost:6001/api
+ENV NEXT_PUBLIC_API_URL=http://localhost:6101/api
 RUN npm run build
 
 # Production image, copy all the files and run next
@@ -36,7 +36,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
-EXPOSE 6000
-ENV PORT 6000
+EXPOSE 6100
+ENV PORT 6100
 
 CMD ["node", "server.js"]

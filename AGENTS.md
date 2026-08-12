@@ -72,7 +72,7 @@ go build -o server main.go
 Probes: `GET /api/ping` (liveness), `GET /healthz` (SQLite ping), `GET /readyz`.
 
 ### Frontend
-Ensure the `.env` file contains `NEXT_PUBLIC_API_URL=http://localhost:6001/api`.
+Ensure the `.env` file contains `NEXT_PUBLIC_API_URL=http://localhost:6101/api`.
 ```bash
 cd frontend
 npm install

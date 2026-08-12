@@ -27,7 +27,7 @@ WORKDIR /app
 COPY --from=builder /app/server .
 
 # Expose port
-EXPOSE 6001
+EXPOSE 6101
 
 # Command to run the executable
 CMD ["./server"]
