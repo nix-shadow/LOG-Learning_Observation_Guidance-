@@ -35,6 +35,7 @@ func InitDB() {
 		&models.User{},
 		&models.OTPRecord{},
 		&models.Activity{},
+		&models.LearnerActivity{},
 		&models.Progress{},
 		&models.Observation{},
 		&models.Guidance{},
@@ -71,11 +72,19 @@ func seedData() {
 		// Seed Progress & Acts
 		DB.Create(&models.Progress{LearnerID: "user-123", TotalTopics: 10, Completed: 2, CurrentStreak: 3, OverallScore: 85.5})
 		acts := []models.Activity{
-			{ID: "act-1", Title: "Introduction to Logic", Description: "Basic concepts.", Status: "Completed", Topic: "Logic", Order: 1},
-			{ID: "act-2", Title: "Boolean Algebra", Description: "AND, OR, NOT.", Status: "In progress", Topic: "Logic", Order: 2},
+			{ID: "act-1", Title: "Introduction to Logic", Description: "Basic concepts.", Topic: "Logic", Order: 1},
+			{ID: "act-2", Title: "Boolean Algebra", Description: "AND, OR, NOT.", Topic: "Logic", Order: 2},
 		}
 		for _, a := range acts {
 			DB.Create(&a)
+		}
+
+		learnerActs := []models.LearnerActivity{
+			{LearnerID: "user-123", ActivityID: "act-1", Status: "Completed", CompletedAt: time.Now(), Score: 100},
+			{LearnerID: "user-123", ActivityID: "act-2", Status: "In progress", Score: 50},
+		}
+		for _, la := range learnerActs {
+			DB.Create(&la)
 		}
 
 		obs := []models.Observation{

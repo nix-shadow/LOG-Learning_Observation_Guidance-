@@ -120,7 +120,10 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
 
   if (isAppOnline) {
     try {
-      const response = await fetch(url, options);
+      // By using cache: 'no-store', we prevent the service worker from intercepting
+      // and potentially serving stale data across different authenticated sessions.
+      const fetchOpts = { ...options, cache: 'no-store' as RequestCache };
+      const response = await fetch(url, fetchOpts);
       if (!response.ok) {
         // If it's a 4xx client error (e.g. 400 Bad Request, 401 Unauthorized), do NOT queue it.
         // It's a real failure from the server.

@@ -21,7 +21,7 @@ func GetDashboard(c *gin.Context) {
 
 	var user models.User
 	var progress models.Progress
-	var activities []models.Activity
+	var dbActivities []models.Activity
 	var observations []models.Observation
 	var guidance []models.Guidance
 
@@ -31,7 +31,30 @@ func GetDashboard(c *gin.Context) {
 		return
 	}
 
-	database.DB.Order("`order` asc").Find(&activities)
+	database.DB.Order("`order` asc").Find(&dbActivities)
+
+	var learnerActs []models.LearnerActivity
+	database.DB.Where("learner_id = ?", learnerID).Find(&learnerActs)
+	statusMap := make(map[string]string)
+	for _, la := range learnerActs {
+		statusMap[la.ActivityID] = la.Status
+	}
+
+	type ActivityResponse struct {
+		models.Activity
+		Status string `json:"status"`
+	}
+	var activities []ActivityResponse
+	for _, act := range dbActivities {
+		status := "Pending"
+		if s, ok := statusMap[act.ID]; ok {
+			status = s
+		}
+		activities = append(activities, ActivityResponse{
+			Activity: act,
+			Status:   status,
+		})
+	}
 
 	if err := database.DB.First(&progress, "learner_id = ?", learnerID).Error; err != nil {
 		progress = models.Progress{
@@ -56,8 +79,37 @@ func GetDashboard(c *gin.Context) {
 }
 
 func GetLearningJourney(c *gin.Context) {
-	var activities []models.Activity
-	database.DB.Order("`order` asc").Find(&activities)
+	learnerID := "user-123"
+	if uid, exists := c.Get("userID"); exists && uid.(string) != "" {
+		learnerID = uid.(string)
+	}
+
+	var dbActivities []models.Activity
+	database.DB.Order("`order` asc").Find(&dbActivities)
+
+	var learnerActs []models.LearnerActivity
+	database.DB.Where("learner_id = ?", learnerID).Find(&learnerActs)
+	statusMap := make(map[string]string)
+	for _, la := range learnerActs {
+		statusMap[la.ActivityID] = la.Status
+	}
+
+	type ActivityResponse struct {
+		models.Activity
+		Status string `json:"status"`
+	}
+	var activities []ActivityResponse
+	for _, act := range dbActivities {
+		status := "Pending"
+		if s, ok := statusMap[act.ID]; ok {
+			status = s
+		}
+		activities = append(activities, ActivityResponse{
+			Activity: act,
+			Status:   status,
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{"activities": activities})
 }
 
@@ -70,17 +122,36 @@ func GetMicroModules(c *gin.Context) {
 		return
 	}
 
+	learnerID := "user-123"
+	if uid, exists := c.Get("userID"); exists && uid.(string) != "" {
+		learnerID = uid.(string)
+	}
+
 	var activity models.Activity
 	if err := database.DB.First(&activity, "id = ?", actID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Activity not found"})
 		return
 	}
 
+	var learnerAct models.LearnerActivity
+	status := "Pending"
+	if err := database.DB.First(&learnerAct, "learner_id = ? AND activity_id = ?", learnerID, actID).Error; err == nil {
+		status = learnerAct.Status
+	}
+
+	type ActivityResponse struct {
+		models.Activity
+		Status string `json:"status"`
+	}
+
 	var modules []models.MicroModule
 	database.DB.Where("activity_id = ?", actID).Order("`order` asc").Find(&modules)
 
 	c.JSON(http.StatusOK, gin.H{
-		"activity": activity,
+		"activity": ActivityResponse{
+			Activity: activity,
+			Status:   status,
+		},
 		"modules":  modules,
 		"total":    len(modules),
 	})
@@ -107,16 +178,32 @@ func CompleteActivity(c *gin.Context) {
 
 	// Wrap all writes in a single transaction for atomicity
 	txErr := database.DB.Transaction(func(tx *gorm.DB) error {
-		// 1. Update Activity Status
+		// 1. Update Activity Status (via LearnerActivity)
 		var activity models.Activity
 		if err := tx.First(&activity, "id = ?", actID).Error; err != nil {
 			return fmt.Errorf("activity not found: %s", actID)
 		}
-		activity.Status = "Completed"
-		if err := tx.Save(&activity).Error; err != nil {
-			return fmt.Errorf("failed to update activity: %w", err)
-		}
 		resultActivity = activity
+
+		var learnerAct models.LearnerActivity
+		if err := tx.First(&learnerAct, "learner_id = ? AND activity_id = ?", learnerID, actID).Error; err != nil {
+			learnerAct = models.LearnerActivity{
+				LearnerID:   learnerID,
+				ActivityID:  actID,
+				Status:      "Completed",
+				CompletedAt: time.Now(),
+				Score:       100.0,
+			}
+			if err := tx.Create(&learnerAct).Error; err != nil {
+				return fmt.Errorf("failed to create learner activity: %w", err)
+			}
+		} else {
+			learnerAct.Status = "Completed"
+			learnerAct.CompletedAt = time.Now()
+			if err := tx.Save(&learnerAct).Error; err != nil {
+				return fmt.Errorf("failed to update learner activity: %w", err)
+			}
+		}
 
 		// 2. Update Progress atomically — create the record for new learners
 		var progress models.Progress
@@ -362,8 +449,21 @@ func SyncBulk(c *gin.Context) {
 					actID := parts[2]
 					var act models.Activity
 					if err := tx.First(&act, "id = ?", actID).Error; err == nil {
-						act.Status = "Completed"
-						tx.Save(&act)
+						var learnerAct models.LearnerActivity
+						if err := tx.First(&learnerAct, "learner_id = ? AND activity_id = ?", callerID, actID).Error; err != nil {
+							learnerAct = models.LearnerActivity{
+								LearnerID:   callerID,
+								ActivityID:  actID,
+								Status:      "Completed",
+								CompletedAt: time.Now(),
+								Score:       100.0,
+							}
+							tx.Create(&learnerAct)
+						} else {
+							learnerAct.Status = "Completed"
+							learnerAct.CompletedAt = time.Now()
+							tx.Save(&learnerAct)
+						}
 
 						// Scoped progress update: only touch the calling user's progress,
 						// creating the record the first time a new learner syncs.

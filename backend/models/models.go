@@ -37,7 +37,6 @@ type Activity struct {
 	ID            string         `json:"id" gorm:"primaryKey"`
 	Title         string         `json:"title"`
 	Description   string         `json:"description"`
-	Status        string         `json:"status"`
 	Topic         string         `json:"topic"`
 	Order         int            `json:"order"`
 	ContentJSON   string         `json:"content_json"`
@@ -45,6 +44,14 @@ type Activity struct {
 	Prerequisites string         `json:"prerequisites"` // comma-separated list of required Activity IDs
 	CreatedAt     time.Time      `json:"created_at"`
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+type LearnerActivity struct {
+	LearnerID   string    `json:"learner_id" gorm:"primaryKey"`
+	ActivityID  string    `json:"activity_id" gorm:"primaryKey"`
+	Status      string    `json:"status"` // e.g. "Completed", "Pending", "In Progress"
+	CompletedAt time.Time `json:"completed_at"`
+	Score       float64   `json:"score"`
 }
 
 type MicroModule struct {

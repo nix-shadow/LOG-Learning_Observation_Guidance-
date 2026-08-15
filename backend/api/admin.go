@@ -128,7 +128,6 @@ func CreateActivity(c *gin.Context) {
 		Difficulty:    req.Difficulty,
 		Prerequisites: req.Prerequisites,
 		ContentJSON:   req.ContentJSON,
-		Status:        "Not Started",
 		Order:         int(count) + 1,
 		CreatedAt:     time.Now(),
 	}
