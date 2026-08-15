@@ -33,21 +33,25 @@ export default function OfflineBanner() {
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -50, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="bg-brand-amber text-brand-blue font-medium text-sm py-2 px-4 flex items-center justify-center shadow-md relative z-50"
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            className="bg-brand-amber/10 backdrop-blur-md border-b border-brand-amber/30 text-brand-blue font-medium text-sm py-3 px-4 flex items-center justify-center shadow-sm relative z-50"
           >
-            <WifiOff className="w-4 h-4 mr-2" />
-            You are currently offline. Changes will be saved locally and synced when you reconnect.
+            <WifiOff className="w-4 h-4 mr-2 text-brand-amber" />
+            <span className="opacity-90">You are currently offline. Changes will be saved locally and synced when you reconnect.</span>
           </motion.div>
           
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed bottom-4 left-4 z-40 opacity-50 pointer-events-none flex items-center gap-1 font-bold text-xs bg-gray-900 text-white px-2 py-1 rounded shadow"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="fixed bottom-6 left-6 z-40 flex items-center gap-2 font-bold text-xs bg-white/80 backdrop-blur-md border border-brand-gray/50 text-brand-text px-3 py-2 rounded-full shadow-bento"
           >
-            <WifiOff className="w-3 h-3 text-brand-amber" />
-            OFFLINE MODE - CACHING LOCALLY
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-amber opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-amber"></span>
+            </div>
+            <span>OFFLINE MODE</span>
           </motion.div>
         </>
       )}

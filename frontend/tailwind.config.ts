@@ -10,22 +10,25 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          blue: "#0A2540", // Deep modern blue
-          teal: "#00B4D8", // Active teal
-          amber: "#FFB703", // Accent amber
-          white: "#F8F9FA", // Soft white surface
-          gray: "#E9ECEF",  // Borders and subtle backgrounds
-          text: "#212529"   // Dark readable text
+          blue: "hsl(var(--brand-blue) / <alpha-value>)",
+          teal: "hsl(var(--brand-teal) / <alpha-value>)",
+          amber: "hsl(var(--brand-amber) / <alpha-value>)",
+          white: "hsl(var(--brand-white) / <alpha-value>)",
+          gray: "hsl(var(--brand-gray) / <alpha-value>)",
+          text: "hsl(var(--brand-text) / <alpha-value>)"
         }
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'sans-serif'],
       },
       boxShadow: {
-        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+        'bento': '0 0 0 1px rgba(0, 0, 0, 0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+        'glow': '0 0 20px rgba(0, 180, 216, 0.15)',
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/container-queries'),
+  ],
 };
 export default config;

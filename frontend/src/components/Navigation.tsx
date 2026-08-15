@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BookOpen, Home, LineChart, Compass, LogIn, LogOut, ShieldAlert, Library, Users, Wifi, WifiOff } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 
@@ -39,7 +40,7 @@ export default function Navigation() {
   ].filter(item => item.show);
 
   return (
-    <nav className="bg-white shadow-sm border-b border-brand-gray sticky top-0 z-50">
+    <nav className="bg-white/80 backdrop-blur-md shadow-sm border-b border-brand-gray sticky top-0 z-50 @container">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-4">
@@ -70,28 +71,42 @@ export default function Navigation() {
               const isActive = pathname.startsWith(item.path);
               const Icon = item.icon;
               return (
-                <Link
-                  key={item.name}
-                  href={item.path}
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors h-full ${
-                    isActive
-                      ? 'border-brand-teal text-brand-teal'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {item.name}
+                <Link key={item.name} href={item.path} passHref>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors h-full ${
+                      isActive
+                        ? 'border-brand-teal text-brand-teal'
+                        : 'border-transparent text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {item.name}
+                  </motion.div>
                 </Link>
               );
             })}
 
             {user ? (
-               <button onClick={logout} className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-red-500 transition-colors">
+               <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={logout} 
+                  className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-red-500 transition-colors"
+               >
                   <LogOut className="w-4 h-4 mr-2" /> Logout
-               </button>
+               </motion.button>
             ) : (
-               <Link href="/login" className="inline-flex items-center text-sm font-medium text-brand-blue hover:text-brand-teal transition-colors">
-                  <LogIn className="w-4 h-4 mr-2" /> Login
+               <Link href="/login" passHref>
+                 <motion.div 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="inline-flex items-center text-sm font-medium text-brand-blue hover:text-brand-teal transition-colors"
+                 >
+                    <LogIn className="w-4 h-4 mr-2" /> Login
+                 </motion.div>
                </Link>
             )}
           </div>

@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchWithCache } from '@/lib/api';
 import { CheckCircle2, Circle, PlayCircle, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import SkeletonLoader from '@/components/SkeletonLoader';
 
 export default function Learning() {
   const [data, setData] = useState<LearningJourneyData | null>(null);
@@ -18,15 +20,28 @@ export default function Learning() {
   }, []);
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-teal"></div>
+    <div className="max-w-4xl mx-auto w-full space-y-6">
+      <SkeletonLoader type="text" count={2} />
+      <div className="ml-6 space-y-4">
+        <SkeletonLoader type="card" count={4} />
+      </div>
     </div>
   );
 
   return (
-    <div className="max-w-4xl mx-auto w-full">
-      <h1 className="text-3xl font-bold text-brand-blue mb-2">Learning Journey</h1>
-      <p className="text-gray-600 mb-8">Follow your customized path to mastery.</p>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="max-w-4xl mx-auto w-full"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      >
+        <h1 className="text-3xl font-bold text-brand-blue mb-2">Learning Journey</h1>
+        <p className="text-gray-600 mb-8">Follow your customized path to mastery.</p>
+      </motion.div>
 
       <div className="relative border-l-2 border-brand-gray ml-3 md:ml-6 space-y-12">
         {data?.activities.map((act: Activity, index: number) => {
@@ -44,12 +59,23 @@ export default function Learning() {
           }
 
           return (
-            <div key={act.id} className="relative pl-8 md:pl-12">
-              <span className={`absolute -left-[11px] bg-white text-brand-white rounded-full ${iconColor}`}>
-                <Icon className="w-5 h-5 bg-white rounded-full" />
-              </span>
+            <motion.div 
+              key={act.id} 
+              className="relative pl-8 md:pl-12 group"
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ type: "spring", stiffness: 300, damping: 25, delay: index * 0.1 }}
+            >
+              <motion.span 
+                className={`absolute -left-[11px] bg-white text-brand-white rounded-full ${iconColor} z-10`}
+                whileHover={{ scale: 1.2 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <Icon className="w-5 h-5 bg-white rounded-full shadow-sm" />
+              </motion.span>
 
-              <div className={`card ${bgColor} transition-colors hover:border-brand-teal/50`}>
+              <div className={`card ${bgColor} transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-brand-teal/50`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 block">Module {index + 1} &bull; {act.topic}</span>
@@ -72,10 +98,10 @@ export default function Learning() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 }
