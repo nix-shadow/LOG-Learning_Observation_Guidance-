@@ -11,7 +11,10 @@ import (
 
 	"log-backend/api"
 	"log-backend/database"
-	"log-backend/models"
+	"log-backend/internal/domain"
+	"log-backend/internal/handler"
+	"log-backend/internal/repository"
+	"log-backend/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -26,6 +29,28 @@ func main() {
 
 	// Initialize Database
 	database.InitDB()
+
+	// Initialize Repositories
+	userRepo := repository.NewUserRepository(database.DB)
+	authRepo := repository.NewAuthRepository(database.DB)
+	syncRepo := repository.NewSyncRepository(database.DB)
+	courseRepo := repository.NewCourseRepository(database.DB)
+	learnerDataRepo := repository.NewLearnerDataRepository(database.DB)
+	modRepo := repository.NewModeratorRepository(database.DB)
+	progressRepo := repository.NewProgressRepository(database.DB)
+	activityRepo := repository.NewActivityRepository(database.DB)
+
+	// Initialize Services
+	authService := service.NewAuthService(userRepo, authRepo)
+	syncService := service.NewSyncService(syncRepo)
+	learnerService := service.NewLearnerService(userRepo, activityRepo, progressRepo, learnerDataRepo)
+	courseService := service.NewCourseService(courseRepo)
+	moderatorService := service.NewModeratorService(modRepo, progressRepo, activityRepo)
+
+	// Initialize Handlers
+	authHandler := handler.NewAuthHandler(authService)
+	syncHandler := handler.NewSyncHandler(syncService)
+	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
 
 	// Use gin.New() + only the Logger and Recovery middlewares we control
 	// so we avoid gin.Default()'s panic recovery leaking stack traces to clients.
@@ -78,20 +103,20 @@ func main() {
 	})
 
 	// Global request ID + audit logging
-	r.Use(api.RequestIDMiddleware())
+	r.Use(handler.RequestIDMiddleware())
 
 	// ---------------------------------------------------------------------------
 	// Public Auth Routes — rate limited
 	// ---------------------------------------------------------------------------
 	authRoutes := r.Group("/api/auth")
-	authRoutes.Use(api.RateLimitMiddleware())
+	authRoutes.Use(handler.RateLimitMiddleware())
 	{
-		authRoutes.POST("/request-otp", api.RequestOTP)
-		authRoutes.POST("/verify-otp", api.VerifyOTP)
-		authRoutes.POST("/forgot-password", api.ForgotPassword)
-		authRoutes.POST("/google", api.GoogleAuth)
-		authRoutes.POST("/register", api.Register)
-		authRoutes.POST("/login", api.Login)
+		authRoutes.POST("/request-otp", authHandler.RequestOTP)
+		authRoutes.POST("/verify-otp", authHandler.VerifyOTP)
+		authRoutes.POST("/forgot-password", authHandler.ForgotPassword)
+		authRoutes.POST("/google", authHandler.GoogleAuth)
+		authRoutes.POST("/register", authHandler.Register)
+		authRoutes.POST("/login", authHandler.Login)
 	}
 
 	// ---------------------------------------------------------------------------
@@ -112,36 +137,36 @@ func main() {
 	// Protected Student Routes — requires valid JWT with STUDENT role minimum
 	// ---------------------------------------------------------------------------
 	apiRoutes := r.Group("/api")
-	apiRoutes.Use(api.AuthMiddleware(models.RoleStudent))
+	apiRoutes.Use(handler.AuthMiddleware(authRepo, domain.RoleStudent))
 	{
-		apiRoutes.GET("/dashboard", api.GetDashboard)
-		apiRoutes.GET("/learning-journey", api.GetLearningJourney)
-		apiRoutes.GET("/chart-data", api.GetChartData)
-		apiRoutes.GET("/courses", api.GetCourses)
-		apiRoutes.GET("/activities/:id/modules", api.GetMicroModules)
-		apiRoutes.POST("/activities/:id/complete", api.CompleteActivity)
-		apiRoutes.POST("/sync/bulk", api.SyncBulk)
+		apiRoutes.GET("/dashboard", learnerHandler.GetDashboard)
+		apiRoutes.GET("/learning-journey", learnerHandler.GetLearningJourney)
+		apiRoutes.GET("/chart-data", learnerHandler.GetChartData)
+		apiRoutes.GET("/courses", learnerHandler.GetCourses)
+		apiRoutes.GET("/activities/:id/modules", learnerHandler.GetMicroModules)
+		apiRoutes.POST("/activities/:id/complete", learnerHandler.CompleteActivity)
+		apiRoutes.POST("/sync/bulk", syncHandler.SyncBulk)
 		// Logout: revokes the caller's JWT by adding its JTI to the blocklist
-		apiRoutes.POST("/auth/logout", api.LogoutHandler)
+		apiRoutes.POST("/auth/logout", authHandler.LogoutHandler)
 	}
 
 	// ---------------------------------------------------------------------------
 	// Protected Moderator Routes — requires MODERATOR role minimum
 	// ---------------------------------------------------------------------------
 	modRoutes := r.Group("/api/moderator")
-	modRoutes.Use(api.AuthMiddleware(models.RoleModerator))
+	modRoutes.Use(handler.AuthMiddleware(authRepo, domain.RoleModerator))
 	{
 		modRoutes.GET("/classes", func(c *gin.Context) {
 			c.JSON(200, gin.H{"message": "Moderator classes data"})
 		})
-		modRoutes.GET("/roster", api.GetModeratorRoster)
+		modRoutes.GET("/roster", learnerHandler.GetModeratorRoster)
 	}
 
 	// ---------------------------------------------------------------------------
 	// Protected Admin Routes — requires ADMIN role
 	// ---------------------------------------------------------------------------
 	adminRoutes := r.Group("/api/admin")
-	adminRoutes.Use(api.AuthMiddleware(models.RoleAdmin))
+	adminRoutes.Use(handler.AuthMiddleware(authRepo, domain.RoleAdmin))
 	{
 		adminRoutes.GET("/dashboard", api.GetAdminDashboard)
 		adminRoutes.GET("/users", api.GetUsers)

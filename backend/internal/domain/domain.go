@@ -122,5 +122,12 @@ type DailyActivity struct {
 	Date      time.Time `json:"date" gorm:"index"`
 	DayName   string    `json:"name"` // e.g. "Mon"
 	Score     float64   `json:"score"`
-	Duration  int       `json:"duration"` // in minutes
+	Duration  int       `json:"duration" gorm:"not null;default:0"` // Ensure no NULLs are written
+}
+
+// SyncRequestItem represents an offline sync request
+type SyncRequestItem struct {
+	Endpoint string `json:"endpoint"`
+	Method   string `json:"method"`
+	Body     string `json:"body"`
 }

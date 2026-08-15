@@ -2,7 +2,8 @@ package api
 
 import (
 	"log-backend/database"
-	"log-backend/models"
+	"log-backend/internal/domain"
+	"log-backend/internal/service"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,17 +17,17 @@ func GetAdminDashboard(c *gin.Context) {
 	var totalCompletions int64
 	var activeDaily int64
 
-	database.DB.Model(&models.User{}).Count(&totalUsers)
-	database.DB.Model(&models.Activity{}).Count(&totalActivities)
-	database.DB.Model(&models.Progress{}).Select("COALESCE(SUM(completed), 0)").Scan(&totalCompletions)
+	database.DB.Model(&domain.User{}).Count(&totalUsers)
+	database.DB.Model(&domain.Activity{}).Count(&totalActivities)
+	database.DB.Model(&domain.Progress{}).Select("COALESCE(SUM(completed), 0)").Scan(&totalCompletions)
 	// Active daily = learners with progress activity in the last 24 hours
-	database.DB.Model(&models.User{}).Where("updated_at > ?", time.Now().Add(-24*time.Hour)).Count(&activeDaily)
+	database.DB.Model(&domain.User{}).Where("updated_at > ?", time.Now().Add(-24*time.Hour)).Count(&activeDaily)
 
-	var recentUsers []models.User
+	var recentUsers []domain.User
 	database.DB.Order("created_at desc").Limit(5).Find(&recentUsers)
 
 	c.JSON(http.StatusOK, gin.H{
-		"analytics": models.SystemAnalytics{
+		"analytics": domain.SystemAnalytics{
 			TotalUsers:       int(totalUsers),
 			ActiveDaily:      int(activeDaily),
 			TotalCompletions: int(totalCompletions),
@@ -52,10 +53,10 @@ func GetUsers(c *gin.Context) {
 
 	offset := (page - 1) * limit
 
-	var users []models.User
+	var users []domain.User
 	var total int64
 
-	database.DB.Model(&models.User{}).Count(&total)
+	database.DB.Model(&domain.User{}).Count(&total)
 	database.DB.Limit(limit).Offset(offset).Find(&users)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -71,7 +72,7 @@ func GetUsers(c *gin.Context) {
 func UpdateUserRole(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
-		Role models.Role `json:"role" binding:"required"`
+		Role domain.Role `json:"role" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
@@ -80,14 +81,14 @@ func UpdateUserRole(c *gin.Context) {
 
 	// Validate role is one of the defined constants — reject any arbitrary string
 	switch req.Role {
-	case models.RoleStudent, models.RoleModerator, models.RoleAdmin:
+	case domain.RoleStudent, domain.RoleModerator, domain.RoleAdmin:
 		// valid — proceed
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role value. Must be STUDENT, MODERATOR, or ADMIN."})
 		return
 	}
 
-	var user models.User
+	var user domain.User
 	if err := database.DB.First(&user, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
@@ -118,10 +119,10 @@ func CreateActivity(c *gin.Context) {
 
 	// Count existing activities to auto-assign display order
 	var count int64
-	database.DB.Model(&models.Activity{}).Count(&count)
+	database.DB.Model(&domain.Activity{}).Count(&count)
 
-	act := models.Activity{
-		ID:            GenerateSecureID("act"), // Server-generated ID
+	act := domain.Activity{
+		ID:            service.GenerateSecureID("act"), // Server-generated ID
 		Title:         req.Title,
 		Description:   req.Description,
 		Topic:         req.Topic,

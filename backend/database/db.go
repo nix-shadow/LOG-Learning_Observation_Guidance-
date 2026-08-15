@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"time"
-	"log-backend/models"
+	"log-backend/internal/domain"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -32,17 +32,17 @@ func InitDB() {
 
 	// Auto Migrate
 	err = DB.AutoMigrate(
-		&models.User{},
-		&models.OTPRecord{},
-		&models.Activity{},
-		&models.LearnerActivity{},
-		&models.Progress{},
-		&models.Observation{},
-		&models.Guidance{},
-		&models.Course{},
-		&models.DailyActivity{},
-		&models.MicroModule{},
-		&models.TokenBlocklist{},
+		&domain.User{},
+		&domain.OTPRecord{},
+		&domain.Activity{},
+		&domain.LearnerActivity{},
+		&domain.Progress{},
+		&domain.Observation{},
+		&domain.Guidance{},
+		&domain.Course{},
+		&domain.DailyActivity{},
+		&domain.MicroModule{},
+		&domain.TokenBlocklist{},
 	)
 	if err != nil {
 		slog.Error("Failed to migrate database:", "error", err)
@@ -50,28 +50,28 @@ func InitDB() {
 	}
 
 	// Purge expired blocklist entries on startup to keep the table lean
-	DB.Where("expires_at < ?", time.Now()).Delete(&models.TokenBlocklist{})
+	DB.Where("expires_at < ?", time.Now()).Delete(&domain.TokenBlocklist{})
 
 	seedData()
 }
 
 func seedData() {
 	var count int64
-	DB.Model(&models.User{}).Count(&count)
+	DB.Model(&domain.User{}).Count(&count)
 	if count == 0 {
 		// Seed Users
-		users := []models.User{
-			{ID: "admin-1", Name: "Principal Skinner", Email: "admin@log.edu", Phone: "1000000000", Role: models.RoleAdmin, IsVerified: true},
-			{ID: "mod-1", Name: "Teacher Edna", Email: "teacher@log.edu", Phone: "2000000000", Role: models.RoleModerator, IsVerified: true},
-			{ID: "user-123", Name: "Aisha Student", Email: "aisha@example.com", Phone: "+9779800000000", Role: models.RoleStudent, IsVerified: true},
+		users := []domain.User{
+			{ID: "admin-1", Name: "Principal Skinner", Email: "admin@log.edu", Phone: "1000000000", Role: domain.RoleAdmin, IsVerified: true},
+			{ID: "mod-1", Name: "Teacher Edna", Email: "teacher@log.edu", Phone: "2000000000", Role: domain.RoleModerator, IsVerified: true},
+			{ID: "user-123", Name: "Aisha Student", Email: "aisha@example.com", Phone: "+9779800000000", Role: domain.RoleStudent, IsVerified: true},
 		}
 		for _, u := range users {
 			DB.Create(&u)
 		}
 
 		// Seed Progress & Acts
-		DB.Create(&models.Progress{LearnerID: "user-123", TotalTopics: 10, Completed: 2, CurrentStreak: 3, OverallScore: 85.5})
-		acts := []models.Activity{
+		DB.Create(&domain.Progress{LearnerID: "user-123", TotalTopics: 10, Completed: 2, CurrentStreak: 3, OverallScore: 85.5})
+		acts := []domain.Activity{
 			{ID: "act-1", Title: "Introduction to Logic", Description: "Basic concepts.", Topic: "Logic", Order: 1},
 			{ID: "act-2", Title: "Boolean Algebra", Description: "AND, OR, NOT.", Topic: "Logic", Order: 2},
 		}
@@ -79,7 +79,7 @@ func seedData() {
 			DB.Create(&a)
 		}
 
-		learnerActs := []models.LearnerActivity{
+		learnerActs := []domain.LearnerActivity{
 			{LearnerID: "user-123", ActivityID: "act-1", Status: "Completed", CompletedAt: time.Now(), Score: 100},
 			{LearnerID: "user-123", ActivityID: "act-2", Status: "In progress", Score: 50},
 		}
@@ -87,7 +87,7 @@ func seedData() {
 			DB.Create(&la)
 		}
 
-		obs := []models.Observation{
+		obs := []domain.Observation{
 			{ID: "obs-1", LearnerID: "user-123", Category: "strengths", Text: "Strong grasp of Boolean Algebra."},
 			{ID: "obs-2", LearnerID: "user-123", Category: "consistency", Text: "Studying consistently for 3 days."},
 		}
@@ -95,7 +95,7 @@ func seedData() {
 			DB.Create(&o)
 		}
 
-		gui := []models.Guidance{
+		gui := []domain.Guidance{
 			{ID: "gui-1", LearnerID: "user-123", Type: "next_step", Text: "Continue Boolean Algebra.", Action: "/learning/act-2"},
 		}
 		for _, g := range gui {
@@ -106,9 +106,9 @@ func seedData() {
 	// Seed Micro-Modules independently of users, so existing databases
 	// also receive the bite-sized module content on next startup.
 	var mmCount int64
-	DB.Model(&models.MicroModule{}).Count(&mmCount)
+	DB.Model(&domain.MicroModule{}).Count(&mmCount)
 	if mmCount == 0 {
-		microModules := []models.MicroModule{
+		microModules := []domain.MicroModule{
 			{ID: "mm-1", ActivityID: "act-1", Title: "What is Logic?", ContentText: "Logic is the study of reasoning. In computing, logic gates make every decision your computer makes — from checking a password to rendering a page.", Order: 1},
 			{ID: "mm-2", ActivityID: "act-1", Title: "Truth Values", ContentText: "Every logical statement resolves to one of two values: True or False. Think of them as the two possible answers to any yes/no question.", Order: 2},
 			{ID: "mm-3", ActivityID: "act-2", Title: "The AND Operator", ContentText: "AND returns True only when BOTH inputs are True. A strict bouncer: you need an ID AND a ticket to enter.", Order: 1},
@@ -122,9 +122,9 @@ func seedData() {
 
 	// Seed Courses
 	var courseCount int64
-	DB.Model(&models.Course{}).Count(&courseCount)
+	DB.Model(&domain.Course{}).Count(&courseCount)
 	if courseCount == 0 {
-		courses := []models.Course{
+		courses := []domain.Course{
 			{ID: "course-1", Title: "Fundamentals of Logic & Gates", Category: "Computer Science", Difficulty: "Beginner", Duration: "3 hours", Rating: 4.9, Enrolled: 1250},
 			{ID: "course-2", Title: "Boolean Algebra & Truth Tables", Category: "Computer Science", Difficulty: "Intermediate", Duration: "4 hours", Rating: 4.8, Enrolled: 980},
 			{ID: "course-3", Title: "Data Structures & Offline Caching", Category: "Backend", Difficulty: "Advanced", Duration: "6 hours", Rating: 4.9, Enrolled: 740},
@@ -138,9 +138,9 @@ func seedData() {
 
 	// Seed Daily Activity
 	var actCount int64
-	DB.Model(&models.DailyActivity{}).Count(&actCount)
+	DB.Model(&domain.DailyActivity{}).Count(&actCount)
 	if actCount == 0 {
-		dailyActivities := []models.DailyActivity{
+		dailyActivities := []domain.DailyActivity{
 			{ID: "da-1", LearnerID: "user-123", DayName: "Mon", Score: 65, Duration: 20},
 			{ID: "da-2", LearnerID: "user-123", DayName: "Tue", Score: 70, Duration: 25},
 			{ID: "da-3", LearnerID: "user-123", DayName: "Wed", Score: 68, Duration: 15},
