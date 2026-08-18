@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"log-backend/internal/domain"
 )
@@ -17,7 +15,7 @@ type LearnerService interface {
 	GetDashboardData(ctx context.Context, learnerID string) (domain.User, domain.Progress, []ActivityResponse, []domain.Observation, []domain.Guidance, error)
 	GetLearningJourneyData(ctx context.Context, learnerID string) ([]ActivityResponse, error)
 	GetChartData(ctx context.Context, learnerID string) ([]map[string]interface{}, error)
-	CompleteActivity(ctx context.Context, learnerID, activityID string) (domain.Observation, domain.Guidance, error)
+	CompleteActivity(ctx context.Context, learnerID, activityID string, stats domain.AttemptStats) (domain.Observation, domain.Guidance, error)
 }
 
 type CourseService interface {
@@ -34,10 +32,11 @@ type learnerService struct {
 	activityRepo    domain.ActivityRepository
 	progressRepo    domain.ProgressRepository
 	learnerDataRepo domain.LearnerDataRepository
+	completionRepo  domain.CompletionRepository
 }
 
-func NewLearnerService(u domain.UserRepository, a domain.ActivityRepository, p domain.ProgressRepository, l domain.LearnerDataRepository) LearnerService {
-	return &learnerService{userRepo: u, activityRepo: a, progressRepo: p, learnerDataRepo: l}
+func NewLearnerService(u domain.UserRepository, a domain.ActivityRepository, p domain.ProgressRepository, l domain.LearnerDataRepository, c domain.CompletionRepository) LearnerService {
+	return &learnerService{userRepo: u, activityRepo: a, progressRepo: p, learnerDataRepo: l, completionRepo: c}
 }
 
 func (s *learnerService) GetDashboardData(ctx context.Context, learnerID string) (domain.User, domain.Progress, []ActivityResponse, []domain.Observation, []domain.Guidance, error) {
@@ -132,70 +131,10 @@ func (s *learnerService) GetChartData(ctx context.Context, learnerID string) ([]
 	return chartData, nil
 }
 
-func (s *learnerService) CompleteActivity(ctx context.Context, learnerID, activityID string) (domain.Observation, domain.Guidance, error) {
-	act, err := s.activityRepo.FindByID(ctx, activityID)
-	if err != nil {
-		return domain.Observation{}, domain.Guidance{}, fmt.Errorf("activity not found")
-	}
-
-	la, err := s.progressRepo.FindLearnerActivity(ctx, learnerID, activityID)
-	if err != nil {
-		la = &domain.LearnerActivity{
-			LearnerID:   learnerID,
-			ActivityID:  activityID,
-			Status:      "Completed",
-			CompletedAt: time.Now(),
-			Score:       100.0,
-		}
-	} else {
-		la.Status = "Completed"
-		la.CompletedAt = time.Now()
-	}
-	s.progressRepo.SaveLearnerActivity(ctx, la)
-
-	progress, err := s.progressRepo.FindProgress(ctx, learnerID)
-	if err != nil {
-		activities, _ := s.activityRepo.FindAll(ctx)
-		progress = &domain.Progress{
-			LearnerID:   learnerID,
-			TotalTopics: len(activities),
-		}
-	}
-	progress.Completed++
-	if progress.Completed > progress.TotalTopics {
-		progress.Completed = progress.TotalTopics
-	}
-	progress.CurrentStreak++
-	if progress.OverallScore < 95.0 {
-		progress.OverallScore += 2.5
-	}
-	s.progressRepo.SaveProgress(ctx, progress)
-
-	obsTitle := "Module Completed"
-	if act.Title != "" {
-		obsTitle = act.Title
-	}
-
-	obs := domain.Observation{
-		ID:        GenerateSecureID("obs"),
-		LearnerID: learnerID,
-		Category:  "strengths",
-		Text:      fmt.Sprintf("Demonstrated excellent focus and successfully completed %s.", obsTitle),
-		CreatedAt: time.Now(),
-	}
-	s.learnerDataRepo.SaveObservation(ctx, &obs)
-
-	gui := domain.Guidance{
-		ID:        GenerateSecureID("gui"),
-		LearnerID: learnerID,
-		Text:      "Great momentum! Continue to the next practice module to reinforce your logic skills.",
-		Action:    "/learning",
-		Type:      "next_step",
-		CreatedAt: time.Now(),
-	}
-	s.learnerDataRepo.SaveGuidance(ctx, &gui)
-
-	return obs, gui, nil
+func (s *learnerService) CompleteActivity(ctx context.Context, learnerID, activityID string, stats domain.AttemptStats) (domain.Observation, domain.Guidance, error) {
+	// Delegated to the completion repository, which runs the full flow
+	// (learner activity, progress, observation, guidance) in one transaction.
+	return s.completionRepo.CompleteActivityTx(ctx, learnerID, activityID, stats)
 }
 
 type courseService struct {
@@ -215,13 +154,11 @@ func (s *courseService) GetMicroModules(ctx context.Context, activityID string) 
 }
 
 type moderatorService struct {
-	modRepo      domain.ModeratorRepository
-	progressRepo domain.ProgressRepository
-	activityRepo domain.ActivityRepository
+	modRepo domain.ModeratorRepository
 }
 
-func NewModeratorService(m domain.ModeratorRepository, p domain.ProgressRepository, a domain.ActivityRepository) ModeratorService {
-	return &moderatorService{modRepo: m, progressRepo: p, activityRepo: a}
+func NewModeratorService(m domain.ModeratorRepository) ModeratorService {
+	return &moderatorService{modRepo: m}
 }
 
 func (s *moderatorService) GetModeratorRoster(ctx context.Context, page, limit int) ([]map[string]interface{}, int64, int64, int64, error) {
@@ -231,11 +168,8 @@ func (s *moderatorService) GetModeratorRoster(ctx context.Context, page, limit i
 	}
 
 	var roster []map[string]interface{}
-	for _, u := range rosterData {
-		progress, err := s.progressRepo.FindProgress(ctx, u.ID)
-		if err != nil {
-			progress = &domain.Progress{CurrentStreak: 0, Completed: 0, TotalTopics: 1}
-		}
+	for _, entry := range rosterData {
+		progress := entry.Progress
 
 		completion := 0
 		if progress.TotalTopics > 0 {
@@ -247,13 +181,18 @@ func (s *moderatorService) GetModeratorRoster(ctx context.Context, page, limit i
 			status = "Inactive"
 		}
 
+		lastActive := "—"
+		if !entry.User.UpdatedAt.IsZero() {
+			lastActive = entry.User.UpdatedAt.Format("Jan 02")
+		}
+
 		roster = append(roster, map[string]interface{}{
-			"id":          u.ID,
-			"name":        u.Name,
+			"id":          entry.User.ID,
+			"name":        entry.User.Name,
 			"completion":  completion,
 			"streak":      progress.CurrentStreak,
 			"status":      status,
-			"last_active": u.UpdatedAt.Format("Jan 02"),
+			"last_active": lastActive,
 		})
 	}
 

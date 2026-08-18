@@ -6,7 +6,7 @@ import (
 )
 
 type SyncService interface {
-	ProcessBulkSync(ctx context.Context, learnerID string, data []domain.SyncRequestItem) (int, error)
+	ProcessBulkSync(ctx context.Context, learnerID string, data []domain.SyncRequestItem) (int, int, error) // processed, failed
 }
 
 type syncService struct {
@@ -17,6 +17,6 @@ func NewSyncService(syncRepo domain.SyncRepository) SyncService {
 	return &syncService{syncRepo: syncRepo}
 }
 
-func (s *syncService) ProcessBulkSync(ctx context.Context, learnerID string, data []domain.SyncRequestItem) (int, error) {
+func (s *syncService) ProcessBulkSync(ctx context.Context, learnerID string, data []domain.SyncRequestItem) (int, int, error) {
 	return s.syncRepo.SyncBulk(ctx, learnerID, data)
 }

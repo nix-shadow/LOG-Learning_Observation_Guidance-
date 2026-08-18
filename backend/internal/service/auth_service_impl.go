@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
-	"log-backend/internal/domain"
 	"google.golang.org/api/idtoken"
+	"gorm.io/gorm"
+	"log-backend/internal/domain"
 )
 
 type authService struct {
@@ -22,6 +24,11 @@ func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthReposito
 }
 
 func (s *authService) RequestOTP(ctx context.Context, phone string) error {
+	existing, err := s.authRepo.FindOTPByPhone(ctx, phone)
+	if err == nil && existing.ExpiresAt.After(time.Now().Add(4*time.Minute)) {
+		return fmt.Errorf("Please wait 1 minute before requesting another OTP")
+	}
+
 	s.authRepo.DeleteOTP(ctx, phone)
 	s.authRepo.DeleteExpiredOTPs(ctx)
 
@@ -44,38 +51,58 @@ func (s *authService) RequestOTP(ctx context.Context, phone string) error {
 	return s.authRepo.SaveOTP(ctx, &record)
 }
 
-func (s *authService) VerifyOTP(ctx context.Context, phone, otp string) (string, error) {
+func (s *authService) VerifyOTP(ctx context.Context, phone, otp string) (*domain.User, string, error) {
 	record, err := s.authRepo.FindOTPByPhone(ctx, phone)
 	if err != nil {
-		return "", fmt.Errorf("Invalid OTP")
+		return nil, "", fmt.Errorf("Invalid OTP")
 	}
 
 	if record.ExpiresAt.Before(time.Now()) {
 		s.authRepo.DeleteOTP(ctx, phone)
-		return "", fmt.Errorf("OTP has expired")
+		return nil, "", fmt.Errorf("OTP has expired")
 	}
 
 	if !CheckPasswordHash(otp, record.OTP) {
-		return "", fmt.Errorf("Invalid OTP")
+		err := s.authRepo.IncrementOTPAttempts(ctx, phone)
+		if err != nil {
+			return nil, "", fmt.Errorf("Invalid OTP")
+		}
+
+		updatedRecord, err := s.authRepo.FindOTPByPhone(ctx, phone)
+		if err == nil && updatedRecord.Attempts >= 5 {
+			s.authRepo.DeleteOTP(ctx, phone)
+			return nil, "", fmt.Errorf("Too many incorrect attempts. Please request a new OTP")
+		}
+		return nil, "", fmt.Errorf("Invalid OTP")
 	}
 
 	s.authRepo.DeleteOTP(ctx, phone)
 
-	user, err := s.userRepo.FindByPhone(ctx, phone)
+	user, err := s.userRepo.FindByPhoneUnscoped(ctx, phone)
 	if err != nil {
+		p := phone
 		user = &domain.User{
 			ID:         GenerateSecureID("user"),
-			Phone:      phone,
+			Phone:      &p,
 			Role:       domain.RoleStudent,
 			IsVerified: true,
 			CreatedAt:  time.Now(),
 		}
 		if err := s.userRepo.Create(ctx, user); err != nil {
-			return "", err
+			return nil, "", err
+		}
+	} else if user.DeletedAt.Valid {
+		user.DeletedAt = gorm.DeletedAt{Valid: false}
+		if err := s.userRepo.Update(ctx, user); err != nil {
+			return nil, "", err
 		}
 	}
 
-	return GenerateJWT(user.ID, user.Role)
+	token, err := GenerateJWT(user.ID, user.Role)
+	if err != nil {
+		return nil, "", err
+	}
+	return user, token, nil
 }
 
 func (s *authService) Login(ctx context.Context, email, password string) (*domain.User, string, error) {
@@ -95,45 +122,15 @@ func (s *authService) Login(ctx context.Context, email, password string) (*domai
 	return user, token, nil
 }
 
-func (s *authService) Register(ctx context.Context, user *domain.User, password string) (*domain.User, error) {
-	_, err := s.userRepo.FindByEmail(ctx, user.Email)
-	if err == nil {
-		return nil, fmt.Errorf("User with this email already exists")
-	}
-
-	hashedPassword, err := HashPassword(password)
-	if err != nil {
-		return nil, err
-	}
-
-	user.ID = GenerateSecureID("usr")
-	user.PasswordHash = hashedPassword
-	user.Role = domain.RoleStudent
-	user.IsVerified = true
-	user.CreatedAt = time.Now()
-
-	if err := s.userRepo.Create(ctx, user); err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}
-
 func (s *authService) GoogleAuth(ctx context.Context, token string) (*domain.User, string, error) {
-	// Skip validation if demo token
-	if token == "mock-demo-token-123" {
-		return &domain.User{
-			ID:         "user-123",
-			Name:       "Aisha Student",
-			Email:      "aisha@example.com",
-			Role:       domain.RoleStudent,
-			IsVerified: true,
-		}, "mock-jwt", nil
+	clientID := os.Getenv("GOOGLE_CLIENT_ID")
+	if clientID == "" {
+		return nil, "", fmt.Errorf("Google Auth is not configured on the server")
 	}
 
-	payload, err := idtoken.Validate(ctx, token, "")
+	payload, err := idtoken.Validate(ctx, token, clientID)
 	if err != nil {
-		return nil, "", fmt.Errorf("Invalid Google token")
+		return nil, "", fmt.Errorf("Invalid Google token: %v", err)
 	}
 
 	email, ok := payload.Claims["email"].(string)
@@ -173,4 +170,23 @@ func (s *authService) Logout(ctx context.Context, jti, userID string, exp float6
 		RevokedAt: time.Now(),
 	}
 	return s.authRepo.BlockToken(ctx, &revocation)
+}
+
+func (s *authService) UpdatePassword(ctx context.Context, userID, oldPassword, newPassword string) error {
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	if user.PasswordHash != "" && !CheckPasswordHash(oldPassword, user.PasswordHash) {
+		return fmt.Errorf("incorrect old password")
+	}
+
+	hashedPassword, err := HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password")
+	}
+
+	user.PasswordHash = hashedPassword
+	return s.userRepo.Update(ctx, user)
 }

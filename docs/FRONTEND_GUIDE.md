@@ -12,8 +12,9 @@ frontend/src/
 ├── app/
 │   ├── layout.tsx             # Root layout with AuthProvider & Navigation
 │   ├── page.tsx               # Public landing page with LOG cycle
-│   ├── login/page.tsx         # Phone OTP & Google OAuth authentication
+│   ├── login/page.tsx         # Email/password login, registration & Google sign-in
 │   ├── forgot-password/       # Password recovery request form
+│   ├── settings/              # Theme toggle, offline-mode simulation, password change
 │   ├── dashboard/page.tsx     # Student home with streaks and goal meters
 │   ├── learning/
 │   │   ├── page.tsx           # Sequenced timeline of curriculum modules
@@ -29,7 +30,11 @@ frontend/src/
 │   ├── OfflineBanner.tsx      # Amber banner + floating badge when offline
 │   ├── InstallPrompt.tsx      # PWA beforeinstallprompt with 7-day dismissal
 │   ├── SkeletonLoader.tsx     # Animated loading placeholders (card/stats/text/chart)
-│   └── MicroModuleViewer.tsx  # Swipeable bite-sized module player
+│   ├── MicroModuleViewer.tsx  # Swipeable bite-sized module player
+│   ├── SyncIsland.tsx         # Floating sync/offline indicator driven by the real queue
+│   ├── CommandPalette.tsx     # ⌘K quick-navigation palette
+│   ├── ThemeProvider.tsx / ThemeToggle.tsx  # Dark/light theming
+│   └── ThreeBackground.tsx    # Three.js particle backdrop
 ├── context/
 │   └── AuthContext.tsx        # Global auth state, session token, & login/logout
 ├── hooks/
@@ -78,16 +83,16 @@ The user interface follows a tailored color palette defined in `tailwind.config.
 - Action buttons ("Continue"/"Review") are live links into the module player at `/learning/[id]`.
 
 ### 4.4 Interactive Quiz Engine (`src/app/learning/[id]/page.tsx`)
-- Fetches real micro-module content from `GET /api/activities/:id/modules` (cached for offline replay) and renders it through `MicroModuleViewer`.
+- Fetches real micro-module content from `GET /api/v1/activities/:id/modules` (cached for offline replay) and renders it through `MicroModuleViewer`.
 - Falls back to the built-in multi-step demo lesson when no modules exist (e.g. catalog previews) or when fully offline with no cached modules.
 - Supports step types:
   - `concept`: Explanatory theoretical slides with contextual examples.
   - `interactive`: Knowledge checks with multiple choice options, immediate green/red feedback, and explanatory lightbulb notes.
   - `completion`: Celebratory conclusion with completion toast and automated journey update.
-- Completing the last module posts to `/api/activities/:id/complete` (queued offline when disconnected).
+- Completing the last module posts to `/api/v1/activities/:id/complete` (queued offline when disconnected).
 
 ### 4.5 Course Catalog (`src/app/courses/page.tsx`)
-- Live catalog rendered from `GET /api/courses?page=1&limit=100` (paginated, cached for offline browsing).
+- Live catalog rendered from `GET /api/v1/courses?page=1&limit=100` (paginated, cached for offline browsing).
 - Category pill filters derived dynamically from the loaded data (Computer Science, Frontend, Backend, Design...).
 - Full-text search, difficulty badges, star ratings, enrolled counts, and duration estimates per card.
 - Shows an "offline — last synced catalog" notice when the network fetch falls back to cache.
@@ -105,7 +110,7 @@ The user interface follows a tailored color palette defined in `tailwind.config.
 ### 4.8 Moderator / Teacher Portal (`src/app/moderator/page.tsx`)
 - Classroom telemetry summary: Active Students, Needs Attention count (computed server-side from zero-streak learners), and Assignments Due.
 - **Pre-fetch for Offline** button caches the roster into IndexedDB so the classroom table works fully disconnected.
-- Class Roster table for "Logic 101" displaying student completion percentage bars, current streaks, and direct action triggers (pulled from `GET /api/moderator/roster`).
+- Class Roster table for "Logic 101" displaying student completion percentage bars, current streaks, and direct action triggers (pulled from `GET /api/v1/moderator/roster`).
 
 ### 4.9 Admin Control Center (`src/app/admin/page.tsx`)
 - Global system analytics cards: Total Users, Active Daily Users (updated within 24h), Total Completions — all computed from live database rows.

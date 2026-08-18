@@ -4,36 +4,89 @@
 
 @layer base {
   :root {
-    /* HSL Tokens for Brand Colors */
+    /* HSL Tokens for Brand Colors - Dark Mode Base */
     --brand-blue: 210 73% 15%; /* #0A2540 */
     --brand-teal: 190 100% 42%; /* #00B4D8 */
     --brand-amber: 43 100% 51%; /* #FFB703 */
     --brand-white: 210 20% 98%; /* #F8F9FA */
     --brand-gray: 210 16% 93%; /* #E9ECEF */
-    --brand-text: 210 11% 15%; /* #212529 */
+    
+    /* New Dark Mode specific tokens */
+    --brand-dark: 210 10% 8%; /* Very dark slate, almost black */
+    --brand-darker: 0 0% 4%; /* OLED Black */
+    --brand-text: 210 20% 98%; /* White text by default */
+    --brand-neon: 190 100% 50%; /* Bright glowing teal */
   }
 
   body {
-    @apply bg-brand-white text-brand-text font-sans antialiased selection:bg-brand-teal/30;
+    @apply bg-brand-darker text-brand-text font-sans antialiased selection:bg-brand-neon/30;
+    /* Add a subtle dark grid background */
+    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
   }
 
   /* View Transitions - Default smooth crossfade */
   ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation-duration: 300ms;
+    animation-duration: 400ms;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
 @layer components {
+  /* Pro Max Button Styling */
   .btn-primary {
-    @apply bg-brand-teal text-white px-6 py-2 rounded-full font-medium shadow-bento hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2;
+    @apply relative overflow-hidden bg-brand-teal/10 border border-brand-teal/50 text-brand-neon px-6 py-2 rounded-full font-medium shadow-bento hover:shadow-glow hover:bg-brand-teal/20 hover:-translate-y-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2 focus:ring-offset-brand-darker;
   }
+  
   .btn-secondary {
-    @apply bg-transparent border border-brand-gray/80 text-brand-blue px-6 py-2 rounded-full font-medium hover:bg-brand-gray/50 hover:shadow-bento transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-2;
+    @apply bg-brand-dark border border-white/10 text-white/80 px-6 py-2 rounded-full font-medium hover:bg-white/5 hover:text-white hover:border-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-brand-darker;
   }
+
+  /* Glassmorphism Card (Anti-Slop) */
   .card {
-    /* Anti-Slop Bento Box Styling: Crisp borders, subtle shadows */
-    @apply bg-white rounded-[24px] p-6 shadow-bento transition-shadow duration-300 hover:shadow-glow;
+    @apply bg-brand-dark/50 backdrop-blur-xl border border-white/10 rounded-[24px] p-6 shadow-bento transition-all duration-500 hover:border-white/20 hover:shadow-glow;
   }
+  
+  /* Animated Gradient Border Card */
+  .card-glow {
+    @apply relative bg-brand-dark/80 backdrop-blur-2xl rounded-[24px] p-6;
+    background-clip: padding-box;
+    border: 1px solid transparent;
+  }
+  
+  .card-glow::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    z-index: -1;
+    margin: -1px;
+    border-radius: inherit;
+    background: var(--brand-neon-gradient, linear-gradient(90deg, #00B4D8, #7000FF, #FF0070));
+    background-size: 200% 200%;
+    animation: gradient-x 4s ease infinite;
+    opacity: 0.3;
+    transition: opacity 0.5s ease;
+  }
+  
+  .card-glow:hover::before {
+    opacity: 1;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

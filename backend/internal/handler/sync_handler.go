@@ -28,24 +28,26 @@ func NewSyncHandler(syncService service.SyncService) *SyncHandler {
 func (h *SyncHandler) SyncBulk(c *gin.Context) {
 	var payload SyncBulkPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sync payload format"})
+		RespondError(c, http.StatusBadRequest, "Bad Request", "Invalid sync payload format")
 		return
 	}
 
 	// Resolve authenticated caller — scoping prevents cross-user data tampering
-	callerID := "user-123"
-	if uid, exists := c.Get("userID"); exists && uid.(string) != "" {
-		callerID = uid.(string)
+	callerID, ok := callerID(c)
+	if !ok {
+		RespondError(c, http.StatusUnauthorized, "Unauthorized", "Authenticated user not found")
+		return
 	}
 
-	processedCount, err := h.syncService.ProcessBulkSync(c.Request.Context(), callerID, payload.Data)
+	processedCount, failedCount, err := h.syncService.ProcessBulkSync(c.Request.Context(), callerID, payload.Data)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sync offline data"})
+		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to sync offline data")
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Successfully synced %d offline actions.", processedCount),
 		"count":   processedCount,
+		"failed":  failedCount,
 	})
 }

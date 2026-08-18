@@ -67,3 +67,50 @@ export interface AdminData {
   analytics: SystemAnalytics;
   recent_users: Learner[];
 }
+
+export interface SchoolClass {
+  id: string;
+  name: string;
+  grade: string;
+  section: string;
+  teacher_id?: string;
+  created_at: string;
+  member_count?: number;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  author_id: string;
+  created_at: string;
+}
+
+export interface Assignment {
+  id: string;
+  class_id: string;
+  title: string;
+  description: string;
+  activity_id?: string;
+  due_date?: string;
+  created_by?: string;
+  created_at: string;
+  submissions?: number;
+}
+
+export interface Submission {
+  id: string;
+  assignment_id: string;
+  learner_id: string;
+  note: string;
+  submitted_at: string;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  user_id: string;
+  action: string;
+  detail: string;
+  ip: string;
+  created_at: string;
+}

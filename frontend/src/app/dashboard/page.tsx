@@ -1,27 +1,69 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { fetchWithCache, logout } from '@/lib/api';
 import Link from 'next/link';
-import { CheckCircle2, ArrowRight, Activity, TrendingUp, Medal, Flame, Download, Upload, LogOut } from 'lucide-react';
-import { DashboardData, Activity as ActivityType, Guidance as GuidanceType, Observation as ObservationType } from "@/lib/types";
+import { CheckCircle2, ArrowRight, Activity, TrendingUp, Medal, Flame, Download, Upload, LogOut, ClipboardList, Megaphone, Send } from 'lucide-react';
+import { DashboardData, Activity as ActivityType, Guidance as GuidanceType, Observation as ObservationType, Announcement as AnnouncementType, Assignment as AssignmentType } from "@/lib/types";
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import SkeletonLoader from '@/components/SkeletonLoader';
-import { motion } from 'framer-motion';
 import { downloadSyncFile, importSyncFile } from '@/lib/syncExport';
 import toast from 'react-hot-toast';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [announcements, setAnnouncements] = useState<AnnouncementType[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentType[]>([]);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchWithCache('/dashboard')
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    fetchWithCache('/announcements').then((d) => setAnnouncements(d.announcements || [])).catch(() => {});
+    fetchWithCache('/assignments').then((d) => setAssignments(d.assignments || [])).catch(() => {});
   }, []);
+
+  const handleSubmit = async (assignmentId: string) => {
+    const note = noteDrafts[assignmentId] || '';
+    if (!note.trim()) {
+      toast.error('Write a short note about your submission');
+      return;
+    }
+    try {
+      await fetchWithCache(`/assignments/${assignmentId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('log_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ note }),
+      });
+      toast.success('Assignment submitted!');
+      setNoteDrafts(prev => ({ ...prev, [assignmentId]: '' }));
+      fetchWithCache('/assignments').then((d) => setAssignments(d.assignments || [])).catch(() => {});
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to submit assignment');
+    }
+  };
+
+  useGSAP(() => {
+    if (!loading && data) {
+      gsap.fromTo(
+        gsap.utils.toArray('.gsap-stagger'),
+        { y: 50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'power3.out' }
+      );
+    }
+  }, { scope: containerRef, dependencies: [loading, data] });
 
   if (loading) return (
     <div className="space-y-8">
@@ -32,56 +74,39 @@ export default function Dashboard() {
   );
 
   if (!data || !data.learner) return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="text-center py-20 card flex flex-col items-center justify-center max-w-2xl mx-auto mt-10"
-    >
-      <div className="w-16 h-16 bg-brand-gray/50 rounded-full flex items-center justify-center mb-4">
-        <Activity className="w-8 h-8 text-brand-teal opacity-50" />
+    <div className="text-center py-20 card-glow flex flex-col items-center justify-center max-w-2xl mx-auto mt-10">
+      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 shadow-glow">
+        <Activity className="w-10 h-10 text-brand-neon animate-pulse-glow" />
       </div>
-      <h2 className="text-2xl font-bold text-brand-blue mb-2">Welcome to LOG</h2>
-      <p className="text-gray-600 mb-6">Your learning journey starts here. (Offline mode active, no cached data found).</p>
+      <h2 className="text-3xl font-bold text-white mb-3">Welcome to LOG</h2>
+      <p className="text-white/60 mb-8 text-lg">Your learning journey starts here. (Offline mode active, no cached data found).</p>
       <Link href="/learning" className="btn-primary">Start Learning</Link>
-    </motion.div>
+    </div>
   );
 
-  // Daily goal = actual completion progress, derived from backend data.
   const dailyGoalPercentage = data.progress.total_topics > 0
     ? Math.min(100, Math.round((data.progress.completed / data.progress.total_topics) * 100))
     : 0;
 
   return (
-    <motion.div 
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-      }}
-      className="space-y-6"
-    >
+    <div ref={containerRef} className="space-y-8">
       {/* Welcome Area (Hero Bento) */}
-      <motion.section 
-        variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 25 } } }}
-        className="bg-brand-blue text-white rounded-[24px] p-8 shadow-bento relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8"
-      >
+      <section className="gsap-stagger bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] p-10 shadow-glow relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="relative z-10 w-full md:w-2/3">
-          <h1 className="text-3xl font-bold mb-2">Hello, {data.learner.name}</h1>
-          <p className="text-brand-gray/80 text-lg mb-4">You are on a {data.progress.current_streak}-day learning streak. Keep it up!</p>
-          <div className="flex flex-wrap gap-3 items-center">
-             <div className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-md border border-white/20 shadow-sm">
+          <h1 className="text-4xl font-bold mb-3 text-white tracking-tight">Hello, {data.learner.name}</h1>
+          <p className="text-white/70 text-lg mb-6">You are on a <span className="text-brand-neon font-bold">{data.progress.current_streak}-day</span> learning streak. Keep it up!</p>
+          <div className="flex flex-wrap gap-4 items-center">
+             <div className="bg-white/5 px-5 py-2.5 rounded-full flex items-center gap-2 backdrop-blur-xl border border-white/10 shadow-sm">
                 <Flame className="w-5 h-5 text-brand-amber" />
-                <span className="font-semibold">{data.progress.current_streak} Day Streak</span>
+                <span className="font-semibold text-white">{data.progress.current_streak} Day Streak</span>
              </div>
-             <div className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-md border border-white/20 shadow-sm">
-                <Medal className="w-5 h-5 text-brand-teal" />
-                <span className="font-semibold">Logic Master Badge</span>
+             <div className="bg-white/5 px-5 py-2.5 rounded-full flex items-center gap-2 backdrop-blur-xl border border-white/10 shadow-sm">
+                <Medal className="w-5 h-5 text-brand-neon" />
+                <span className="font-semibold text-white">Logic Master Badge</span>
              </div>
              <button
                onClick={() => logout()}
-               className="bg-white/10 hover:bg-white/20 transition-colors px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-md border border-white/20 text-white text-sm font-semibold shadow-sm"
+               className="bg-white/5 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400 transition-all px-5 py-2.5 rounded-full flex items-center gap-2 backdrop-blur-xl border border-white/10 text-white/70 text-sm font-semibold"
                title="Logout"
              >
                <LogOut className="w-4 h-4" />
@@ -90,103 +115,159 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="relative z-10 w-32 h-32 flex-shrink-0 bg-white/5 backdrop-blur-md rounded-full p-2 border border-white/10 shadow-glow">
+        <div className="relative z-10 w-40 h-40 flex-shrink-0 bg-black/50 backdrop-blur-xl rounded-full p-3 border border-white/10 shadow-glow">
             <CircularProgressbar
               value={dailyGoalPercentage}
               text={`${dailyGoalPercentage}%`}
               styles={buildStyles({
-                pathColor: '#00B4D8',
-                textColor: '#F8F9FA',
-                trailColor: 'rgba(255,255,255,0.1)',
-                textSize: '24px',
-                pathTransitionDuration: 1.5
+                pathColor: '#00F0FF',
+                textColor: '#FFFFFF',
+                trailColor: 'rgba(255,255,255,0.05)',
+                textSize: '20px',
+                pathTransitionDuration: 2
               })}
             />
-            <div className="text-center mt-3 text-xs font-bold uppercase text-brand-teal absolute -bottom-6 left-0 right-0 tracking-wider">Daily Goal</div>
+            <div className="text-center mt-4 text-[10px] font-bold uppercase text-brand-neon absolute -bottom-8 left-0 right-0 tracking-[0.2em]">Daily Goal</div>
         </div>
 
-        <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-brand-teal/20 rounded-full blur-3xl pointer-events-none"></div>
-      </motion.section>
+        {/* Ambient background glows */}
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-brand-neon/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-purple-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+      </section>
 
       {/* Bento Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content Area (Left 2 columns) */}
-        <div className="lg:col-span-2 space-y-6 flex flex-col">
+        <div className="lg:col-span-2 space-y-8 flex flex-col">
 
           {/* Current Focus (Guidance) */}
-          <motion.section variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 25 } } }}>
-            <h2 className="text-xl font-bold text-brand-blue mb-4 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-brand-teal" /> Current Focus
+          <section className="gsap-stagger">
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center tracking-tight">
+              <TrendingUp className="w-6 h-6 mr-3 text-brand-neon" /> Current Focus
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {data.guidance.map((g: GuidanceType) => (
                 <div
                   key={g.id}
-                  className="card border-l-4 border-l-brand-amber hover:-translate-y-1 transition-transform duration-300"
+                  className="card-glow border-l-4 border-l-brand-amber flex flex-col h-full"
                 >
-                  <p className="text-brand-text font-medium mb-3">{g.text}</p>
+                  <p className="text-white/90 font-medium mb-4 flex-1 text-lg">{g.text}</p>
                   {g.action && (
-                    <Link href={g.action} className="text-brand-teal text-sm font-semibold flex items-center hover:underline group">
-                      Take action <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                    <Link href={g.action} className="text-brand-neon text-sm font-bold flex items-center hover:text-white transition-colors group mt-auto">
+                      Take action <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
                     </Link>
                   )}
                 </div>
               ))}
             </div>
-          </motion.section>
+          </section>
 
           {/* Learning Journey Overview */}
-          <motion.section variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 25 } } }} className="flex-1 flex flex-col">
-            <div className="flex justify-between items-end mb-4">
-              <h2 className="text-xl font-bold text-brand-blue flex items-center">
-                <Activity className="w-5 h-5 mr-2 text-brand-teal" /> Learning Journey
+          <section className="gsap-stagger flex-1 flex flex-col">
+            <div className="flex justify-between items-end mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center tracking-tight">
+                <Activity className="w-6 h-6 mr-3 text-brand-neon" /> Learning Journey
               </h2>
-              <Link href="/learning" className="text-sm font-semibold text-brand-teal hover:underline">View all</Link>
+              <Link href="/learning" className="text-sm font-bold text-brand-neon hover:text-white transition-colors">View all</Link>
             </div>
-            <div className="card flex-1">
-              <div className="space-y-4">
+            <div className="card-glow flex-1 p-6">
+              <div className="space-y-5">
                 {data.activities.slice(0, 3).map((act: ActivityType) => (
-                  <div key={act.id} className="flex items-start pb-4 border-b border-brand-gray last:border-0 last:pb-0">
-                    <div className={`mt-1 flex-shrink-0 ${act.status === 'Completed' ? 'text-brand-teal' : 'text-brand-gray/80'}`}>
-                      <CheckCircle2 className="w-5 h-5" />
+                  <div key={act.id} className="flex items-start pb-5 border-b border-white/10 last:border-0 last:pb-0 group">
+                    <div className={`mt-1 flex-shrink-0 transition-transform group-hover:scale-110 ${act.status === 'Completed' ? 'text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]' : 'text-white/30'}`}>
+                      <CheckCircle2 className="w-6 h-6" />
                     </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-bold text-brand-blue">{act.title}</p>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">{act.status}</p>
+                    <div className="ml-4">
+                      <p className="text-base font-bold text-white group-hover:text-brand-neon transition-colors">{act.title}</p>
+                      <p className="text-sm text-white/50 font-medium mt-1">{act.status}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </motion.section>
+          </section>
+
+          {/* Assignments */}
+          <section className="gsap-stagger">
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center tracking-tight">
+              <ClipboardList className="w-6 h-6 mr-3 text-brand-amber" /> My Assignments
+            </h2>
+            <div className="card-glow p-6 space-y-5">
+              {assignments.length === 0 ? (
+                <p className="text-white/50">No assignments for your classes yet. Check back soon!</p>
+              ) : assignments.map((a: AssignmentType) => (
+                <div key={a.id} className="border border-white/10 rounded-2xl p-5 bg-white/5">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                    <p className="text-lg font-bold text-white">{a.title}</p>
+                    <span className="text-xs text-white/50">
+                      {a.due_date ? `Due ${new Date(a.due_date).toLocaleDateString()}` : 'No deadline'}
+                    </span>
+                  </div>
+                  {a.description && <p className="text-white/60 text-sm mb-4 whitespace-pre-wrap">{a.description}</p>}
+                  <div className="flex gap-3">
+                    <input
+                      value={noteDrafts[a.id] || ''}
+                      onChange={e => setNoteDrafts(prev => ({ ...prev, [a.id]: e.target.value }))}
+                      className="flex-1 px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-brand-amber/50 outline-none placeholder-white/30 text-sm"
+                      placeholder="Write your answer / note…"
+                    />
+                    <button onClick={() => handleSubmit(a.id)}
+                      className="btn-primary flex items-center gap-2 text-sm disabled:opacity-40">
+                      <Send className="w-4 h-4" /> Submit
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Announcements */}
+          <section className="gsap-stagger">
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center tracking-tight">
+              <Megaphone className="w-6 h-6 mr-3 text-brand-blue" /> Announcements
+            </h2>
+            <div className="card-glow p-6 space-y-5">
+              {announcements.length === 0 ? (
+                <p className="text-white/50">No announcements yet.</p>
+              ) : announcements.map((ann: AnnouncementType) => (
+                <div key={ann.id} className="pb-4 border-b border-white/10 last:border-0 last:pb-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-bold text-white">{ann.title}</p>
+                    <span className="text-xs text-white/40">{new Date(ann.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-white/70 text-sm leading-relaxed">{ann.body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
 
         </div>
 
         {/* Sidebar (Right column) - Observations & Sync */}
-        <div className="space-y-6 flex flex-col">
-          <motion.section variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 25 } } }}>
-            <h2 className="text-xl font-bold text-brand-blue mb-4">Recent Observations</h2>
-            <div className="card space-y-4 bg-brand-gray/30 border-none shadow-none">
+        <div className="space-y-8 flex flex-col">
+          <section className="gsap-stagger">
+            <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Recent Observations</h2>
+            <div className="card-glow space-y-5 p-6">
               {data.observations.map((obs: ObservationType) => (
-                <div key={obs.id} className="pb-3 border-b border-brand-white last:border-0 last:pb-0">
-                  <span className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-1 block">{obs.category}</span>
-                  <p className="text-sm text-brand-text">{obs.text}</p>
+                <div key={obs.id} className="pb-4 border-b border-white/10 last:border-0 last:pb-0">
+                  <span className="text-[11px] font-bold uppercase text-brand-neon tracking-widest mb-2 block">{obs.category}</span>
+                  <p className="text-base text-white/80 leading-relaxed">{obs.text}</p>
                 </div>
               ))}
               <div className="pt-2">
-                <Link href="/observation" className="text-sm font-semibold text-brand-teal hover:underline">View full observation</Link>
+                <Link href="/observation" className="text-sm font-bold text-brand-neon hover:text-white transition-colors">View full observation</Link>
               </div>
             </div>
-          </motion.section>
+          </section>
 
           {/* Sync Offline Progress */}
-          <motion.section variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 25 } } }} className="flex-1">
-            <h2 className="text-xl font-bold text-brand-blue mb-4">Offline Sync</h2>
-            <div className="card space-y-4 h-[calc(100%-2.5rem)] flex flex-col justify-between">
-              <p className="text-sm text-gray-600">
+          <section className="gsap-stagger flex-1">
+            <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Offline Sync</h2>
+            <div className="card-glow space-y-6 h-[calc(100%-3rem)] flex flex-col justify-between border border-white/10">
+              <p className="text-base text-white/70 leading-relaxed">
                 Working offline? Download your progress and bring it to school on a USB drive.
               </p>
-              <div className="space-y-3 mt-auto">
+              <div className="space-y-4 mt-auto">
                 <button 
                   onClick={async () => {
                     try {
@@ -196,9 +277,9 @@ export default function Dashboard() {
                       toast.error((e as Error).message || 'Failed to download sync file.');
                     }
                   }}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
+                  className="btn-primary w-full flex items-center justify-center gap-3 py-3"
                 >
-                  <Download className="w-4 h-4" /> Export Progress
+                  <Download className="w-5 h-5" /> Export Progress
                 </button>
                 
                 <div className="relative">
@@ -215,18 +296,18 @@ export default function Dashboard() {
                       } catch {
                         toast.error('Failed to import sync file.');
                       }
-                      e.target.value = ''; // Reset
+                      e.target.value = '';
                     }}
                   />
-                  <button className="btn-secondary w-full flex items-center justify-center gap-2">
-                    <Upload className="w-4 h-4" /> Import Progress
+                  <button className="btn-secondary w-full flex items-center justify-center gap-3 py-3 bg-white/5 border-white/10 hover:bg-white/10">
+                    <Upload className="w-5 h-5" /> Import Progress
                   </button>
                 </div>
               </div>
             </div>
-          </motion.section>
+          </section>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

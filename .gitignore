@@ -16,6 +16,10 @@ backend/server
 # Databases (dev data)
 backend/log.db
 backend/log.db-*
+backend/data/log.db
+backend/data/log.db-*
+backend/data/*.db-shm
+backend/data/*.db-wal
 
 # Dependencies
 node_modules/

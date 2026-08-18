@@ -28,9 +28,14 @@ func (r *authRepo) FindOTPByPhone(ctx context.Context, phone string) (*domain.OT
 	return &record, nil
 }
 
+func (r *authRepo) IncrementOTPAttempts(ctx context.Context, phone string) error {
+	return r.db.WithContext(ctx).Model(&domain.OTPRecord{}).Where("phone = ?", phone).UpdateColumn("attempts", gorm.Expr("attempts + 1")).Error
+}
+
 func (r *authRepo) DeleteOTP(ctx context.Context, phone string) error {
-	// Delete any OTPs for this phone that are older than current time
-	return r.db.WithContext(ctx).Where("phone = ? AND expires_at < ?", phone, time.Now()).Delete(&domain.OTPRecord{}).Error
+	// Delete ALL OTPs for this phone — a verified or invalidated OTP must not
+	// remain usable for replay within its expiry window.
+	return r.db.WithContext(ctx).Where("phone = ?", phone).Delete(&domain.OTPRecord{}).Error
 }
 
 func (r *authRepo) DeleteExpiredOTPs(ctx context.Context) error {

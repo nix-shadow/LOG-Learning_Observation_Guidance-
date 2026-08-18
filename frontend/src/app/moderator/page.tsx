@@ -1,25 +1,38 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Users, BookOpen, AlertCircle, WifiOff } from 'lucide-react';
+import { BookOpen, WifiOff, GraduationCap } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
 import { fetchWithCache } from '@/lib/api';
+import { SchoolClass } from '@/lib/types';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import RosterOverview, { RosterData } from '@/components/moderator/RosterOverview';
+import AssignmentManager from '@/components/moderator/AssignmentManager';
+import AnnouncementComposer from '@/components/admin/AnnouncementComposer';
 
 export default function ModeratorDashboard() {
   const { user, isModerator } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const [rosterData, setRosterData] = useState<{
-    class_name: string;
-    active_students: number;
-    needs_attention: number;
-    assignments_due: number;
-    roster: Array<{ id: string; name: string; completion: number; streak: number; status: string; last_active: string }>;
-  } | null>(null);
+  const [rosterData, setRosterData] = useState<RosterData | null>(null);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [selectedClass, setSelectedClass] = useState('');
+
+  const authHeaders = () => ({ headers: { 'Authorization': `Bearer ${localStorage.getItem('log_token')}` } });
+
+  const loadClasses = () => {
+    fetchWithCache('/moderator/classes', authHeaders())
+      .then((d) => {
+        setClasses(d.classes || []);
+        if (d.classes?.length && !selectedClass) setSelectedClass(d.classes[0].id);
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!user || !isModerator) {
@@ -27,40 +40,40 @@ export default function ModeratorDashboard() {
       router.push('/dashboard');
       return;
     }
-
-    const token = localStorage.getItem('log_token');
-    fetchWithCache('/moderator/roster', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(setRosterData)
-      .catch((err: unknown) => {
-        console.warn('Using cached moderator data or default roster', err);
-      })
-      .finally(() => setLoading(false));
-
+    loadClasses();
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isModerator, router]);
 
+  useGSAP(() => {
+    if (!loading && rosterData) {
+      gsap.fromTo(
+        gsap.utils.toArray('.gsap-stagger'),
+        { y: 50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'power3.out' }
+      );
+    }
+  }, { scope: containerRef, dependencies: [loading, rosterData] });
+
   if (!isModerator) return null;
-  if (loading && !rosterData) return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-teal"></div>
-    </div>
-  );
+
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('log_token') || '') : '';
+  const selectedClassName = classes.find(c => c.id === selectedClass)?.name || '';
 
   return (
-    <div className="max-w-6xl mx-auto w-full space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-gray-200 pb-6">
+    <div ref={containerRef} className="max-w-6xl mx-auto w-full space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-white/10 pb-6 gsap-stagger">
         <div>
-           <h1 className="text-3xl font-bold text-brand-blue flex items-center">
-             <BookOpen className="w-8 h-8 text-brand-teal mr-3" /> Teacher Portal
+           <h1 className="text-3xl font-bold text-white flex items-center tracking-tight">
+             <BookOpen className="w-8 h-8 text-brand-neon mr-3" /> Teacher Portal
            </h1>
-           <p className="text-gray-500 mt-2">Manage your classes and review student progress.</p>
+           <p className="text-white/60 mt-2 text-lg">Manage your classes and review student progress.</p>
         </div>
         <div className="flex gap-3">
-           <button 
+           <button
              onClick={() => {
                toast.promise(
-                 fetchWithCache('/moderator/roster', { headers: { 'Authorization': `Bearer ${localStorage.getItem('log_token')}` } }),
+                 fetchWithCache('/moderator/roster', authHeaders()),
                  {
                    loading: 'Caching class roster...',
                    success: 'Roster cached! You can now view it offline.',
@@ -68,80 +81,42 @@ export default function ModeratorDashboard() {
                  }
                ).then(setRosterData);
              }}
-             className="btn-secondary flex items-center gap-2"
+             className="bg-white/5 hover:bg-white/10 text-white transition-all px-5 py-2.5 rounded-full flex items-center gap-2 backdrop-blur-xl border border-white/10 font-semibold text-sm"
            >
              <WifiOff className="w-4 h-4" /> Pre-fetch for Offline
            </button>
-           <button className="btn-primary">Create Assignment</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card border-t-4 border-t-brand-teal">
-           <h3 className="text-gray-500 font-medium mb-1 uppercase tracking-wider text-sm flex items-center"><Users className="w-4 h-4 mr-2"/> Active Students</h3>
-           <p className="text-4xl font-bold text-brand-blue">{rosterData?.active_students ?? 0}</p>
-           <p className="text-sm text-gray-500 mt-2">Students in your class</p>
-        </motion.div>
+      <RosterOverview token={token} onLoaded={setRosterData} />
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{delay: 0.1}} className="card border-t-4 border-t-brand-amber">
-           <h3 className="text-gray-500 font-medium mb-1 uppercase tracking-wider text-sm flex items-center"><AlertCircle className="w-4 h-4 mr-2"/> Needs Attention</h3>
-           <p className="text-4xl font-bold text-brand-blue">{rosterData?.needs_attention ?? 0}</p>
-           <p className="text-sm text-brand-amber mt-2">Students falling behind</p>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{delay: 0.2}} className="card border-t-4 border-t-brand-blue">
-           <h3 className="text-gray-500 font-medium mb-1 uppercase tracking-wider text-sm flex items-center"><BookOpen className="w-4 h-4 mr-2"/> Assignments Due</h3>
-           <p className="text-4xl font-bold text-brand-blue">{rosterData?.assignments_due ?? 0}</p>
-           <p className="text-sm text-gray-500 mt-2">Activities awaiting completion</p>
-        </motion.div>
+      {/* My Classes */}
+      <div className="gsap-stagger card-glow p-6 border border-white/10">
+        <h2 className="text-2xl font-bold text-white mb-6 tracking-tight flex items-center">
+          <GraduationCap className="w-6 h-6 mr-3 text-brand-neon" /> My Classes
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {classes.length === 0 ? (
+            <p className="text-white/40">No classes assigned yet. Ask the admin to create one for you.</p>
+          ) : classes.map(c => (
+            <button key={c.id} onClick={() => setSelectedClass(c.id)}
+              className={`text-left p-5 rounded-2xl border transition-all ${selectedClass === c.id ? 'border-brand-neon bg-brand-neon/10 shadow-glow' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+              <p className="font-bold text-white text-lg">{c.name}</p>
+              <p className="text-sm text-white/50 mt-1">{c.member_count ?? 0} students</p>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="card mt-12">
-        <h2 className="text-xl font-bold text-brand-blue mb-6">Class Roster: {rosterData?.class_name || 'Logic 101'}</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-gray-500 bg-gray-50">
-                <th className="pb-3 pt-3 px-4 font-medium rounded-tl-lg">Student Name</th>
-                <th className="pb-3 pt-3 px-4 font-medium">Completion %</th>
-                <th className="pb-3 pt-3 px-4 font-medium">Current Streak</th>
-                <th className="pb-3 pt-3 px-4 font-medium rounded-tr-lg">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(rosterData?.roster || []).length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-8 px-4 text-center text-gray-500">
-                    No student data available yet. Reconnect to load the latest roster.
-                  </td>
-                </tr>
-              ) : (rosterData?.roster || []).map((st) => (
-                <tr key={st.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                  <td className="py-4 px-4 font-medium text-brand-blue flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-brand-teal/20 text-brand-teal flex items-center justify-center mr-3 font-bold">
-                      {st.name.charAt(0)}
-                    </div>
-                    {st.name}
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center">
-                      <div className="w-full bg-gray-200 h-2 rounded-full mr-3 max-w-[100px]">
-                        <div className="bg-brand-teal h-2 rounded-full" style={{ width: `${st.completion}%` }}></div>
-                      </div>
-                      <span className="text-gray-600">{st.completion}%</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-gray-600 font-medium">{st.streak} days</td>
-                  <td className="py-4 px-4">
-                    <button className="text-sm text-brand-teal font-medium hover:underline">Message</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Assignments */}
+      <div className="gsap-stagger card-glow p-6 border border-white/10">
+        <AssignmentManager token={token} classId={selectedClass} className={selectedClassName} />
+      </div>
+
+      {/* Announcement */}
+      <div className="gsap-stagger card-glow p-6 border border-white/10">
+        <AnnouncementComposer token={token} endpoint="/moderator/announcements" />
       </div>
     </div>
   );
 }
-

@@ -7,6 +7,44 @@ Comprehensive audit of the LOG platform (backend, frontend, offline-sync layer, 
 
 ---
 
+## ⚡ Phase 0 Revalidation (2026-08-16)
+
+Re-audited against the current code (auth moved to `backend/internal/`, per-learner model landed, several criticals fixed). Statuses below are the **live** verdicts with fix locations.
+
+| # | Finding | Verdict | Evidence / fix location |
+|---|---|---|---|
+| 1.1 | GoogleAuth forgeable identity | ✅ FIXED | `idtoken.Validate` with `GOOGLE_CLIENT_ID` audience, server-side (`backend/internal/service/auth_service_impl.go:132-169`); bare `{email}` rejected |
+| 1.2 | Committed JWT secret + fallback | ✅ FIXED | `docker-compose.yml:14` `${JWT_SECRET:?}` deploy-time guard; `main.go:30` fatal; no fallback constant; HMAC-type enforcement (`middleware.go:101-106`) |
+| 1.3 | Global activity status | ✅ FIXED | `LearnerActivity{LearnerID, ActivityID, Status, CompletedAt, Score}` (`internal/domain/domain.go:49-55`); all readers use it |
+| 1.4 | Logout redirect trap | ✅ FIXED | AuthContext logout clears the token cookie (`frontend/src/context/AuthContext.tsx`) + `api.ts` local cleanup |
+| 1.5 | OTP brute-force + logging | ✅ FIXED | `OTPRecord.Attempts`; 5 fails → invalidate (`auth_service_impl.go`); `DeleteOTP` now removes all records for the phone (`auth_repo.go:31-34`); `SetTrustedProxies(nil)` (`main.go`); OTP never logged (phone only) |
+| 1.6 | SW cross-account cache leak | ✅ FIXED | `next.config.mjs` NetworkFirst route filtered for cross-origin |
+| 1.7 | Queue 401 deletion + non-idempotent completion | ✅ FIXED | queue preserved on 401 + token replay (`api.ts`); completion + SyncBulk idempotent (`completion_repo.go`, `sync_repo.go`) |
+| 1.8 | Tracked build artifacts | ✅ FIXED | `sw.js`/`workbox-*.js` gitignored + untracked |
+| 2.1 | JWT role not revalidated | ✅ FIXED | `AuthMiddleware` re-loads user, compares DB role, rejects demoted/deleted (`middleware.go`); test `TestAuthMiddlewareRejectsDemotedUser` |
+| 2.2 | Fabricated data / no DailyActivity path | ✅ FIXED | goal ring from real `progress`; roster honest zeros; **DailyActivity written on every completion + sync** (`completion_repo.go`, `sync_repo.go`); Mon–Sun zero series kept by design (honest empty state, AGENTS.md §1) |
+| 2.3 | Streak/score date-blind | 🔧 FIXED (see below) | `Progress.LastActivityDate`; same-day completions no longer double streak |
+| 2.4 | SyncBulk swallows errors | 🔧 FIXED (partial) | per-item `failedCount` surfaced in response; invalid items skipped without 200-masking |
+| 2.5 | Roster half-fabricated | ✅ FIXED | `class_name` derived from real first course; `last_active` real `UpdatedAt` (`—` when none); **N+1 eliminated** — progress batch-loaded in one `IN` query (`moderator_repo.go`), `RosterEntry` pairs user+progress so the service never queries per learner; query count proven constant at 25 vs 50 students (`roster_test.go`) |
+| 2.6 | Rate limiter lockout tension | 🔶 CHANGED | trusted proxies disabled (XFF spoof closed); per-IP 5/min NAT lockout documented tradeoff |
+| 2.7 | Incomplete frontend states | 🔶 PARTIAL | skeletons + honest offline/queued states landed; per-page retry polish remains |
+| 2.8 | Dead code & dead UI | 🔶 PARTIAL | `adaptiveEngine.ts` deleted; mock Google login gone; `/moderator/classes` removed; dead buttons remain (roadmap) |
+| 2.9 | Edge RBAC presence-only | 🔧 FIXED | `middleware.ts` decodes the JWT `role` claim at the edge |
+| 2.10 | Last-admin demotion | ✅ FIXED | `UpdateUserRole` counts remaining ADMINS before any demotion and rejects the final one (400 "Cannot demote the last admin") — no recovery path otherwise; same-role no-ops and non-admin demotions unaffected; rejected changes never hit the audit trail (`admin_test.go` → `TestUpdateUserRoleLastAdminGuard`) |
+| 2.11 | Offline queue dedup ignores body | ✅ FIXED | `queueRequest` (`src/lib/api.ts`) now merges payloads instead of dropping them: completions keep the best-scoring attempt (server best-score semantics), all other actions keep the newest body (last-write-wins) — one queued entry per action, replaced in place via `put` (keyPath `id`); 4 new Jest cases in `api.test.ts` |
+| 2.12 | SQLite seam missing pragmas | ✅ FIXED | DSN now sets `_busy_timeout=5000` (concurrent teacher+student writes never surface SQLITE_BUSY) and `_foreign_keys=on` (referential integrity on enroll/assign) at the seam (`database/db.go`); WAL + NORMAL retained |
+| 2.13 | Fat school handler (4 concepts, one file) | ✅ FIXED | `school_handler.go` slims to the shared `SchoolHandler` seam (struct/constructor/`actor`/`audit`); per-resource files: `class_handler.go`, `assignment_handler.go`, `announcement_handler.go`, `audit_handler.go`, `export_handler.go` — routes unchanged; tests split to match (`class_test.go`, `assignment_test.go`, `audit_test.go`, `export_test.go`) |
+| 2.14 | Admin/moderator pages untested monoliths | ✅ FIXED | sections extracted into tested components owning their data through the `fetchWithCache` seam: `ClassManager`, `AnnouncementComposer` (shared by both dashboards), `AuditLogTable`, `RosterOverview`, `AssignmentManager` (`src/components/{admin,moderator}/`); pages shrink to composition; 20 new Jest cases prove loading/empty/error states (48 total), `@/` alias added to `jest.config.js` |
+| A1 | admin.go outside `internal/` | ✅ FIXED | moved to `backend/internal/handler/admin.go`; `backend/api/` removed |
+| A2 | `/moderator/classes` stub | ✅ FIXED | route removed (no fabricated response) |
+| A3 | AGENTS.md drift | ✅ FIXED | paths/env steps/Google-auth note updated |
+| A4 | ThreeBackground heavy 3D | ✅ FIXED | device-gated + `next/dynamic` split (`ThreeBackground.tsx`) |
+| A5 | Thin test coverage | ✅ FIXED | 5 new Go security tests + 3 new Jest tests (14 total) |
+
+Only the roadmap items (SMS gateway, teacher workflow, Nepali i18n, reconnect digest) remain as product work — none block a demo.
+
+---
+
 ## 0. What's Already Strong (Keep as the Pattern)
 
 - **Security posture:** Comprehensive HTTP security headers, 4 MB request body cap (`backend/main.go:37-78`), custom recovery middleware that never leaks stack traces, graceful shutdown, HMAC-signing-method enforcement, `jti` revocation blocklist, bcrypt-14 OTP hashing, per-IP rate limiter with background entry sweeper (`backend/api/auth.go`).
@@ -87,8 +125,8 @@ Two audit premises were disproven against the code and are therefore NOT in this
 - **Fix:** Validate item count/size, propagate per-item results into an aggregate response, add idempotency keys, extract and store real answer/score data.
 
 ### 2.5 Moderator roster is half real, half fabricated
-- Real users/progress are queried, but `class_name: "Logic 101: Discrete Structures"` is hardcoded (`handlers.go:280`), `last_active` uses `user.updated_at` (never an activity timestamp, stale for everyone) (`handlers.go:272`), N+1 per-student queries (`252-253`), and the status is a binary streak==0 heuristic (`255-259`).
-- **Fix:** Track a real `last_active_at` on learner events, batch-load progress, derive class from real data.
+- ~~Real users/progress are queried, but `class_name: "Logic 101: Discrete Structures"` is hardcoded, `last_active` uses `user.updated_at`, N+1 per-student queries, and the status is a binary streak==0 heuristic.~~ RESOLVED: `class_name` derives from the real first course; `last_active` uses real `UpdatedAt`; the N+1 is gone — `ModeratorRepository.GetRoster` returns `[]RosterEntry{User, Progress}` built from a roster-page query plus one batched `IN` progress lookup (`moderator_repo.go`), and the moderator service holds only the moderator repo (`NewModeratorService(m)`).
+- **Fix (implemented):** batch-load progress inside the repository so the per-learner loop never crosses the seam; regression test `TestRosterQueryCountIsConstant` proves the query count is identical for 25 vs 50 students.
 
 ### 2.6 Rate limiter lockout tension
 - 5 req/min per-IP bucket over the whole auth group locks out an entire school behind one NAT after ~2-3 students (UX), while an attacker rotating XFF has no limit (DoS). (`backend/main.go:86-93`)

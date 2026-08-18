@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-only-non-production-secret-0123456789abcdef
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (isolated temp DB)
+        run: go test ./...
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Jest (offline sync layer)
+        run: npx jest
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:6101/api/v1
+
+  hygiene:
+    name: Git hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No build artifacts tracked
+        run: |
+          if git ls-files | grep -E '(^|/)(sw\.js|workbox-[^/]*\.js|log\.db|server)$'; then
+            echo "Generated/build artifacts are tracked in git — remove them." >&2
+            exit 1
+          fi
+
+      - name: No .env files tracked
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$'; then
+            echo "A real .env file is tracked — copy from .env.example instead." >&2
+            exit 1
+          fi

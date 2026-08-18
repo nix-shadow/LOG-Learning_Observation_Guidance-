@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Search, Filter, Star, Clock, Users, ArrowRight, PlayCircle, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { fetchWithCache } from '@/lib/api';
 import SkeletonLoader from '@/components/SkeletonLoader';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 interface Course {
   id: string;
@@ -18,7 +19,7 @@ interface Course {
   enrolled: number;
 }
 
-const CATEGORY_COLORS = ['bg-brand-blue', 'bg-brand-teal', 'bg-brand-amber', 'bg-purple-600', 'bg-indigo-600'];
+const CATEGORY_COLORS = ['bg-brand-blue', 'bg-brand-teal', 'bg-brand-amber', 'bg-purple-600', 'bg-[#FF003C]'];
 
 export default function CoursesCatalog() {
   useAuth();
@@ -28,6 +29,7 @@ export default function CoursesCatalog() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [offlineFallback, setOfflineFallback] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchWithCache('/courses?page=1&limit=100')
@@ -53,6 +55,16 @@ export default function CoursesCatalog() {
     return matchesSearch && matchesCategory;
   });
 
+  useGSAP(() => {
+    if (!loading && filteredCourses.length > 0) {
+      gsap.fromTo(
+        gsap.utils.toArray('.course-card'),
+        { y: 50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, stagger: 0.05, ease: 'power3.out' }
+      );
+    }
+  }, { dependencies: [loading, activeCategory, searchTerm, filteredCourses], scope: containerRef });
+
   if (loading) return (
     <div className="w-full space-y-8">
       <SkeletonLoader type="card" count={3} />
@@ -60,49 +72,53 @@ export default function CoursesCatalog() {
   );
 
   return (
-    <div className="w-full space-y-8">
+    <div ref={containerRef} className="w-full space-y-8">
       {/* Hero Section */}
-      <section className="bg-brand-blue rounded-3xl p-8 md:p-16 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between">
+      <section className="card-glow bg-black/40 backdrop-blur-3xl border border-white/10 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between">
+        <div className="absolute inset-0 bg-brand-neon/5 pointer-events-none" />
         <div className="relative z-10 max-w-2xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Explore the Catalog</h1>
-          <p className="text-brand-gray/80 text-lg mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Explore the Catalog</h1>
+          <p className="text-white/60 text-lg mb-8">
             Discover expertly crafted modules designed to help you master new skills, even offline.
           </p>
           {total > 0 && (
-            <p className="text-brand-gray/70 text-sm mb-2">{total} courses available · Refresh to see the latest</p>
+            <p className="text-white/40 text-sm mb-4 font-medium tracking-wide uppercase">{total} courses available · Refresh to see the latest</p>
           )}
-          <div className="relative max-w-md">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search for courses, topics, or skills..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-full text-brand-text outline-none focus:ring-4 focus:ring-brand-teal/50 transition-all"
-            />
+          <div className="relative max-w-md group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-brand-neon to-brand-teal rounded-full blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
+            <div className="relative flex items-center bg-black/50 backdrop-blur-xl border border-white/10 rounded-full px-4 py-3">
+              <Search className="text-white/50 w-5 h-5 mr-3" />
+              <input
+                type="text"
+                placeholder="Search for courses, topics, or skills..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-transparent text-white placeholder-white/40 outline-none"
+              />
+            </div>
           </div>
         </div>
-        <div className="absolute top-0 right-0 -mt-32 -mr-32 w-[500px] h-[500px] bg-brand-teal/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="hidden md:block relative z-10 bg-white/10 p-8 rounded-full backdrop-blur-md border border-white/20">
-          <BookOpen className="w-24 h-24 text-brand-teal" />
+        <div className="absolute top-0 right-0 -mt-32 -mr-32 w-[500px] h-[500px] bg-brand-neon/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="hidden md:block relative z-10 bg-white/5 p-8 rounded-[2rem] backdrop-blur-md border border-white/10 shadow-glow rotate-12 hover:rotate-0 transition-transform duration-700">
+          <BookOpen className="w-24 h-24 text-brand-neon drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]" />
         </div>
       </section>
 
       {/* Filters */}
       <section className="flex items-center justify-between overflow-x-auto pb-4 gap-4 no-scrollbar">
         <div className="flex gap-2 min-w-max">
-          <button className="flex items-center px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">
+          <button className="flex items-center px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-bold text-white/60 hover:text-white hover:bg-white/10 transition-colors tracking-wide">
             <Filter className="w-4 h-4 mr-2" /> Filters
           </button>
-          <div className="h-8 w-px bg-gray-300 mx-2 self-center"></div>
+          <div className="h-8 w-px bg-white/10 mx-2 self-center"></div>
           {categories.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-6 py-2 rounded-full text-sm font-bold tracking-wide transition-all ${
                 activeCategory === cat
-                  ? 'bg-brand-blue text-white shadow-md'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-teal hover:text-brand-teal'
+                  ? 'bg-brand-neon/20 border-brand-neon text-brand-neon shadow-[0_0_15px_rgba(0,240,255,0.2)]'
+                  : 'bg-white/5 border border-white/10 text-white/60 hover:border-brand-neon/50 hover:text-white'
               }`}
             >
               {cat}
@@ -112,7 +128,7 @@ export default function CoursesCatalog() {
       </section>
 
       {offlineFallback && (
-        <div className="flex items-center gap-2 text-sm text-brand-amber bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-sm text-brand-amber bg-brand-amber/10 border border-brand-amber/20 backdrop-blur-md rounded-xl px-4 py-3">
           <WifiOff className="w-4 h-4" />
           Couldn&apos;t reach the network and no cached catalog is available yet. Reconnect to browse the latest courses.
         </div>
@@ -120,66 +136,59 @@ export default function CoursesCatalog() {
 
       {/* Grid */}
       <section>
-        <AnimatePresence mode="popLayout">
-          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredCourses.map((course) => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-                key={course.id}
-                className="card p-0 overflow-hidden flex flex-col group hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              >
-                <div className={`h-40 w-full ${CATEGORY_COLORS[stringToIndex(course.id)]} relative overflow-hidden flex items-center justify-center`}>
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
-                  <PlayCircle className="w-16 h-16 text-white/50 group-hover:text-white/90 transition-colors transform group-hover:scale-110 duration-300" />
-                  <div className="absolute top-4 left-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
-                    {course.category}
-                  </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredCourses.map((course) => (
+            <div
+              key={course.id}
+              className="course-card card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-0 overflow-hidden flex flex-col group hover:-translate-y-1 hover:shadow-glow transition-all duration-300"
+            >
+              <div className={`h-40 w-full ${CATEGORY_COLORS[stringToIndex(course.id)]} bg-opacity-30 relative overflow-hidden flex items-center justify-center border-b border-white/10`}>
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors duration-500"></div>
+                <PlayCircle className="w-16 h-16 text-white/70 group-hover:text-brand-neon group-hover:drop-shadow-[0_0_10px_rgba(0,240,255,0.8)] transition-all transform group-hover:scale-110 duration-500 z-10" />
+                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-white uppercase tracking-widest border border-white/10 z-10">
+                  {course.category}
+                </div>
+              </div>
+
+              <div className="p-5 flex-1 flex flex-col relative">
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full border ${
+                    course.difficulty === 'Beginner' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                    course.difficulty === 'Intermediate' ? 'bg-brand-amber/20 text-brand-amber border-brand-amber/30' : 'bg-red-500/20 text-red-400 border-red-500/30'
+                  }`}>
+                    {course.difficulty}
+                  </span>
+                  <span className="flex items-center text-sm font-medium text-white/80">
+                    <Star className="w-4 h-4 text-brand-amber mr-1 fill-current drop-shadow-[0_0_5px_rgba(255,183,3,0.5)]" /> {Number(course.rating).toFixed(1)}
+                  </span>
                 </div>
 
-                <div className="p-5 flex-1 flex flex-col">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${
-                      course.difficulty === 'Beginner' ? 'text-green-600' :
-                      course.difficulty === 'Intermediate' ? 'text-brand-amber' : 'text-red-600'
-                    }`}>
-                      {course.difficulty}
-                    </span>
-                    <span className="flex items-center text-sm font-medium text-gray-600">
-                      <Star className="w-4 h-4 text-brand-amber mr-1 fill-current" /> {Number(course.rating).toFixed(1)}
-                    </span>
-                  </div>
+                <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-brand-neon transition-colors duration-300 line-clamp-2">
+                  {course.title}
+                </h3>
 
-                  <h3 className="text-lg font-bold text-brand-blue mb-2 line-clamp-2 group-hover:text-brand-teal transition-colors">
-                    {course.title}
-                  </h3>
-
-                  <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
-                    <span className="flex items-center"><Clock className="w-4 h-4 mr-1" /> {course.duration}</span>
-                    <span className="flex items-center"><Users className="w-4 h-4 mr-1" /> {course.enrolled.toLocaleString()}</span>
-                  </div>
+                <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between text-sm text-white/50 font-medium">
+                  <span className="flex items-center"><Clock className="w-4 h-4 mr-1.5" /> {course.duration}</span>
+                  <span className="flex items-center"><Users className="w-4 h-4 mr-1.5" /> {course.enrolled.toLocaleString()}</span>
                 </div>
+              </div>
 
-                <div className="p-4 pt-0">
-                  <Link href={`/learning/${course.id}`} className="w-full py-3 bg-gray-50 hover:bg-brand-teal hover:text-white text-brand-blue rounded-xl font-semibold flex items-center justify-center transition-colors">
-                    Start Learning <ArrowRight className="w-4 h-4 ml-2" />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </AnimatePresence>
+              <div className="p-4 pt-0">
+                <Link href={`/learning/${course.id}`} className="w-full py-3 bg-white/5 border border-white/10 hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow text-white hover:text-brand-neon rounded-xl font-bold tracking-wide flex items-center justify-center transition-all duration-300">
+                  Start Learning <ArrowRight className="w-4 h-4 ml-2" />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {filteredCourses.length === 0 && (
-          <div className="text-center py-24">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Search className="w-10 h-10 text-gray-400" />
+          <div className="text-center py-24 card-glow bg-black/40 backdrop-blur-3xl border border-white/10 rounded-3xl">
+            <div className="w-24 h-24 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search className="w-10 h-10 text-white/20" />
             </div>
-            <h3 className="text-2xl font-bold text-brand-blue mb-2">No courses found</h3>
-            <p className="text-gray-500">Try adjusting your filters or search terms.</p>
+            <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">No courses found</h3>
+            <p className="text-white/50">Try adjusting your filters or search terms.</p>
           </div>
         )}
       </section>

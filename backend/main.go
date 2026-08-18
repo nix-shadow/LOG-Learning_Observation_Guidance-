@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"log-backend/api"
 	"log-backend/database"
 	"log-backend/internal/domain"
 	"log-backend/internal/handler"
@@ -27,6 +26,15 @@ func main() {
 		slog.Warn("No .env file found or failed to load. Falling back to environment variables.")
 	}
 
+	if os.Getenv("JWT_SECRET") == "" {
+		slog.Error("JWT_SECRET environment variable is required")
+		os.Exit(1)
+	}
+
+	// Setup structured JSON logging (slog)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	// Initialize Database
 	database.InitDB()
 
@@ -39,22 +47,29 @@ func main() {
 	modRepo := repository.NewModeratorRepository(database.DB)
 	progressRepo := repository.NewProgressRepository(database.DB)
 	activityRepo := repository.NewActivityRepository(database.DB)
+	completionRepo := repository.NewCompletionRepository(database.DB)
+	schoolRepo := repository.NewSchoolRepository(database.DB)
 
 	// Initialize Services
 	authService := service.NewAuthService(userRepo, authRepo)
 	syncService := service.NewSyncService(syncRepo)
-	learnerService := service.NewLearnerService(userRepo, activityRepo, progressRepo, learnerDataRepo)
+	learnerService := service.NewLearnerService(userRepo, activityRepo, progressRepo, learnerDataRepo, completionRepo)
 	courseService := service.NewCourseService(courseRepo)
-	moderatorService := service.NewModeratorService(modRepo, progressRepo, activityRepo)
+	moderatorService := service.NewModeratorService(modRepo)
+	schoolService := service.NewSchoolService(schoolRepo)
 
 	// Initialize Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	syncHandler := handler.NewSyncHandler(syncService)
 	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
+	schoolHandler := handler.NewSchoolHandler(schoolService)
 
 	// Use gin.New() + only the Logger and Recovery middlewares we control
 	// so we avoid gin.Default()'s panic recovery leaking stack traces to clients.
 	r := gin.New()
+	// Trust no reverse proxies: ClientIP resolves to the direct peer address so
+	// X-Forwarded-For cannot spoof the rate limiter's per-IP key.
+	r.SetTrustedProxies(nil)
 	r.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/api/ping"},
 	}))
@@ -108,14 +123,13 @@ func main() {
 	// ---------------------------------------------------------------------------
 	// Public Auth Routes — rate limited
 	// ---------------------------------------------------------------------------
-	authRoutes := r.Group("/api/auth")
+	authRoutes := r.Group("/api/v1/auth")
 	authRoutes.Use(handler.RateLimitMiddleware())
 	{
 		authRoutes.POST("/request-otp", authHandler.RequestOTP)
 		authRoutes.POST("/verify-otp", authHandler.VerifyOTP)
 		authRoutes.POST("/forgot-password", authHandler.ForgotPassword)
 		authRoutes.POST("/google", authHandler.GoogleAuth)
-		authRoutes.POST("/register", authHandler.Register)
 		authRoutes.POST("/login", authHandler.Login)
 	}
 
@@ -136,8 +150,8 @@ func main() {
 	// ---------------------------------------------------------------------------
 	// Protected Student Routes — requires valid JWT with STUDENT role minimum
 	// ---------------------------------------------------------------------------
-	apiRoutes := r.Group("/api")
-	apiRoutes.Use(handler.AuthMiddleware(authRepo, domain.RoleStudent))
+	apiRoutes := r.Group("/api/v1")
+	apiRoutes.Use(handler.AuthMiddleware(authRepo, userRepo, schoolRepo, domain.RoleStudent))
 	{
 		apiRoutes.GET("/dashboard", learnerHandler.GetDashboard)
 		apiRoutes.GET("/learning-journey", learnerHandler.GetLearningJourney)
@@ -148,30 +162,48 @@ func main() {
 		apiRoutes.POST("/sync/bulk", syncHandler.SyncBulk)
 		// Logout: revokes the caller's JWT by adding its JTI to the blocklist
 		apiRoutes.POST("/auth/logout", authHandler.LogoutHandler)
+		apiRoutes.PUT("/auth/password", authHandler.UpdatePassword)
+		apiRoutes.POST("/auth/logout-all", schoolHandler.LogoutAll)
+		// Announcements — read-only for learners
+		apiRoutes.GET("/announcements", schoolHandler.ListAnnouncements)
+		// Assignments — learners see their class assignments and submit answers
+		apiRoutes.GET("/assignments", schoolHandler.ListMyAssignments)
+		apiRoutes.POST("/assignments/:assignment_id/submit", schoolHandler.SubmitAssignment)
 	}
 
 	// ---------------------------------------------------------------------------
 	// Protected Moderator Routes — requires MODERATOR role minimum
 	// ---------------------------------------------------------------------------
-	modRoutes := r.Group("/api/moderator")
-	modRoutes.Use(handler.AuthMiddleware(authRepo, domain.RoleModerator))
+	modRoutes := r.Group("/api/v1/moderator")
+	modRoutes.Use(handler.AuthMiddleware(authRepo, userRepo, schoolRepo, domain.RoleModerator))
 	{
-		modRoutes.GET("/classes", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "Moderator classes data"})
-		})
 		modRoutes.GET("/roster", learnerHandler.GetModeratorRoster)
+		modRoutes.GET("/classes", schoolHandler.ListMyClasses)
+		modRoutes.GET("/classes/:id/assignments", schoolHandler.ListAssignmentsForClass)
+		modRoutes.POST("/classes/:id/assignments", schoolHandler.CreateAssignment)
+		modRoutes.GET("/classes/:id/assignments/:assignment_id/submissions", schoolHandler.SubmissionsForAssignment)
+		// Teachers may publish announcements too
+		modRoutes.POST("/announcements", schoolHandler.CreateAnnouncement)
 	}
 
 	// ---------------------------------------------------------------------------
 	// Protected Admin Routes — requires ADMIN role
 	// ---------------------------------------------------------------------------
-	adminRoutes := r.Group("/api/admin")
-	adminRoutes.Use(handler.AuthMiddleware(authRepo, domain.RoleAdmin))
+	adminRoutes := r.Group("/api/v1/admin")
+	adminRoutes.Use(handler.AuthMiddleware(authRepo, userRepo, schoolRepo, domain.RoleAdmin))
 	{
-		adminRoutes.GET("/dashboard", api.GetAdminDashboard)
-		adminRoutes.GET("/users", api.GetUsers)
-		adminRoutes.PUT("/users/:id/role", api.UpdateUserRole)
-		adminRoutes.POST("/activities", api.CreateActivity)
+		adminRoutes.GET("/dashboard", handler.GetAdminDashboard)
+		adminRoutes.GET("/users", handler.GetUsers)
+		adminRoutes.PUT("/users/:id/role", handler.UpdateUserRole)
+		adminRoutes.POST("/activities", handler.CreateActivity)
+		adminRoutes.POST("/classes", schoolHandler.CreateClass)
+		adminRoutes.GET("/classes", schoolHandler.ListClasses)
+		adminRoutes.GET("/classes/:id/roster", schoolHandler.ClassRoster)
+		adminRoutes.POST("/classes/:id/enroll", schoolHandler.EnrollStudents)
+		adminRoutes.DELETE("/classes/:id/enroll/:user_id", schoolHandler.UnenrollStudent)
+		adminRoutes.POST("/announcements", schoolHandler.CreateAnnouncement)
+		adminRoutes.GET("/audit-log", schoolHandler.ListAuditLog)
+		adminRoutes.GET("/export/students.csv", schoolHandler.ExportStudentsCSV)
 	}
 
 	port := os.Getenv("PORT")

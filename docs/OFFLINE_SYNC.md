@@ -120,7 +120,7 @@ For learners with no connectivity at all, the dashboard exposes export/import vi
 
 - **Export:** serializes the current `sync-queue` into a JSON payload (`version: "1.0"`, timestamp, data array) and downloads it as `progress_sync_<ts>.logsync`.
 - **Import:** reads a `.logsync` file, deduplicates entries against the local queue (by endpoint + method + body), strips stale auto-increment IDs, and re-enqueues them for sync.
-- **Upload:** the file can cross devices (USB / school computer) and be replayed by the queue, or bulk-uploaded directly via `POST /api/sync/bulk`.
+- **Upload:** the file can cross devices (USB / school computer) and be replayed by the queue, or bulk-uploaded directly via `POST /api/v1/sync/bulk`.
 - **Offline roster:** Moderators can pre-fetch `/moderator/roster` so the classroom table works fully disconnected.
 
 ---

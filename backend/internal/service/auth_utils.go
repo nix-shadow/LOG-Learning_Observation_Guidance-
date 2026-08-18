@@ -7,18 +7,16 @@ import (
 	"os"
 	"time"
 
-	"log-backend/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"log-backend/internal/domain"
 )
 
 var jwtSecret []byte
 
 func init() {
 	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "dev-only-change-me-in-production-min-32-chars!"
-	}
+	// The main function will abort if this is empty.
 	jwtSecret = []byte(secret)
 }
 
@@ -59,6 +57,7 @@ func GenerateJWT(userID string, role domain.Role) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  userID,
 		"role": role,
+		"iat":  time.Now().Unix(),
 		"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		"jti":  jti,
 	})

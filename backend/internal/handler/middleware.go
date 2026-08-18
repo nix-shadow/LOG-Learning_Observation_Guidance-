@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -75,9 +76,7 @@ func RateLimitMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
 		if !authLimiter.allow(ip) {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "Too many requests. Please wait before trying again.",
-			})
+			RespondError(c, http.StatusTooManyRequests, "Too Many Requests", "Too many requests. Please wait before trying again.")
 			c.Abort()
 			return
 		}
@@ -85,11 +84,11 @@ func RateLimitMiddleware() gin.HandlerFunc {
 	}
 }
 
-func AuthMiddleware(authRepo domain.AuthRepository, requiredRole domain.Role) gin.HandlerFunc {
+func AuthMiddleware(authRepo domain.AuthRepository, userRepo domain.UserRepository, schoolRepo domain.SchoolRepository, requiredRole domain.Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" || len(authHeader) < 8 || authHeader[:7] != "Bearer " {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing or invalid"})
+			RespondError(c, http.StatusUnauthorized, "Unauthorized", "Authorization header missing or invalid")
 			c.Abort()
 			return
 		}
@@ -100,25 +99,28 @@ func AuthMiddleware(authRepo domain.AuthRepository, requiredRole domain.Role) gi
 		// For clean architecture, we should inject this, but for simplicity we can parse it here.
 		// To avoid circular dependency, we'll just parse the JWT.
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
 			return []byte(service.GetJWTSecret()), nil // Need to export this in service/auth_utils.go
 		})
 
 		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			RespondError(c, http.StatusUnauthorized, "Unauthorized", "Invalid or expired token")
 			c.Abort()
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			RespondError(c, http.StatusUnauthorized, "Unauthorized", "Invalid token claims")
 			c.Abort()
 			return
 		}
 
 		userID, ok := claims["sub"].(string)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID in token"})
+			RespondError(c, http.StatusUnauthorized, "Unauthorized", "Invalid user ID in token")
 			c.Abort()
 			return
 		}
@@ -130,13 +132,28 @@ func AuthMiddleware(authRepo domain.AuthRepository, requiredRole domain.Role) gi
 		if jtiOk && jti != "" {
 			blocked, err := authRepo.IsTokenBlocked(c.Request.Context(), jti)
 			if err != nil || blocked {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token has been revoked. Please log in again."})
+				RespondError(c, http.StatusUnauthorized, "Unauthorized", "Token has been revoked. Please log in again.")
 				c.Abort()
 				return
 			}
 		}
 
-		role := domain.Role(roleStr)
+		// Revalidate the identity against the database: the token role may be
+		// stale (e.g. a user was demoted after the token was issued), and a
+		// soft-deleted account must lose access immediately.
+		user, err := userRepo.FindByID(c.Request.Context(), userID)
+		if err != nil {
+			RespondError(c, http.StatusUnauthorized, "Unauthorized", "Account no longer exists")
+			c.Abort()
+			return
+		}
+		if user.Role != domain.Role(roleStr) {
+			RespondError(c, http.StatusUnauthorized, "Unauthorized", "Role changed. Please log in again.")
+			c.Abort()
+			return
+		}
+
+		role := user.Role
 
 		if requiredRole != "" {
 			if role == domain.RoleAdmin {
@@ -147,6 +164,18 @@ func AuthMiddleware(authRepo domain.AuthRepository, requiredRole domain.Role) gi
 				c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 				c.Abort()
 				return
+			}
+		}
+
+		// Global session revocation ("log out on all devices"): tokens issued
+		// before the revocation timestamp are rejected even though unexpired.
+		if schoolRepo != nil {
+			if iat, ok := claims["iat"].(float64); ok {
+				if revocation, err := schoolRepo.RevokedBefore(c.Request.Context(), userID); err == nil && revocation.RevokedBefore.After(time.Unix(int64(iat), 0)) {
+					RespondError(c, http.StatusUnauthorized, "Unauthorized", "Session revoked. Please log in again.")
+					c.Abort()
+					return
+				}
 			}
 		}
 

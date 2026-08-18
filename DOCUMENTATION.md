@@ -66,7 +66,7 @@ All student metrics, mastery scores, streak statistics, and guidance recommendat
 |            |                          |                         |       |
 |            v                          v                         v       |
 |  +--------------------+      +--------------------+   +---------------+ |
-|  | /api/auth/*        |      | /api/dashboard     |   | /api/admin/*  | |
+|  | /api/v1/auth/*      |      | /api/v1/dashboard     |   | /api/v1/admin/*  | |
 |  | OTP, JWT, Session  |      | Progress, Guidance |   | Users, Roles  | |
 |  +--------------------+      +--------------------+   +---------------+ |
 |                                       |                                 |
@@ -114,8 +114,8 @@ All student metrics, mastery scores, streak statistics, and guidance recommendat
 3. **`STUDENT` (Learner):** Personal learning journey, interactive quizzes, progress analytics, and guidance.
 
 ### Security Hardening
-- **Bcrypt:** Password hashing with cost factor 14 (`api/auth.go`).
-- **JWT:** HMAC-SHA256 tokens with 72-hour expiration, verified in `AuthMiddleware`.
+- **Bcrypt:** Password & OTP hashing with cost factor 12 (`backend/internal/service/auth_utils.go`).
+- **JWT:** HMAC-SHA256 tokens with 24-hour expiration, verified in `AuthMiddleware` (`backend/internal/handler/middleware.go`).
 - **Validation:** Gin binding struct tags (e.g. `binding:"required,min=10,max=15"`).
 - **HTTP Headers:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`.
 
@@ -125,32 +125,34 @@ All student metrics, mastery scores, streak statistics, and guidance recommendat
 
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/request-otp` | Public | Generates and sends a 6-digit verification OTP (bcrypt-hashed, `crypto/rand`) |
-| `POST` | `/api/auth/verify-otp` | Public | Verifies OTP and returns user data + JWT token |
-| `POST` | `/api/auth/forgot-password` | Public | Anti-enumeration password reset confirmation |
-| `POST` | `/api/auth/google` | Public | Federated (mock OAuth) sign-in |
-| `POST` | `/api/auth/logout` | Authenticated | Revokes the caller's JWT via `jti` blocklist |
+| `POST` | `/api/v1/auth/request-otp` | Public | Generates a 6-digit verification OTP (bcrypt-hashed, `crypto/rand`) |
+| `POST` | `/api/v1/auth/verify-otp` | Public | Verifies OTP and returns user data + JWT token |
+| `POST` | `/api/v1/auth/login` | Public | Email/password login returning user + JWT |
+| `POST` | `/api/v1/auth/register` | Public | Creates a STUDENT account and auto-logs-in |
+| `PUT` | `/api/v1/auth/password` | Authenticated | Updates the caller's password |
+| `POST` | `/api/v1/auth/forgot-password` | Public | Anti-enumeration password reset confirmation (stub) |
+| `POST` | `/api/v1/auth/google` | Public | Federated sign-in (Google `id_token` verified server-side) |
+| `POST` | `/api/v1/auth/logout` | Authenticated | Revokes the caller's JWT via `jti` blocklist |
 | `GET` | `/api/ping` | Public | Health probe returning `{"message": "pong"}` |
-| `GET` | `/api/dashboard` | Student+ | Returns student profile, progress, activities, observations, guidance |
-| `GET` | `/api/learning-journey` | Student+ | Returns sequenced list of curriculum activities |
-| `GET` | `/api/chart-data` | Student+ | Returns weekly progress and engagement durations |
-| `GET` | `/api/courses` | Student+ | Paginated course catalog from the `courses` table |
-| `GET` | `/api/activities/:id/modules` | Student+ | Bite-sized `MicroModule` content for the module viewer |
-| `POST` | `/api/activities/:id/complete` | Student+ | Transactional completion: progress, observation, guidance |
-| `POST` | `/api/sync/bulk` | Student+ | Bulk offline sync from `.logsync` files (transactional, scoped to caller) |
-| `GET` | `/api/moderator/classes` | Moderator+ | Returns teacher class data |
-| `GET` | `/api/moderator/roster` | Moderator+ | Live roster with computed completion % and streak data |
-| `GET` | `/api/admin/dashboard` | Admin | System-wide user counts, active-daily, completions (from DB) |
-| `GET` | `/api/admin/users` | Admin | Returns complete user list |
-| `PUT` | `/api/admin/users/:id/role` | Admin | Updates user role (`STUDENT`, `MODERATOR`, `ADMIN` — validated) |
-| `POST` | `/api/admin/activities` | Admin | Creates a new curriculum activity (strict DTO, server-managed fields) |
+| `GET` | `/api/v1/dashboard` | Student+ | Returns student profile, progress, activities, observations, guidance |
+| `GET` | `/api/v1/learning-journey` | Student+ | Returns sequenced list of curriculum activities |
+| `GET` | `/api/v1/chart-data` | Student+ | Returns weekly progress and engagement durations |
+| `GET` | `/api/v1/courses` | Student+ | Paginated course catalog from the `courses` table |
+| `GET` | `/api/v1/activities/:id/modules` | Student+ | Bite-sized `MicroModule` content for the module viewer |
+| `POST` | `/api/v1/activities/:id/complete` | Student+ | Transactional completion: progress, observation, guidance |
+| `POST` | `/api/v1/sync/bulk` | Student+ | Bulk offline sync from `.logsync` files (transactional, scoped to caller) |
+| `GET` | `/api/v1/moderator/roster` | Moderator+ | Live roster with computed completion % and streak data |
+| `GET` | `/api/v1/admin/dashboard` | Admin | System-wide user counts, active-daily, completions (from DB) |
+| `GET` | `/api/v1/admin/users` | Admin | Returns complete user list |
+| `PUT` | `/api/v1/admin/users/:id/role` | Admin | Updates user role (`STUDENT`, `MODERATOR`, `ADMIN` — validated) |
+| `POST` | `/api/v1/admin/activities` | Admin | Creates a new curriculum activity (strict DTO, server-managed fields) |
 
 ---
 
 ## 8. Frontend Navigation & Pages
 
 - **`/` (Landing):** Features LOG cycle cards, hero banner, and quick start CTA.
-- **`/login`:** Phone OTP login, mock Google OAuth, session state initialization.
+- **`/login`:** Email/password login, registration, and Google sign-in; session state initialization.
 - **`/forgot-password`:** Password reset form with validation.
 - **`/dashboard`:** Daily streak counter, circular goal progress, current focus guidance, recent observations, `.logsync` export/import, logout.
 - **`/learning`:** Sequenced learning path with module cards and status icons (live links into the player).

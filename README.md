@@ -28,7 +28,7 @@ The application revolves around the LOG cycle:
 ### Environment Variables
 For local development, create a `.env` file in the frontend directory:
 ```
-NEXT_PUBLIC_API_URL=http://localhost:6101/api
+NEXT_PUBLIC_API_URL=http://localhost:6101/api/v1
 ```
 
 ### Running the Application

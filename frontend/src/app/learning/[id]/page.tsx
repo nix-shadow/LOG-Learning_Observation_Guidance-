@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import { fetchWithCache } from '@/lib/api';
-import MicroModuleViewer, { MicroModuleData } from '@/components/MicroModuleViewer';
+import MicroModuleViewer, { MicroModuleData, AttemptReport } from '@/components/MicroModuleViewer';
 import SkeletonLoader from '@/components/SkeletonLoader';
 
 // Mock content for the interactive learning module
@@ -61,6 +61,10 @@ export default function LessonModule() {
           title: m.title,
           content_text: m.content_text,
           media_url: m.media_url,
+          question: m.question,
+          options: m.options,
+          correct_index: m.correct_index,
+          explanation: m.explanation,
         })));
         setActivityTitle(res.activity?.title || '');
       })
@@ -73,7 +77,7 @@ export default function LessonModule() {
   // Server modules take priority; the demo lesson is only an offline/catalog fallback.
   if (loading) return (
     <div className="max-w-3xl mx-auto w-full space-y-6">
-      <div className="flex items-center justify-between text-sm font-medium text-gray-500">
+      <div className="flex items-center justify-between text-sm font-bold text-white/50 tracking-wider uppercase">
         <span><ArrowLeft className="inline w-4 h-4 mr-2" /> Loading module...</span>
       </div>
       <SkeletonLoader type="card" count={2} />
@@ -81,11 +85,12 @@ export default function LessonModule() {
   );
 
   if (modules.length > 0) {
-    const handleComplete = async () => {
+    const handleComplete = async (stats: AttemptReport) => {
       try {
         await fetchWithCache(`/activities/${activityId}/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(stats),
         });
         toast.success('Lesson marked as completed! Progress recorded.', { icon: '🎉' });
       } catch (e) {
@@ -96,11 +101,11 @@ export default function LessonModule() {
 
     return (
       <div className="max-w-3xl mx-auto w-full">
-        <button onClick={() => router.back()} className="text-gray-500 hover:text-brand-blue flex items-center mb-6 transition-colors">
+        <button onClick={() => router.back()} className="text-white/50 hover:text-brand-neon flex items-center mb-6 transition-colors font-bold tracking-wide text-sm uppercase">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Journey
         </button>
         {activityTitle && (
-          <h1 className="text-2xl font-bold text-brand-blue mb-4">{activityTitle}</h1>
+          <h1 className="text-3xl font-bold text-white mb-6 tracking-tight">{activityTitle}</h1>
         )}
         <MicroModuleViewer modules={modules} onComplete={handleComplete} />
       </div>
@@ -122,7 +127,7 @@ export default function LessonModule() {
           particleCount: 150,
           spread: 70,
           origin: { y: 0.6 },
-          colors: ['#00B4D8', '#4285F4', '#34A853', '#FBBC05', '#EA4335']
+          colors: ['#00F0FF', '#00B4D8', '#FFB703', '#FF003C']
         });
       }
     }
@@ -133,9 +138,9 @@ export default function LessonModule() {
     const correct = opt === step.correctAnswer;
     setIsCorrect(correct);
     if (correct) {
-      toast.success('Correct!');
+      toast.success('Correct!', { style: { background: 'rgba(0,0,0,0.8)', color: '#00F0FF', border: '1px solid rgba(0,240,255,0.3)' } });
     } else {
-      toast.error('Not quite, try again.');
+      toast.error('Not quite, try again.', { style: { background: 'rgba(0,0,0,0.8)', color: '#FF003C', border: '1px solid rgba(255,0,60,0.3)' } });
     }
   };
 
@@ -156,17 +161,17 @@ export default function LessonModule() {
     <div className="max-w-3xl mx-auto w-full min-h-[70vh] flex flex-col">
       {/* Header & Progress */}
       <div className="mb-8">
-        <button onClick={() => router.back()} className="text-gray-500 hover:text-brand-blue flex items-center mb-6 transition-colors">
+        <button onClick={() => router.back()} className="text-white/50 hover:text-brand-neon flex items-center mb-8 transition-colors font-bold tracking-wide text-sm uppercase">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Journey
         </button>
 
-        <div className="flex items-center justify-between text-sm font-medium text-gray-500 mb-2">
+        <div className="flex items-center justify-between text-xs font-bold text-white/50 mb-3 tracking-widest uppercase">
           <span>Module Progress</span>
           <span>{Math.round(progress)}%</span>
         </div>
-        <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+        <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden shadow-inner">
           <motion.div
-            className="bg-brand-teal h-2.5 rounded-full"
+            className="bg-brand-neon h-2.5 rounded-full shadow-[0_0_10px_rgba(0,240,255,0.8)]"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5 }}
@@ -175,7 +180,7 @@ export default function LessonModule() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex-1 flex flex-col justify-center relative">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -183,65 +188,69 @@ export default function LessonModule() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
-            className="card bg-white shadow-xl border-none p-8 md:p-12"
+            className="card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-8 md:p-12 rounded-[2rem] shadow-glow relative overflow-hidden"
           >
-            {step.type === 'concept' && (
-              <div className="space-y-6">
-                <span className="inline-block px-3 py-1 bg-brand-blue/10 text-brand-blue text-xs font-bold uppercase rounded-full tracking-wider">Concept</span>
-                <h1 className="text-3xl font-bold text-brand-blue">{step.title}</h1>
-                <p className="text-lg text-gray-700 leading-relaxed">{step.body}</p>
-              </div>
-            )}
-
-            {step.type === 'interactive' && (
-              <div className="space-y-6">
-                <span className="inline-block px-3 py-1 bg-brand-amber/20 text-brand-amber text-xs font-bold uppercase rounded-full tracking-wider">Knowledge Check</span>
-                <h1 className="text-2xl font-bold text-brand-blue">{step.question}</h1>
-
-                <div className="space-y-3 mt-8">
-                  {step.options?.map((opt) => {
-                    let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all font-medium ";
-                    if (selectedAnswer === opt) {
-                       btnClass += isCorrect
-                         ? "border-green-500 bg-green-50 text-green-700"
-                         : "border-red-400 bg-red-50 text-red-700";
-                    } else {
-                       btnClass += "border-gray-200 hover:border-brand-teal hover:bg-brand-teal/5 text-gray-700";
-                    }
-
-                    return (
-                      <button
-                        key={opt}
-                        onClick={() => handleAnswerSelect(opt)}
-                        disabled={isCorrect === true}
-                        className={btnClass}
-                      >
-                        {opt}
-                      </button>
-                    )
-                  })}
+            <div className="absolute inset-0 bg-brand-neon/5 pointer-events-none" />
+            
+            <div className="relative z-10">
+              {step.type === 'concept' && (
+                <div className="space-y-6">
+                  <span className="inline-block px-4 py-1.5 bg-brand-blue/20 text-brand-blue border border-brand-blue/30 text-[10px] font-bold uppercase rounded-full tracking-widest">Concept</span>
+                  <h1 className="text-3xl font-bold text-white tracking-tight">{step.title}</h1>
+                  <p className="text-lg text-white/80 leading-relaxed">{step.body}</p>
                 </div>
+              )}
 
-                {isCorrect && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-brand-blue/5 rounded-lg border border-brand-blue/10">
-                    <p className="text-brand-blue font-medium flex items-start">
-                      <LightbulbIcon className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5 text-brand-amber" />
-                      {step.explanation}
-                    </p>
-                  </motion.div>
-                )}
-              </div>
-            )}
+              {step.type === 'interactive' && (
+                <div className="space-y-6">
+                  <span className="inline-block px-4 py-1.5 bg-brand-amber/20 text-brand-amber border border-brand-amber/30 text-[10px] font-bold uppercase rounded-full tracking-widest">Knowledge Check</span>
+                  <h1 className="text-2xl font-bold text-white tracking-tight">{step.question}</h1>
 
-            {step.type === 'completion' && (
-              <div className="text-center space-y-6 py-8">
-                <div className="mx-auto w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center">
-                  <CheckCircle2 className="w-12 h-12" />
+                  <div className="space-y-4 mt-8">
+                    {step.options?.map((opt) => {
+                      let btnClass = "w-full text-left px-6 py-4 rounded-2xl border transition-all font-bold tracking-wide text-lg ";
+                      if (selectedAnswer === opt) {
+                         btnClass += isCorrect
+                           ? "border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+                           : "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]";
+                      } else {
+                         btnClass += "border-white/10 bg-white/5 hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow text-white hover:text-brand-neon";
+                      }
+
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => handleAnswerSelect(opt)}
+                          disabled={isCorrect === true}
+                          className={btnClass}
+                        >
+                          {opt}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {isCorrect && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-5 bg-brand-blue/10 rounded-2xl border border-brand-blue/20 mt-6 backdrop-blur-md">
+                      <p className="text-brand-blue font-medium flex items-start">
+                        <LightbulbIcon className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5 text-brand-amber drop-shadow-[0_0_5px_rgba(255,183,3,0.8)]" />
+                        {step.explanation}
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
-                <h1 className="text-3xl font-extrabold text-brand-blue">{step.title}</h1>
-                <p className="text-lg text-gray-600">{step.body}</p>
-              </div>
-            )}
+              )}
+
+              {step.type === 'completion' && (
+                <div className="text-center space-y-8 py-10">
+                  <div className="mx-auto w-24 h-24 bg-green-500/20 text-green-400 border border-green-500/30 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)]">
+                    <CheckCircle2 className="w-12 h-12" />
+                  </div>
+                  <h1 className="text-4xl font-extrabold text-white tracking-tight">{step.title}</h1>
+                  <p className="text-xl text-white/60">{step.body}</p>
+                </div>
+              )}
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>
@@ -249,16 +258,16 @@ export default function LessonModule() {
       {/* Footer / Controls */}
       <div className="mt-8 flex justify-end">
         {step.type === 'interactive' && !isCorrect ? (
-          <button disabled className="btn-primary opacity-50 cursor-not-allowed">
-            Select an answer to continue
+          <button disabled className="btn-primary opacity-50 cursor-not-allowed px-8 py-4 text-lg font-bold">
+            Select an answer
           </button>
         ) : step.type === 'completion' ? (
-          <button onClick={handleFinish} className="btn-primary flex items-center px-8 py-3 text-lg">
-            Complete Lesson <CheckCircle2 className="ml-2 w-5 h-5" />
+          <button onClick={handleFinish} className="btn-primary flex items-center px-10 py-4 text-lg font-bold tracking-wide shadow-glow">
+            Complete Lesson <CheckCircle2 className="ml-3 w-6 h-6" />
           </button>
         ) : (
-          <button onClick={handleNext} className="btn-primary flex items-center px-8 py-3 text-lg">
-            Continue <ChevronRight className="ml-2 w-5 h-5" />
+          <button onClick={handleNext} className="btn-primary flex items-center px-10 py-4 text-lg font-bold tracking-wide shadow-glow">
+            Continue <ChevronRight className="ml-3 w-6 h-6" />
           </button>
         )}
       </div>

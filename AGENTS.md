@@ -38,9 +38,10 @@ The platform uses a strict 3-tier Role-Based Access Control (RBAC) system:
 3. `STUDENT`: Normal user level. Access to dashboard, learning journey, and catalog.
 
 **Security Requirements for Backend Changes:**
-- **Passwords & OTPs:** Must be hashed using `bcrypt` (see `HashPassword` in `api/auth.go`). Never log plaintext OTPs or passwords.
-- **JWT:** Tokens must be validated strictly using HMAC. Check the `Bearer ` prefix. `JWT_SECRET` must come from the environment — never commit it or rely on the dev fallback in production.
-- **Identity:** Never trust client-supplied identity (email/name) for account access without verifying an external token server-side. `POST /api/auth/google` currently accepts unverified emails — treat it as a known vulnerability until fixed (see `docs/ENHANCEMENT.md` §1.1).
+- **Passwords & OTPs:** Must be hashed using `bcrypt` (see `HashPassword` in `backend/internal/service/auth_utils.go`). Never log plaintext OTPs or passwords.
+- **JWT:** Tokens must be validated strictly using HMAC. Check the `Bearer ` prefix. `JWT_SECRET` must come from the environment — never commit it or rely on a dev fallback (`main.go` and `docker-compose.yml` both abort when it is unset). The auth middleware re-loads the user from the DB and rejects tokens whose role no longer matches (demotion/soft-delete).
+- **Identity:** Never trust client-supplied identity (email/name) for account access without verifying an external token server-side. `POST /api/v1/auth/google` exchanges a Google `id_token` that is verified server-side (`internal/service/auth_service_impl.go`) — a bare `{email}` body is rejected.
+- **OTP:** Per-phone brute-force protection is enforced — 5 failed verify attempts invalidate the OTP; the `/api/v1/auth/*` routes are rate limited per client IP, and gin is configured to trust no proxies so `X-Forwarded-For` cannot spoof the key.
 - **Input Validation:** Use Gin's binding validation (e.g., `binding:"required,min=10"`). Never trust client input.
 - **Headers:** Security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection) are enforced globally in `main.go`.
 - **Health Probes:** `/api/ping` (liveness) and `/healthz` (real SQLite ping) are public; never move them behind auth.
@@ -57,7 +58,7 @@ The platform uses a strict 3-tier Role-Based Access Control (RBAC) system:
 Copy the templates first — never commit real `.env` files:
 ```bash
 cp .env.example .env                  # root: JWT_SECRET + CORS_ORIGIN (docker-compose)
-cp backend/.env.example backend/.env  # backend: JWT_SECRET, CORS_ORIGIN, PORT
+cp backend/.env.example backend/.env  # backend: JWT_SECRET, CORS_ORIGIN, PORT, GOOGLE_CLIENT_ID (optional)
 cp frontend/.env.example frontend/.env  # frontend: NEXT_PUBLIC_API_URL
 ```
 Generate a strong secret with `openssl rand -base64 48`.
@@ -72,7 +73,7 @@ go build -o server main.go
 Probes: `GET /api/ping` (liveness), `GET /healthz` (SQLite ping), `GET /readyz`.
 
 ### Frontend
-Ensure the `.env` file contains `NEXT_PUBLIC_API_URL=http://localhost:6101/api`.
+Ensure the `.env` file contains `NEXT_PUBLIC_API_URL=http://localhost:6101/api/v1`.
 ```bash
 cd frontend
 npm install

@@ -94,8 +94,8 @@ The platform is structured around a continuous learning and feedback loop:
 |             v                           v                           v             |
 |  +---------------------+   +-------------------------+   +---------------------+  |
 |  |   Auth Controller   |   |   Student Controller    |   |   Admin Controller  |  |
-|  | (/api/auth/req-otp, |   | (/api/dashboard,        |   | (/api/admin/users,  |  |
-|  |  /api/auth/ver-otp) |   |  /api/learning-journey) |   |  /api/admin/acts)   |  |
+|  | (/api/v1/auth/req-otp, |   | (/api/v1/dashboard,      |   | (/api/v1/admin/users, |  |
+|  |  /api/v1/auth/ver-otp) |   |  /api/v1/learning-journey) |   |  /api/v1/admin/acts)   |  |
 |  +---------------------+   +-------------------------+   +---------------------+  |
 |                                         |                                         |
 |                                         v                                         |
@@ -122,7 +122,7 @@ The platform is structured around a continuous learning and feedback loop:
 | **Offline Tier** | `next-pwa` & `idb` | Workbox, IndexedDB API | Service worker caching of app shell combined with structured IndexedDB request caching. |
 | **Backend API** | Go (Gin Web Framework) | `gin-gonic/gin`, `golang-jwt/jwt/v5` | High-throughput, low-latency compiled backend with minimal memory footprint. |
 | **Data Access & ORM** | GORM | `gorm.io/gorm`, `gorm.io/driver/sqlite` | Schema auto-migration, seed management, and database-agnostic queries. |
-| **Database** | SQLite (Local) / PostgreSQL | `log.db`, `postgres:15-alpine` | Embedded zero-setup SQLite for rapid deployment with seamless PostgreSQL scaling. |
+| **Database** | SQLite (Local) / PostgreSQL | `backend/data/log.db`, `postgres:15-alpine` | Embedded zero-setup SQLite for rapid deployment with seamless PostgreSQL scaling. |
 | **Quality Assurance** | Jest & Testing Library | `ts-jest`, `jest-environment-jsdom` | Unit and integration testing for offline caching, queueing, and fallback logic. |
 
 ---
@@ -137,3 +137,33 @@ Guidance and observation strings must always use encouraging, growth-oriented ph
 
 ### 5.3 Deterministic Metrics Guarantee
 Analytics, streak counters, and mastery scores must be calculated from database records. No external LLMs or ungrounded generative processes may be used for student evaluation data.
+
+---
+
+## 6. School Operations Module (Classes, Assignments, Announcements)
+
+Added in the production-grade expansion, the school-operations module mirrors the existing layered pattern:
+
+```
+SchoolHandler (internal/handler/school_handler.go)
+        │  HTTP + RBAC (admin / moderator / student routes)
+        v
+SchoolService (internal/service/school_service*.go)
+        │  business rules:
+        │   • only the class teacher may create assignments
+        │   • only enrolled learners may submit
+        │   • only STUDENT users can be enrolled
+        v
+SchoolRepository (internal/repository/school_repo.go)
+        │  GORM + transactions + idempotent upserts
+        v
+tables: classes, class_members, announcements, assignments,
+        submissions, audit_logs, user_revocations
+```
+
+Key properties:
+- **Idempotent submissions** — `(assignment_id, learner_id)` unique pair; offline queue replays cannot duplicate work.
+- **Honest exports** — the admin CSV export streams only real enrollment rows (header-only when empty).
+- **Append-only audit trail** — sensitive ops (`user.role_change`, `class.*`, `assignment.create`, `announcement.create`, `export.*`, `auth.logout_all`) are recorded with actor + IP.
+- **Global session revocation** — `POST /auth/logout-all` writes a `UserRevocation` row; `AuthMiddleware` rejects any token issued before it (uses the `iat` claim, which `GenerateJWT` now sets).
+- **Class-scoped authorization** — class ownership and membership are enforced in the service layer, never trusted from the client.

@@ -14,7 +14,7 @@ Ensure the following runtimes and tools are installed on your workstation:
 ## 2. Setting Up & Running the Application
 
 ### 2.1 Backend Execution
-The backend automatically creates and seeds `log.db` on first execution:
+The backend automatically creates and seeds `data/log.db` on first execution:
 
 ```bash
 cd backend
@@ -40,7 +40,7 @@ cd frontend
 npm install
 
 # Create environment configuration file
-echo "NEXT_PUBLIC_API_URL=http://localhost:6101/api" > .env.local
+echo "NEXT_PUBLIC_API_URL=http://localhost:6101/api/v1" > .env.local
 
 # Run development server
 npm run dev
@@ -54,16 +54,16 @@ Visit `http://localhost:6100` in your web browser.
 
 When extending the LOG platform, adhere strictly to the following implementation pattern:
 
-### Step 1: Define Database Models (`backend/models/models.go`)
+### Step 1: Define Database Models (`backend/internal/domain/domain.go`)
 1. Create or modify GORM structs.
 2. Add JSON serialization tags and GORM constraints (e.g. `gorm:"primaryKey"`, `gorm:"index"`).
 3. Update `InitDB()` in `backend/database/db.go` to include the model in `AutoMigrate`.
 
-### Step 2: Implement Backend API Handler (`backend/api/`)
-1. Create handler functions in `handlers.go`, `admin.go`, or a new controller file.
+### Step 2: Implement Backend API Handler (`backend/internal/handler/`)
+1. Create handler functions in a new file or an existing controller (e.g. `learner_handler.go`, `auth_handler.go`, `sync_handler.go`).
 2. Add input validation using Gin binding struct tags.
 3. Protect the route with `AuthMiddleware(models.Role)` if restricted.
-4. Mount the route on the Gin router in `backend/main.go`.
+4. Mount the route on the Gin router in `backend/main.go` (under `/api/v1`).
 
 ### Step 3: Define TypeScript Types (`frontend/src/lib/types.ts`)
 1. Create matching TypeScript interfaces for API payloads.

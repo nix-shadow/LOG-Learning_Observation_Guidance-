@@ -1,4 +1,4 @@
-package api
+package handler
 
 import (
 	"bytes"
@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"log-backend/database"
 	"log-backend/internal/domain"
-	"log-backend/internal/handler"
 	"log-backend/internal/repository"
 	"log-backend/internal/service"
 
@@ -20,15 +20,21 @@ import (
 func TestMain(m *testing.M) {
 	// Setup
 	gin.SetMode(gin.TestMode)
-	
-	// Change to root backend directory so log.db is created there
-	os.Chdir("..")
-	database.InitDB() // AutoMigrates and AutoSeeds
+
+	// Point the database at a throwaway temp file so tests never touch the
+	// real backend/data/log.db (which would rewrite seeded demo data).
+	tmpDir, err := os.MkdirTemp("", "log-backend-test-*")
+	if err != nil {
+		panic("failed to create temp dir: " + err.Error())
+	}
+	os.Setenv("DB_PATH", filepath.Join(tmpDir, "test.db"))
+	database.InitDB() // AutoMigrates and AutoSeeds into the temp DB
 
 	// Run tests
 	code := m.Run()
 
-	// Exit
+	os.Unsetenv("DB_PATH")
+	os.RemoveAll(tmpDir)
 	os.Exit(code)
 }
 
@@ -44,18 +50,15 @@ func TestGetCourses(t *testing.T) {
 		repository.NewActivityRepository(database.DB),
 		repository.NewProgressRepository(database.DB),
 		repository.NewLearnerDataRepository(database.DB),
+		repository.NewCompletionRepository(database.DB),
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
-	moderatorService := service.NewModeratorService(
-		repository.NewModeratorRepository(database.DB),
-		repository.NewProgressRepository(database.DB),
-		repository.NewActivityRepository(database.DB),
-	)
-	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
+	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
 
-	r.GET("/api/courses", learnerHandler.GetCourses)
+	r.GET("/api/v1/courses", learnerHandler.GetCourses)
 
-	req, _ := http.NewRequest("GET", "/api/courses?page=1&limit=2", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/courses?page=1&limit=2", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -69,9 +72,9 @@ func TestGetCourses(t *testing.T) {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
-	courses, ok := response["data"].([]interface{})
+	courses, ok := response["courses"].([]interface{})
 	if !ok {
-		t.Fatalf("Expected data array in response")
+		t.Fatalf("Expected courses array in response")
 	}
 
 	if len(courses) != 2 {
@@ -86,18 +89,15 @@ func TestGetModeratorRoster(t *testing.T) {
 		repository.NewActivityRepository(database.DB),
 		repository.NewProgressRepository(database.DB),
 		repository.NewLearnerDataRepository(database.DB),
+		repository.NewCompletionRepository(database.DB),
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
-	moderatorService := service.NewModeratorService(
-		repository.NewModeratorRepository(database.DB),
-		repository.NewProgressRepository(database.DB),
-		repository.NewActivityRepository(database.DB),
-	)
-	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
+	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
 
-	r.GET("/api/moderator/roster", learnerHandler.GetModeratorRoster)
+	r.GET("/api/v1/moderator/roster", learnerHandler.GetModeratorRoster)
 
-	req, _ := http.NewRequest("GET", "/api/moderator/roster", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/moderator/roster", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -123,7 +123,8 @@ func TestGetModeratorRoster(t *testing.T) {
 
 func TestCompleteActivityCreatesProgressForNewLearner(t *testing.T) {
 	learnerID := service.GenerateSecureID("user")
-	database.DB.Create(&domain.User{ID: learnerID, Phone: "99000000", Role: domain.RoleStudent, IsVerified: true})
+	phone := "99000000"
+	database.DB.Create(&domain.User{ID: learnerID, Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
 	t.Cleanup(func() {
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Observation{})
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Guidance{})
@@ -142,18 +143,15 @@ func TestCompleteActivityCreatesProgressForNewLearner(t *testing.T) {
 		repository.NewActivityRepository(database.DB),
 		repository.NewProgressRepository(database.DB),
 		repository.NewLearnerDataRepository(database.DB),
+		repository.NewCompletionRepository(database.DB),
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
-	moderatorService := service.NewModeratorService(
-		repository.NewModeratorRepository(database.DB),
-		repository.NewProgressRepository(database.DB),
-		repository.NewActivityRepository(database.DB),
-	)
-	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
+	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
 
-	r.POST("/api/activities/:id/complete", learnerHandler.CompleteActivity)
+	r.POST("/api/v1/activities/:id/complete", learnerHandler.CompleteActivity)
 
-	req, _ := http.NewRequest("POST", "/api/activities/act-1/complete", nil)
+	req, _ := http.NewRequest("POST", "/api/v1/activities/act-1/complete", nil)
 	req.Header.Set("X-Test-Learner", learnerID)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -178,18 +176,15 @@ func TestGetModeratorRosterComputesNeedsAttention(t *testing.T) {
 		repository.NewActivityRepository(database.DB),
 		repository.NewProgressRepository(database.DB),
 		repository.NewLearnerDataRepository(database.DB),
+		repository.NewCompletionRepository(database.DB),
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
-	moderatorService := service.NewModeratorService(
-		repository.NewModeratorRepository(database.DB),
-		repository.NewProgressRepository(database.DB),
-		repository.NewActivityRepository(database.DB),
-	)
-	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
+	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
 
-	r.GET("/api/moderator/roster", learnerHandler.GetModeratorRoster)
+	r.GET("/api/v1/moderator/roster", learnerHandler.GetModeratorRoster)
 
-	req, _ := http.NewRequest("GET", "/api/moderator/roster", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/moderator/roster", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -219,11 +214,11 @@ func TestGetModeratorRosterComputesNeedsAttention(t *testing.T) {
 
 func TestSyncBulkRejectsInvalidPayload(t *testing.T) {
 	r := setupTestRouter()
-	syncHandler := handler.NewSyncHandler(service.NewSyncService(repository.NewSyncRepository(database.DB)))
-	r.POST("/api/sync/bulk", syncHandler.SyncBulk)
+	syncHandler := NewSyncHandler(service.NewSyncService(repository.NewSyncRepository(database.DB)))
+	r.POST("/api/v1/sync/bulk", syncHandler.SyncBulk)
 
 	body := bytes.NewBufferString(`{"version":"1.0","data":"not-an-array"}`)
-	req, _ := http.NewRequest("POST", "/api/sync/bulk", body)
+	req, _ := http.NewRequest("POST", "/api/v1/sync/bulk", body)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

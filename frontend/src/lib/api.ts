@@ -1,6 +1,15 @@
 import { openDB } from 'idb';
 import toast from 'react-hot-toast';
 
+export class HttpError extends Error {
+  is4xx: boolean;
+  constructor(message: string, is4xx: boolean) {
+    super(message);
+    this.name = 'HttpError';
+    this.is4xx = is4xx;
+  }
+}
+
 const DB_NAME = 'log-db';
 export const CACHE_STORE = 'api-cache';
 export const QUEUE_STORE = 'sync-queue';
@@ -12,10 +21,16 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 1000;
 
+let manualOfflineOverride = false;
+if (typeof window !== 'undefined') {
+  manualOfflineOverride = localStorage.getItem('log_offline_mode') === 'true';
+}
+
 let isAppOnline = true;
 if (typeof window !== 'undefined') {
-  isAppOnline = navigator.onLine;
+  isAppOnline = navigator.onLine && !manualOfflineOverride;
   window.addEventListener('online', async () => {
+    if (manualOfflineOverride) return;
     isAppOnline = true;
     toast.success('Back online! Syncing data...');
     await syncQueue();
@@ -40,7 +55,27 @@ export const initDB = async () => {
   });
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6101/api';
+
+
+export const setManualOffline = (offline: boolean) => {
+  manualOfflineOverride = offline;
+  if (typeof window !== 'undefined') {
+    if (offline) {
+      localStorage.setItem('log_offline_mode', 'true');
+    } else {
+      localStorage.removeItem('log_offline_mode');
+    }
+  }
+  
+  if (!offline && navigator.onLine) {
+    isAppOnline = true;
+    syncQueue();
+  } else if (offline) {
+    isAppOnline = false;
+  }
+};
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6101/api/v1';
 
 /**
  * Logs the user out by:
@@ -129,7 +164,7 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
         // It's a real failure from the server.
         if (response.status >= 400 && response.status < 500) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+          throw new HttpError(errData.detail || errData.message || errData.error || `HTTP error! status: ${response.status}`, true);
         }
         // For 5xx errors, we treat it like offline and queue it.
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -147,16 +182,8 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
       console.warn('Network fetch failed...', error);
       
       // If it's a 4xx error we threw above, propagate it immediately.
-      // We know it's a 4xx error if we caught it and it's not a generic TypeError (network error)
-      // and not a 5xx error. Let's rely on the error message structure or a custom property.
-      // A simpler way: if the app is online and we got a response, don't queue 4xx.
-      // Wait, we already threw it. We can check if error is our custom 4xx throw.
-      if (error instanceof Error && !error.message.includes('HTTP error! status: 5')) {
-         // Network error usually throws TypeError("Failed to fetch")
-         // Our 4xx throws Error("error message" or "HTTP error! status: 4xx")
-         if (error.message !== 'Failed to fetch' && !error.message.includes('HTTP error! status: 5')) {
-             throw error; 
-         }
+      if (error instanceof HttpError && error.is4xx) {
+         throw error; 
       }
 
       if (method === 'GET') return getFromCache(endpoint);
@@ -200,14 +227,34 @@ async function queueRequest(endpoint: string, options: RequestInit) {
     const db = await initDB();
     const method = options.method || 'POST';
 
-    // Deduplication: check if an identical request is already queued
+    // Deduplication is body-aware: two queued writes to the same endpoint are
+    // the same logical action, so the queue keeps ONE entry — but which body
+    // wins depends on the action type:
+    //   - completions (/activities/:id/complete): keep the higher-accuracy
+    //     attempt — the server applies best-score semantics, so a queued
+    //     lower-accuracy replay must never overwrite a better one
+    //   - everything else (submissions, announcements): last write wins
     const existing = await db.getAll(QUEUE_STORE);
-    const isDuplicate = existing.some(
+    const duplicate = existing.find(
       (req: { endpoint: string; method: string }) => req.endpoint === endpoint && req.method === method
     );
 
-    if (isDuplicate) {
-      console.log('Duplicate request already queued, skipping:', endpoint);
+    if (duplicate) {
+      const newBody = typeof options.body === 'string' ? options.body : null;
+      const keptBody = mergeQueuedBody(endpoint, duplicate.body, newBody);
+      if (keptBody === duplicate.body && keptBody === newBody) {
+        console.log('Duplicate request already queued, skipping:', endpoint);
+        return { queued: true, status: 202, deduplicated: true };
+      }
+      // Replace the queued entry in place (keyPath id preserved) with the
+      // dominant body — the queue never holds two entries for one action.
+      await db.put(QUEUE_STORE, {
+        ...duplicate,
+        body: keptBody ?? duplicate.body,
+        timestamp: new Date().toISOString(),
+        retryCount: 0,
+      });
+      console.log('Queued request updated with newer payload:', endpoint);
       return { queued: true, status: 202, deduplicated: true };
     }
 
@@ -225,6 +272,37 @@ async function queueRequest(endpoint: string, options: RequestInit) {
     console.error('Failed to queue request', err);
     throw err;
   }
+}
+
+// mergeQueuedBody decides which body the queue keeps when the same endpoint is
+// queued twice. Completions keep the attempt with the best accuracy (ties keep
+// the newest); all other endpoints keep the newest payload.
+function mergeQueuedBody(
+  endpoint: string,
+  oldBody: string | null | undefined,
+  newBody: string | null | undefined
+): string | null | undefined {
+  if (!endpoint.includes('/activities/') || !endpoint.includes('/complete')) {
+    return newBody;
+  }
+
+  const parse = (body: string | null | undefined): { correct_count?: number; total_count?: number } | null => {
+    if (typeof body !== 'string' || !body) return null;
+    try {
+      return JSON.parse(body);
+    } catch {
+      return null;
+    }
+  };
+
+  const oldStats = parse(oldBody);
+  const newStats = parse(newBody);
+  const oldAccuracy = oldStats && oldStats.total_count ? (oldStats.correct_count || 0) / oldStats.total_count : -1;
+  const newAccuracy = newStats && newStats.total_count ? (newStats.correct_count || 0) / newStats.total_count : -1;
+
+  // A higher (or equally good) fresh attempt replaces the queued one; a lower
+  // attempt is only a replay and must not overwrite the queued best.
+  return newAccuracy >= oldAccuracy ? newBody : oldBody;
 }
 
 /**
@@ -245,6 +323,10 @@ async function invalidateRelatedCache(endpoint: string) {
       await db.delete(CACHE_STORE, '/dashboard');
       await db.delete(CACHE_STORE, '/learning-journey');
       await db.delete(CACHE_STORE, '/chart-data');
+    }
+    // Assignment submissions change the learner's assignment list
+    if (endpoint.includes('/submit')) {
+      await db.delete(CACHE_STORE, '/assignments');
     }
   } catch (e) {
     console.warn('Cache invalidation failed (non-critical)', e);

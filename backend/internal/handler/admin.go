@@ -1,12 +1,13 @@
-package api
+package handler
 
 import (
-	"log-backend/database"
-	"log-backend/internal/domain"
-	"log-backend/internal/service"
 	"net/http"
 	"strconv"
 	"time"
+
+	"log-backend/database"
+	"log-backend/internal/domain"
+	"log-backend/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,7 +36,6 @@ func GetAdminDashboard(c *gin.Context) {
 		"recent_users": recentUsers,
 	})
 }
-
 
 func GetUsers(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
@@ -94,8 +94,30 @@ func UpdateUserRole(c *gin.Context) {
 		return
 	}
 
+	// Never demote the last remaining ADMIN — a school with zero principals
+	// has no recovery path (nobody can promote a new one).
+	if user.Role == domain.RoleAdmin && req.Role != domain.RoleAdmin {
+		var adminCount int64
+		database.DB.Model(&domain.User{}).Where("role = ?", domain.RoleAdmin).Count(&adminCount)
+		if adminCount <= 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot demote the last admin. Promote another user to ADMIN first."})
+			return
+		}
+	}
+
 	user.Role = req.Role
 	database.DB.Save(&user)
+
+	// Append-only audit trail for sensitive privilege changes.
+	actor, _ := c.Get("userID")
+	database.DB.Create(&domain.AuditLog{
+		UserID:    actor.(string),
+		Action:    "user.role_change",
+		Detail:    id + " -> " + string(req.Role),
+		IP:        c.ClientIP(),
+		CreatedAt: time.Now(),
+	})
+
 	c.JSON(http.StatusOK, gin.H{"message": "Role updated", "user": user})
 }
 
@@ -137,5 +159,13 @@ func CreateActivity(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create activity"})
 		return
 	}
+	actor, _ := c.Get("userID")
+	database.DB.Create(&domain.AuditLog{
+		UserID:    actor.(string),
+		Action:    "activity.create",
+		Detail:    act.ID + " " + act.Title,
+		IP:        c.ClientIP(),
+		CreatedAt: time.Now(),
+	})
 	c.JSON(http.StatusCreated, act)
 }

@@ -7,9 +7,9 @@ import (
 
 type AuthService interface {
 	RequestOTP(ctx context.Context, phone string) error
-	VerifyOTP(ctx context.Context, phone, otp string) (string, error) // Returns JWT
+	VerifyOTP(ctx context.Context, phone, otp string) (*domain.User, string, error)  // Returns User, JWT
 	Login(ctx context.Context, email, password string) (*domain.User, string, error) // Returns User, JWT
-	Register(ctx context.Context, user *domain.User, password string) (*domain.User, error)
 	GoogleAuth(ctx context.Context, token string) (*domain.User, string, error)
 	Logout(ctx context.Context, jti, userID string, exp float64) error
+	UpdatePassword(ctx context.Context, userID, oldPassword, newPassword string) error
 }

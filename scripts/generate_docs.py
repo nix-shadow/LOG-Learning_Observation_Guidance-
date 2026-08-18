@@ -536,8 +536,8 @@ def generate_full_documentation(output_path="LOG_Project_Documentation.docx"):
     doc.add_paragraph().paragraph_format.space_after = Pt(8)
 
     add_heading_2(doc, "6.1 Cryptographic & Defensive Measures")
-    add_bullet_item(doc, "All user passwords undergo salted Bcrypt hashing with a work factor of 14 (api/auth.go). Plaintext passwords are never persisted.", "Bcrypt Password Hashing: ")
-    add_bullet_item(doc, "Stateless authentication via HMAC-SHA256 signed JSON Web Tokens (72-hour validity). Tokens are verified per request via the AuthMiddleware handler.", "HMAC-SHA256 JWT Tokens: ")
+    add_bullet_item(doc, "All user passwords undergo salted Bcrypt hashing with a work factor of 12 (internal/service/auth_utils.go). Plaintext passwords are never persisted.", "Bcrypt Password Hashing: ")
+    add_bullet_item(doc, "Stateless authentication via HMAC-SHA256 signed JSON Web Tokens (24-hour validity). Tokens are verified per request via the AuthMiddleware handler, which re-loads the user from the database and rejects tokens whose role no longer matches (demotion / soft-delete).", "HMAC-SHA256 JWT Tokens: ")
     add_bullet_item(doc, "All incoming JSON payloads are strictly validated using Gin binding struct tags (e.g. binding:\"required,min=10,max=15\"). Malformed requests are rejected with 400 Bad Request.", "Strict Schema Binding: ")
     add_bullet_item(doc, "Global middleware injects X-Content-Type-Options: nosniff, X-Frame-Options: DENY, and X-XSS-Protection: 1; mode=block.", "Hardened Security Headers: ")
     add_bullet_item(doc, "JWT_SECRET is loaded exclusively from the environment — never committed to the repository. The project ships .env.example templates only, and docker-compose requires JWT_SECRET to be set at deploy time.", "Environment-Only Secrets: ")
@@ -555,25 +555,46 @@ def generate_full_documentation(output_path="LOG_Project_Documentation.docx"):
                  [Inches(0.8), Inches(1.8), Inches(1.1), Inches(1.3), Inches(1.5)],
                  ["Method", "Endpoint", "Access", "Description", "Key Params / Body"],
                  [
-["POST", "/api/auth/request-otp", "Public", "Generates & sends 6-digit OTP", "{ phone: string }"],
-                 ["POST", "/api/auth/verify-otp", "Public", "Validates OTP and issues JWT", "{ phone: string, otp: string }"],
-                 ["POST", "/api/auth/logout", "Auth", "Revokes JWT via jti blocklist", "Bearer Token Header"],
+["POST", "/api/v1/auth/request-otp", "Public", "Generates & sends 6-digit OTP", "{ phone: string }"],
+                 ["POST", "/api/v1/auth/verify-otp", "Public", "Validates OTP and issues JWT", "{ phone: string, otp: string }"],
+                 ["POST", "/api/v1/auth/login", "Public", "Email/password login", "{ email, password }"],
+                 ["POST", "/api/v1/auth/register", "Public", "Creates a STUDENT account", "{ name, email, password }"],
+                 ["PUT", "/api/v1/auth/password", "Auth", "Updates caller's password", "Bearer + { old, new }"],
+                 ["POST", "/api/v1/auth/forgot-password", "Public", "Anti-enumeration reset stub", "{ email }"],
+                 ["POST", "/api/v1/auth/google", "Public", "Google id_token exchange (server-verified)", "{ token }"],
+                 ["POST", "/api/v1/auth/logout", "Auth", "Revokes JWT via jti blocklist", "Bearer Token Header"],
+                 ["POST", "/api/v1/auth/logout-all", "Auth", "Revokes ALL sessions for the user (iat-based revocation)", "Bearer Token Header"],
+                 ["GET", "/api/v1/announcements", "Student+", "School-wide announcements feed", "limit query param (default 10)"],
+                 ["GET", "/api/v1/assignments", "Student+", "Assignments for the learner's classes", "Bearer Token Header"],
+                 ["POST", "/api/v1/assignments/:assignment_id/submit", "Student+", "Submit/update assignment answer (idempotent)", "{ note }"],
                  ["GET", "/api/ping", "Public", "Liveness probe", "None (Returns 200 pong)"],
                  ["GET", "/healthz", "Public", "SQLite reachability probe", "None (200 ok / 503 unhealthy)"],
                  ["GET", "/readyz", "Public", "Readiness probe", "None (Returns 200 ready)"],
-                 ["GET", "/api/dashboard", "Student+", "Fetches learner profile, progress & guidance", "Bearer Token Header"],
-                 ["GET", "/api/learning-journey", "Student+", "Lists all learning modules in sequence", "Bearer Token Header"],
-                 ["GET", "/api/chart-data", "Student+", "Weekly performance & duration telemetry", "Bearer Token Header"],
-                 ["GET", "/api/courses", "Student+", "Paginated course catalog", "page & limit query params"],
-                 ["GET", "/api/activities/:id/modules", "Student+", "Bite-sized micro-module content", "URL :id activity"],
-                 ["POST", "/api/activities/:id/complete", "Student+", "Transactional completion flow", "URL :id activity"],
-                 ["POST", "/api/sync/bulk", "Student+", "Bulk offline .logsync upload", "{ version, timestamp, data[] }"],
-                 ["GET", "/api/moderator/classes", "Moderator+", "Teacher class roster & student progress", "Bearer Token (MODERATOR/ADMIN)"],
-                 ["GET", "/api/moderator/roster", "Moderator+", "Live roster w/ computed metrics", "Bearer Token (MODERATOR/ADMIN)"],
-                 ["GET", "/api/admin/dashboard", "Admin", "System telemetry & user overview", "Bearer Token (ADMIN only)"],
-                 ["GET", "/api/admin/users", "Admin", "Complete user registry listing", "Bearer Token (ADMIN only)"],
-                 ["PUT", "/api/admin/users/:id/role", "Admin", "Updates target user role", "URL :id, { role: Role }"],
-                 ["POST", "/api/admin/activities", "Admin", "Creates new learning module", "Strict CreateActivity DTO"]
+                 ["GET", "/api/v1/dashboard", "Student+", "Fetches learner profile, progress & guidance", "Bearer Token Header"],
+                 ["GET", "/api/v1/learning-journey", "Student+", "Lists all learning modules in sequence", "Bearer Token Header"],
+                 ["GET", "/api/v1/chart-data", "Student+", "Weekly performance & duration telemetry", "Bearer Token Header"],
+                 ["GET", "/api/v1/courses", "Student+", "Paginated course catalog", "page & limit query params"],
+                 ["GET", "/api/v1/activities/:id/modules", "Student+", "Bite-sized micro-module content", "URL :id activity"],
+                 ["POST", "/api/v1/activities/:id/complete", "Student+", "Transactional completion flow", "URL :id activity"],
+                 ["POST", "/api/v1/sync/bulk", "Student+", "Bulk offline .logsync upload", "{ version, timestamp, data[] }"],
+                 ["GET", "/api/v1/moderator/roster", "Moderator+", "Live roster w/ computed metrics", "Bearer Token (MODERATOR/ADMIN)"],
+                 ["GET", "/api/v1/moderator/classes", "Moderator+", "Classes owned by the teacher", "Bearer Token (MODERATOR/ADMIN)"],
+                 ["GET", "/api/v1/moderator/classes/:id/assignments", "Moderator+", "Assignments for a class", "URL :id class"],
+                 ["POST", "/api/v1/moderator/classes/:id/assignments", "Moderator+", "Creates an assignment (owner teacher only)", "{ title, description, activity_id?, due_date? }"],
+                 ["GET", "/api/v1/moderator/classes/:id/assignments/:assignment_id/submissions", "Moderator+", "Per-learner submissions for an assignment", "URL params"],
+                 ["POST", "/api/v1/moderator/announcements", "Moderator+", "Publishes a school-wide announcement", "{ title, body }"],
+                 ["GET", "/api/v1/admin/dashboard", "Admin", "System telemetry & user overview", "Bearer Token (ADMIN only)"],
+                 ["GET", "/api/v1/admin/users", "Admin", "Complete user registry listing", "Bearer Token (ADMIN only)"],
+                 ["PUT", "/api/v1/admin/users/:id/role", "Admin", "Updates target user role", "URL :id, { role: Role }"],
+                 ["POST", "/api/v1/admin/activities", "Admin", "Creates new learning module", "Strict CreateActivity DTO"],
+                 ["POST", "/api/v1/admin/classes", "Admin", "Creates a class/section", "{ name, grade, section, teacher_id }"],
+                 ["GET", "/api/v1/admin/classes", "Admin", "Lists all classes w/ member counts", "Bearer Token (ADMIN only)"],
+                 ["GET", "/api/v1/admin/classes/:id/roster", "Admin", "Enrolled students of a class", "URL :id class"],
+                 ["POST", "/api/v1/admin/classes/:id/enroll", "Admin", "Enrolls STUDENT users into a class", "{ user_ids: string[] }"],
+                 ["DELETE", "/api/v1/admin/classes/:id/enroll/:user_id", "Admin", "Removes a student from a class", "URL params"],
+                 ["POST", "/api/v1/admin/announcements", "Admin", "Publishes a school-wide announcement", "{ title, body }"],
+                 ["GET", "/api/v1/admin/audit-log", "Admin", "Append-only audit trail of sensitive ops", "limit query param (default 50)"],
+                 ["GET", "/api/v1/admin/export/students.csv", "Admin", "CSV export of enrolled students (IEMIS-ready)", "Bearer Token (ADMIN only)"]
                  ])
     doc.add_paragraph().paragraph_format.space_after = Pt(8)
 
@@ -587,11 +608,18 @@ def generate_full_documentation(output_path="LOG_Project_Documentation.docx"):
     add_heading_2(doc, "8.1 Entity Structure")
     
     add_bullet_item(doc, "Fields: ID (PK, string), Name (string), Email (uniqueIndex), Phone (uniqueIndex), PasswordHash (hidden), Role (STUDENT|MODERATOR|ADMIN), IsVerified (bool), CreatedAt, UpdatedAt, DeletedAt (soft delete).", "User: ")
-    add_bullet_item(doc, "Fields: Phone (PK, string), OTP (string), ExpiresAt (time.Time). Enforces 5-minute time-to-live expiration.", "OTPRecord: ")
+    add_bullet_item(doc, "Fields: Phone (PK, string), OTP (string), ExpiresAt (time.Time), Attempts (int). Enforces 5-minute time-to-live expiration and 5-failed-attempt invalidation.", "OTPRecord: ")
     add_bullet_item(doc, "Fields: ID (PK, string), Title (string), Description (string), Status (Completed|In progress|Pending), Topic (string), Order (int), ContentJSON (text), CreatedAt, DeletedAt.", "Activity: ")
     add_bullet_item(doc, "Fields: LearnerID (PK, string), TotalTopics (int), Completed (int), CurrentStreak (int), OverallScore (float64).", "Progress: ")
     add_bullet_item(doc, "Fields: ID (PK, string), LearnerID (FK, string), Category (strengths|areas needing improvement|consistency), Text (string), CreatedAt.", "Observation: ")
     add_bullet_item(doc, "Fields: ID (PK, string), LearnerID (FK, string), Text (string), Action (URL route), Type (next_step|practice|insight), CreatedAt.", "Guidance: ")
+    add_bullet_item(doc, "Fields: ID (PK, string), Name (string), Grade (string), Section (string), TeacherID (FK, string), CreatedAt, DeletedAt.", "Class: ")
+    add_bullet_item(doc, "Fields: ClassID (composite PK), UserID (composite PK), JoinedAt. Enrollment of a STUDENT into a Class.", "ClassMember: ")
+    add_bullet_item(doc, "Fields: ID (PK, string), Title (string), Body (text), AuthorID (FK, string), CreatedAt, UpdatedAt. School-wide notices for all roles.", "Announcement: ")
+    add_bullet_item(doc, "Fields: ID (PK, string), ClassID (FK, index), Title (string), Description (text), ActivityID (optional FK), DueDate, CreatedBy (FK), CreatedAt, UpdatedAt.", "Assignment: ")
+    add_bullet_item(doc, "Fields: ID (PK, string), AssignmentID (FK, uniqueIndex pair), LearnerID (FK, uniqueIndex pair), Note (text), SubmittedAt, UpdatedAt. Unique (assignment_id, learner_id) makes replays idempotent.", "Submission: ")
+    add_bullet_item(doc, "Fields: ID (PK, autoIncrement), UserID (FK, index), Action (index), Detail (text), IP, CreatedAt. Append-only trail of sensitive operations.", "AuditLog: ")
+    add_bullet_item(doc, "Fields: UserID (PK), RevokedBefore (time). Tokens issued before the timestamp are rejected — powers 'log out on all devices'.", "UserRevocation: ")
 
     # ==========================================
     # 9. FRONTEND PAGES & USER EXPERIENCE
