@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -10,6 +12,10 @@ import (
 	"gorm.io/gorm"
 	"log-backend/internal/domain"
 )
+
+// ErrOTPCooldown lets handlers map the re-request window to a real 429
+// instead of a misleading 500.
+var ErrOTPCooldown = errors.New("Please wait 1 minute before requesting another OTP")
 
 type authService struct {
 	userRepo domain.UserRepository
@@ -26,10 +32,12 @@ func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthReposito
 func (s *authService) RequestOTP(ctx context.Context, phone string) error {
 	existing, err := s.authRepo.FindOTPByPhone(ctx, phone)
 	if err == nil && existing.ExpiresAt.After(time.Now().Add(4*time.Minute)) {
-		return fmt.Errorf("Please wait 1 minute before requesting another OTP")
+		return ErrOTPCooldown
 	}
 
-	s.authRepo.DeleteOTP(ctx, phone)
+	// Only delete when the previous OTP is dead (expired or near-expiry) —
+	// refreshing a live OTP would let anyone who knows a phone number keep the
+	// victim permanently locked out by re-requesting every minute.
 	s.authRepo.DeleteExpiredOTPs(ctx)
 
 	otpInt, err := generateSecureOTP()
@@ -47,6 +55,10 @@ func (s *authService) RequestOTP(ctx context.Context, phone string) error {
 		Phone:     phone,
 		OTP:       otpHash,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
+	}
+	// Replace any prior (near-expiry) record for the phone.
+	if err := s.authRepo.DeleteOTP(ctx, phone); err != nil {
+		return err
 	}
 	return s.authRepo.SaveOTP(ctx, &record)
 }
@@ -92,7 +104,11 @@ func (s *authService) VerifyOTP(ctx context.Context, phone, otp string) (*domain
 			return nil, "", err
 		}
 	} else if user.DeletedAt.Valid {
+		// Soft-deleted accounts come back as plain STUDENTs — never with their
+		// old role. A removed admin must not regain ADMIN by dialing their
+		// phone number; re-provisioning is the only path back to privilege.
 		user.DeletedAt = gorm.DeletedAt{Valid: false}
+		user.Role = domain.RoleStudent
 		if err := s.userRepo.Update(ctx, user); err != nil {
 			return nil, "", err
 		}
@@ -130,12 +146,18 @@ func (s *authService) GoogleAuth(ctx context.Context, token string) (*domain.Use
 
 	payload, err := idtoken.Validate(ctx, token, clientID)
 	if err != nil {
-		return nil, "", fmt.Errorf("Invalid Google token: %v", err)
+		// Log the provider detail server-side; the client gets one generic
+		// message (validation internals are not user-facing information).
+		slog.Warn("google token validation failed", "error", err)
+		return nil, "", fmt.Errorf("Invalid Google token")
 	}
 
 	email, ok := payload.Claims["email"].(string)
 	if !ok {
 		return nil, "", fmt.Errorf("Email not found in Google token")
+	}
+	if verified, ok := payload.Claims["email_verified"].(bool); !ok || !verified {
+		return nil, "", fmt.Errorf("Google email is not verified")
 	}
 	name, _ := payload.Claims["name"].(string)
 

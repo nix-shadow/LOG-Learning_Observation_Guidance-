@@ -1,15 +1,22 @@
 import { fetchWithCache } from '../src/lib/api';
+import { decryptQueuePayload, KEY_STORE } from '../src/lib/crypto';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-// Mock IDB with deduplication tracking
+// Mock IDB with deduplication tracking. Store-aware so the sync-keys store
+// (queue encryption, WP-0.1) never pollutes the queue/cache mocks.
 const mockQueueStore: any[] = [];
+const mockKeyStore: any[] = [];
 const mockDeletedKeys: string[] = [];
 
 jest.mock('idb', () => ({
   openDB: jest.fn().mockResolvedValue({
-    get: jest.fn().mockImplementation((_store: string, key: string) => {
+    get: jest.fn().mockImplementation((store: string, key: string) => {
+      if (store === 'sync-keys') {
+        const found = mockKeyStore.find((k) => k.name === key);
+        return Promise.resolve(found ? found.key : undefined);
+      }
       // Return cached data with TTL metadata for TTL tests
       if (key === '/test-stale') {
         return { data: { stale: true }, cachedAt: Date.now() - (25 * 60 * 60 * 1000) }; // 25 hours old
@@ -23,25 +30,31 @@ jest.mock('idb', () => ({
       }
       return { data: { test: 'data' }, cachedAt: Date.now() };
     }),
-    add: jest.fn().mockImplementation((_store: string, item: any) => {
+    add: jest.fn().mockImplementation((store: string, item: any) => {
       item.id = mockQueueStore.length + 1;
       mockQueueStore.push(item);
       return Promise.resolve(item.id);
     }),
-    put: jest.fn().mockImplementation((_store: string, item: any) => {
+    put: jest.fn().mockImplementation((store: string, item: any) => {
+      if (store === 'sync-keys') {
+        mockKeyStore.push({ name: 'active', key: item });
+        return Promise.resolve(item.name);
+      }
       const idx = mockQueueStore.findIndex((e) => e.id === item.id);
       if (idx >= 0) mockQueueStore[idx] = item;
       else mockQueueStore.push(item);
       return Promise.resolve(item.id ?? mockQueueStore.length);
     }),
-    getAll: jest.fn().mockImplementation(() => {
-      return Promise.resolve([...mockQueueStore]);
+    getAll: jest.fn().mockImplementation((store: string) => {
+      return Promise.resolve(store === 'sync-keys' ? [...mockKeyStore] : [...mockQueueStore]);
     }),
     delete: jest.fn().mockImplementation((_store: string, key: string) => {
       mockDeletedKeys.push(key);
       return Promise.resolve(true);
     }),
-    objectStoreNames: { contains: () => true },
+    clear: jest.fn().mockResolvedValue(true),
+    close: jest.fn(),
+    objectStoreNames: { contains: (name: string) => name === 'api-cache' || name === 'sync-queue' || name === KEY_STORE },
   }),
 }));
 
@@ -57,6 +70,7 @@ describe('fetchWithCache', () => {
   beforeEach(() => {
     mockFetch.mockClear();
     mockQueueStore.length = 0;
+    mockKeyStore.length = 0;
     window.dispatchEvent(new Event('online'));
   });
 
@@ -147,7 +161,8 @@ describe('fetchWithCache', () => {
 
     expect(result).toEqual({ queued: true, status: 202, deduplicated: true });
     expect(mockQueueStore).toHaveLength(1);
-    expect(JSON.parse(mockQueueStore[0].body)).toEqual({ note: 'revised draft' });
+    const plain = await decryptQueuePayload(mockQueueStore[0]);
+    expect(JSON.parse(plain!.body!)).toEqual({ note: 'revised draft' });
   });
 
   it('keeps the best-scoring completion when a better attempt is queued later', async () => {
@@ -164,7 +179,8 @@ describe('fetchWithCache', () => {
 
     expect(result.deduplicated).toBe(true);
     expect(mockQueueStore).toHaveLength(1);
-    expect(JSON.parse(mockQueueStore[0].body)).toEqual({ correct_count: 4, total_count: 4 });
+    const plain = await decryptQueuePayload(mockQueueStore[0]);
+    expect(JSON.parse(plain!.body!)).toEqual({ correct_count: 4, total_count: 4 });
   });
 
   it('never downgrades a queued best completion with a lower-accuracy replay', async () => {
@@ -181,7 +197,8 @@ describe('fetchWithCache', () => {
 
     expect(result.deduplicated).toBe(true);
     expect(mockQueueStore).toHaveLength(1);
-    expect(JSON.parse(mockQueueStore[0].body)).toEqual({ correct_count: 4, total_count: 4 });
+    const plain = await decryptQueuePayload(mockQueueStore[0]);
+    expect(JSON.parse(plain!.body!)).toEqual({ correct_count: 4, total_count: 4 });
   });
 
   it('keeps distinct queued actions separate (different endpoints never collide)', async () => {
@@ -246,6 +263,159 @@ describe('fetchWithCache', () => {
     window.dispatchEvent(new Event('offline'));
 
     await fetchWithCache('/activities/act-10/complete', { method: 'POST' });
+    expect(mockQueueStore.length).toBeGreaterThan(0);
+
+    mockDeletedKeys.length = 0;
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ status: 'success' }) });
+
+    window.dispatchEvent(new Event('online'));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(mockDeletedKeys).toContain('/dashboard');
+    expect(mockDeletedKeys).toContain('/learning-journey');
+    expect(mockDeletedKeys).toContain('/chart-data');
+  });
+
+  // ---- WP-0.1: queue encryption at rest ----
+
+  it('stores queued payloads encrypted at rest', async () => {
+    window.dispatchEvent(new Event('offline'));
+
+    await fetchWithCache('/activities/act-11/complete', {
+      method: 'POST',
+      body: JSON.stringify({ score: 100 }),
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    const stored = mockQueueStore[0];
+    expect(stored.body).toBeUndefined();
+    expect(stored.headers).toBeUndefined();
+    expect(stored.enc).toBeTruthy();
+    expect(stored.enc.v).toBe(1);
+    expect(stored.enc.alg).toBe('AES-GCM');
+    expect(stored.enc.iv).toBeTruthy();
+    expect(stored.enc.ct).toBeTruthy();
+    // The ciphertext must not expose the plaintext or the auth token
+    expect(stored.enc.ct).not.toContain('test-token');
+    expect(stored.enc.ct).not.toContain('100');
+
+    const plain = await decryptQueuePayload(stored);
+    expect(JSON.parse(plain!.body!)).toEqual({ score: 100 });
+    expect((plain!.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
+  });
+
+  it('uses a fresh IV for every queued record', async () => {
+    window.dispatchEvent(new Event('offline'));
+
+    await fetchWithCache('/activities/a/complete', { method: 'POST', body: 'x' });
+    await fetchWithCache('/activities/b/complete', { method: 'POST', body: 'x' });
+
+    expect(mockQueueStore).toHaveLength(2);
+    expect(mockQueueStore[0].enc.iv).not.toBe(mockQueueStore[1].enc.iv);
+  });
+
+  it('flushes decrypted payloads to the server', async () => {
+    window.dispatchEvent(new Event('offline'));
+
+    await fetchWithCache('/activities/act-12/complete', {
+      method: 'POST',
+      body: JSON.stringify({ score: 100 }),
+    });
+
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ status: 'success' }) });
+
+    window.dispatchEvent(new Event('online'));
+    await new Promise((r) => setTimeout(r, 20));
+
+    const syncedCall = mockFetch.mock.calls.find(([url]) =>
+      String(url).includes('/activities/act-12/complete')
+    );
+    expect(syncedCall).toBeTruthy();
+    expect(JSON.parse(syncedCall![1].body)).toEqual({ score: 100 });
+  });
+
+  it('still flushes legacy plaintext records (v3 migration path)', async () => {
+    // A record queued by an older build has no enc field.
+    mockQueueStore.push({
+      id: 1,
+      endpoint: '/activities/act-13/complete',
+      method: 'POST',
+      headers: { Authorization: 'Bearer old-token' },
+      body: JSON.stringify({ score: 50 }),
+      timestamp: new Date().toISOString(),
+      retryCount: 0,
+    });
+
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ status: 'success' }) });
+
+    window.dispatchEvent(new Event('online'));
+    await new Promise((r) => setTimeout(r, 20));
+
+    const syncedCall = mockFetch.mock.calls.find(([url]) =>
+      String(url).includes('/activities/act-13/complete')
+    );
+    expect(syncedCall).toBeTruthy();
+    expect(JSON.parse(syncedCall![1].body)).toEqual({ score: 50 });
+  });
+
+  // ---- WP-0.2 C1: queue-integrity regression guarantees ----
+
+  it('KEEPS queued records on a 401 during flush (never deletes learner work)', async () => {
+    window.dispatchEvent(new Event('offline'));
+
+    await fetchWithCache('/activities/act-14/complete', {
+      method: 'POST',
+      body: JSON.stringify({ score: 90 }),
+    });
+    expect(mockQueueStore).toHaveLength(1);
+
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized' }),
+    });
+
+    window.dispatchEvent(new Event('online'));
+    await new Promise((r) => setTimeout(r, 20));
+
+    // The record survives the failed flush and is NOT deleted.
+    expect(mockQueueStore).toHaveLength(1);
+    const plain = await decryptQueuePayload(mockQueueStore[0]);
+    expect(JSON.parse(plain!.body!)).toEqual({ score: 90 });
+  });
+
+  it('re-attaches the CURRENT token to queued records at flush time', async () => {
+    window.dispatchEvent(new Event('offline'));
+
+    // Queued under an old/expired token (or none at all).
+    await fetchWithCache('/activities/act-15/complete', {
+      method: 'POST',
+      body: JSON.stringify({ score: 80 }),
+      headers: { Authorization: 'Bearer expired-token' },
+    });
+
+    localStorage.setItem('log_token', 'fresh-token-after-relogin');
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ status: 'success' }) });
+
+    window.dispatchEvent(new Event('online'));
+    await new Promise((r) => setTimeout(r, 20));
+
+    const syncedCall = mockFetch.mock.calls.find(([url]) =>
+      String(url).includes('/activities/act-15/complete')
+    );
+    expect(syncedCall).toBeTruthy();
+    expect(syncedCall![1].headers.Authorization).toBe('Bearer fresh-token-after-relogin');
+    localStorage.removeItem('log_token');
+  });
+
+  it('invalidates dashboard, learning-journey and chart-data caches after a /sync/bulk flush', async () => {
+    window.dispatchEvent(new Event('offline'));
+
+    // Sneakernet import ships its actions through POST /sync/bulk.
+    await fetchWithCache('/sync/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ actions: [{ endpoint: '/activities/x/complete', method: 'POST' }] }),
+    });
     expect(mockQueueStore.length).toBeGreaterThan(0);
 
     mockDeletedKeys.length = 0;

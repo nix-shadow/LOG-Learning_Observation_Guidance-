@@ -8,6 +8,7 @@ import { CheckCircle2, Circle, PlayCircle, ChevronRight, Activity as ActivityIco
 import SkeletonLoader from '@/components/SkeletonLoader';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { prefersReducedMotion } from '@/lib/motion';
 
 export default function Learning() {
   const [data, setData] = useState<LearningJourneyData | null>(null);
@@ -22,6 +23,7 @@ export default function Learning() {
   }, []);
 
   useGSAP(() => {
+    if (prefersReducedMotion()) return;
     if (!loading && data) {
       gsap.fromTo(
         gsap.utils.toArray('.gsap-stagger'),
@@ -50,7 +52,7 @@ export default function Learning() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data?.activities.map((act: Activity, index: number) => {
           let Icon = Circle;
-          let iconColor = "text-white/30";
+          let iconColor = "text-brand-faint";
           let iconBg = "bg-brand-dark";
           let cardGlow = "card-glow border border-white/5 bg-black/20";
           let actionBtn = "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white";
@@ -75,7 +77,7 @@ export default function Learning() {
               className={`gsap-stagger ${cardGlow} backdrop-blur-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-glow flex flex-col h-full`}
             >
               <div className="flex items-center justify-between mb-6">
-                <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${act.status === 'Completed' ? 'text-brand-neon' : act.status === 'In progress' ? 'text-brand-amber' : 'text-white/40'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${act.status === 'Completed' ? 'text-brand-neon' : act.status === 'In progress' ? 'text-brand-amber' : 'text-brand-muted'}`}>
                   Module {index + 1}
                 </span>
                 <span className={`p-2 rounded-full ${iconBg} ${iconColor} transition-transform duration-300`}>

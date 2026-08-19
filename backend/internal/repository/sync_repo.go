@@ -53,19 +53,25 @@ func (r *syncRepo) SyncBulk(ctx context.Context, learnerID string, data []domain
 					continue
 				}
 			}
+			stats = stats.Clamp()
 
+			newCompletion := false
 			var learnerAct domain.LearnerActivity
+			// WP-0.2 research round: date the completion by the client's
+			// reported instant (clamped), not the flush instant.
+			completedAt := stats.CompletedAt(time.Now())
 			if err := tx.First(&learnerAct, "learner_id = ? AND activity_id = ?", learnerID, actID).Error; err != nil {
 				learnerAct = domain.LearnerActivity{
 					LearnerID:      learnerID,
 					ActivityID:     actID,
 					Status:         "Completed",
-					CompletedAt:    time.Now(),
+					CompletedAt:    completedAt,
 					Score:          stats.Score(),
 					Accuracy:       stats.Accuracy(),
 					ElapsedSeconds: stats.ElapsedSeconds,
 					Attempts:       1,
 				}
+				newCompletion = true
 				if err := tx.Create(&learnerAct).Error; err != nil {
 					return err
 				}
@@ -89,11 +95,12 @@ func (r *syncRepo) SyncBulk(ctx context.Context, learnerID string, data []domain
 				}
 			} else {
 				learnerAct.Status = "Completed"
-				learnerAct.CompletedAt = time.Now()
+				learnerAct.CompletedAt = completedAt
 				learnerAct.Score = stats.Score()
 				learnerAct.Accuracy = stats.Accuracy()
 				learnerAct.ElapsedSeconds = stats.ElapsedSeconds
 				learnerAct.Attempts = 1
+				newCompletion = true
 				if err := tx.Save(&learnerAct).Error; err != nil {
 					return err
 				}
@@ -101,62 +108,71 @@ func (r *syncRepo) SyncBulk(ctx context.Context, learnerID string, data []domain
 
 			// Scoped progress update: only touch the calling user's progress,
 			// creating the record the first time a new learner syncs.
-			var progress domain.Progress
-			if err := tx.First(&progress, "learner_id = ?", learnerID).Error; err != nil {
-				var totalTopics int64
-				tx.Model(&domain.Activity{}).Count(&totalTopics)
-				progress = domain.Progress{
-					LearnerID:   learnerID,
-					TotalTopics: int(totalTopics),
+			// Only genuinely new completions bump progress/streak/daily rows —
+			// an improving re-attempt must not count the activity twice (the
+			// online path gates identically).
+			if newCompletion {
+				var progress domain.Progress
+				if err := tx.First(&progress, "learner_id = ?", learnerID).Error; err != nil {
+					var totalTopics int64
+					tx.Model(&domain.Activity{}).Count(&totalTopics)
+					progress = domain.Progress{
+						LearnerID:   learnerID,
+						TotalTopics: int(totalTopics),
+					}
 				}
-			}
-			progress.Completed++
-			if progress.Completed > progress.TotalTopics {
-				progress.Completed = progress.TotalTopics
-			}
-
-			// Date-aware streak (mirrors the online completion path):
-			// same-day completions do not double the streak.
-			now := time.Now()
-			today := now.Truncate(24 * time.Hour)
-			switch {
-			case progress.LastActivityDate.IsZero():
-				progress.CurrentStreak = 1
-			case progress.LastActivityDate.Equal(today):
-				// same-day replay: keep the streak as-is
-			case progress.LastActivityDate.Equal(today.Add(-24 * time.Hour)):
-				progress.CurrentStreak++
-			default:
-				progress.CurrentStreak = 1
-			}
-			progress.LastActivityDate = today
-
-			if progress.OverallScore < 95.0 {
-				progress.OverallScore += 2.5
-			}
-			if err := tx.Save(&progress).Error; err != nil {
-				return err
-			}
-
-			// Real DailyActivity row so the chart-data endpoint reflects
-			// syncs, not just online completions.
-			var daily domain.DailyActivity
-			if err := tx.Where("learner_id = ? AND date = ?", learnerID, today).First(&daily).Error; err != nil {
-				daily = domain.DailyActivity{
-					ID:        service.GenerateSecureID("dly"),
-					LearnerID: learnerID,
-					Date:      today,
-					DayName:   now.Weekday().String()[:3],
-					Score:     100.0,
-					Duration:  0,
+				progress.Completed++
+				if progress.Completed > progress.TotalTopics {
+					progress.Completed = progress.TotalTopics
 				}
-				if err := tx.Create(&daily).Error; err != nil {
+
+				// Date-aware streak (mirrors the online completion path):
+				// same-day completions do not double the streak. Calendar date
+				// and day name use the learner's local timezone.
+				loc := stats.Location()
+				local := completedAt.In(loc)
+				today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
+				switch {
+				case progress.LastActivityDate.IsZero():
+					progress.CurrentStreak = 1
+				case progress.LastActivityDate.Equal(today):
+					// same-day replay: keep the streak as-is
+				case progress.LastActivityDate.Equal(today.Add(-24 * time.Hour)):
+					progress.CurrentStreak++
+				default:
+					progress.CurrentStreak = 1
+				}
+				progress.LastActivityDate = today
+
+				if progress.OverallScore < 95.0 {
+					progress.OverallScore += 2.5
+				}
+				if err := tx.Save(&progress).Error; err != nil {
 					return err
 				}
-			} else {
-				daily.Score += 100.0
-				if err := tx.Save(&daily).Error; err != nil {
-					return err
+
+				// Real DailyActivity row so the chart-data endpoint reflects
+				// syncs, not just online completions. Duration accumulates
+				// like the online path (was zeroed on every sync before).
+				var daily domain.DailyActivity
+				if err := tx.Where("learner_id = ? AND date = ?", learnerID, today).First(&daily).Error; err != nil {
+					daily = domain.DailyActivity{
+						ID:        service.GenerateSecureID("dly"),
+						LearnerID: learnerID,
+						Date:      today,
+						DayName:   local.Weekday().String()[:3],
+						Score:     100.0,
+						Duration:  stats.ElapsedSeconds,
+					}
+					if err := tx.Create(&daily).Error; err != nil {
+						return err
+					}
+				} else {
+					daily.Score += 100.0
+					daily.Duration += stats.ElapsedSeconds
+					if err := tx.Save(&daily).Error; err != nil {
+						return err
+					}
 				}
 			}
 

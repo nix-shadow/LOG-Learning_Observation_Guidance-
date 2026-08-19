@@ -1,5 +1,11 @@
 import { openDB } from 'idb';
 import toast from 'react-hot-toast';
+import {
+  encryptQueuePayload,
+  decryptQueuePayload,
+  headersToRecord,
+  KEY_STORE,
+} from './crypto';
 
 export class HttpError extends Error {
   is4xx: boolean;
@@ -26,9 +32,38 @@ if (typeof window !== 'undefined') {
   manualOfflineOverride = localStorage.getItem('log_offline_mode') === 'true';
 }
 
+// True once the browser confirms our IndexedDB stores are exempt from
+// automatic eviction. null until the persist() promise settles.
+let storagePersisted: boolean | null = null;
+
+/** Honest view of the storage-persistence grant (null = not yet known). */
+export function getStoragePersistence(): boolean | null {
+  return storagePersisted;
+}
+
 let isAppOnline = true;
 if (typeof window !== 'undefined') {
   isAppOnline = navigator.onLine && !manualOfflineOverride;
+  // WP-0.1 research round: ask the browser to persist our IndexedDB stores
+  // (sync queue + cache). Without a grant, an aggressive mobile OS can evict
+  // offline learner work when storage pressure hits. Best-effort and honest:
+  // the result is tracked but never fabricated into the UI.
+  if (navigator.storage && typeof navigator.storage.persist === 'function') {
+    navigator.storage.persist().then((granted) => {
+      storagePersisted = granted;
+      try {
+        localStorage.setItem('log_storage_persisted', granted ? 'true' : 'false');
+      } catch { /* non-critical */ }
+    }).catch(() => {});
+  }
+  // F1: flush any queued work as soon as the app boots — a device that was
+  // offline when the user last closed the tab must not keep its queue hostage
+  // until the next online/offline event fires.
+  window.addEventListener('load', () => {
+    if (navigator.onLine && !manualOfflineOverride) {
+      flushSyncQueue();
+    }
+  });
   window.addEventListener('online', async () => {
     if (manualOfflineOverride) return;
     isAppOnline = true;
@@ -42,7 +77,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const initDB = async () => {
-  return openDB(DB_NAME, 3, {
+  return openDB(DB_NAME, 4, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore(CACHE_STORE);
@@ -51,6 +86,12 @@ export const initDB = async () => {
         db.createObjectStore(QUEUE_STORE, { keyPath: 'id', autoIncrement: true });
       }
       // Version 3: no schema change, but cache entries now include cachedAt
+      // Version 4 (WP-0.1): sync-keys store holds the AES-GCM queue key.
+      // Legacy plaintext queue records are NOT migrated — they flush and
+      // disappear naturally; new records are always encrypted.
+      if (oldVersion < 4 && !db.objectStoreNames.contains(KEY_STORE)) {
+        db.createObjectStore(KEY_STORE);
+      }
     },
   });
 };
@@ -132,9 +173,7 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
           const nowSecs = Math.floor(Date.now() / 1000);
           if (payload.exp && payload.exp < nowSecs) {
             // Token is expired — clear it and redirect rather than sending a 401
-            localStorage.removeItem('log_token');
-            localStorage.removeItem('log_user');
-            window.location.href = '/login';
+            clearCredentialsAndRedirect();
             throw new Error('Session expired. Redirecting to login.');
           }
         }
@@ -164,6 +203,13 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
         // It's a real failure from the server.
         if (response.status >= 400 && response.status < 500) {
           const errData = await response.json().catch(() => ({}));
+          // F6: a server 401 must end the session loudly, not fall back to
+          // cached data — the cache may belong to another account or an old
+          // role, so silently serving it would leak stale/foreign data.
+          if (response.status === 401) {
+            clearCredentialsAndRedirect();
+            throw new HttpError('Session expired. Please log in again.', true);
+          }
           throw new HttpError(errData.detail || errData.message || errData.error || `HTTP error! status: ${response.status}`, true);
         }
         // For 5xx errors, we treat it like offline and queue it.
@@ -176,6 +222,11 @@ export async function fetchWithCache(endpoint: string, options: RequestInit = {}
       if (method === 'GET') {
         const db = await initDB();
         await db.put(CACHE_STORE, { data, cachedAt: Date.now() }, endpoint);
+      } else if (method === 'POST' || method === 'PUT' || method === 'DELETE') {
+        // F4: successful live mutations must invalidate the related cached
+        // reads immediately — otherwise a fresh POST is followed by a stale
+        // GET (e.g. a new announcement not appearing until TTL expiry).
+        await invalidateRelatedCache(endpoint);
       }
       return data;
     } catch (error: unknown) {
@@ -227,6 +278,14 @@ async function queueRequest(endpoint: string, options: RequestInit) {
     const db = await initDB();
     const method = options.method || 'POST';
 
+    // F2: credential endpoints must NEVER be queued for offline replay.
+    // Queuing a login/OTP request stores the password/OTP in IndexedDB in
+    // plaintext and replays it later; besides leaking secrets, a replayed
+    // verify-otp would consume a fresh code. Fail loudly instead.
+    if (endpoint.startsWith('/auth/')) {
+      throw new HttpError('This action requires a connection. Please try again when online.', true);
+    }
+
     // Deduplication is body-aware: two queued writes to the same endpoint are
     // the same logical action, so the queue keeps ONE entry — but which body
     // wins depends on the action type:
@@ -234,6 +293,8 @@ async function queueRequest(endpoint: string, options: RequestInit) {
     //     attempt — the server applies best-score semantics, so a queued
     //     lower-accuracy replay must never overwrite a better one
     //   - everything else (submissions, announcements): last write wins
+    // WP-0.1: bodies are encrypted at rest, so the duplicate's plaintext is
+    // recovered in memory (and only in memory) for the comparison.
     const existing = await db.getAll(QUEUE_STORE);
     const duplicate = existing.find(
       (req: { endpoint: string; method: string }) => req.endpoint === endpoint && req.method === method
@@ -241,16 +302,20 @@ async function queueRequest(endpoint: string, options: RequestInit) {
 
     if (duplicate) {
       const newBody = typeof options.body === 'string' ? options.body : null;
-      const keptBody = mergeQueuedBody(endpoint, duplicate.body, newBody);
-      if (keptBody === duplicate.body && keptBody === newBody) {
+      const existingPlain = await decryptQueuePayload(duplicate);
+      const existingBody = existingPlain ? existingPlain.body : null;
+      const keptBody = mergeQueuedBody(endpoint, existingBody, newBody);
+      if (keptBody === existingBody && keptBody === newBody) {
         console.log('Duplicate request already queued, skipping:', endpoint);
         return { queued: true, status: 202, deduplicated: true };
       }
       // Replace the queued entry in place (keyPath id preserved) with the
       // dominant body — the queue never holds two entries for one action.
+      const { enc, fp } = await encryptQueuePayload(endpoint, method, duplicate.headers, keptBody ?? duplicate.body);
       await db.put(QUEUE_STORE, {
         ...duplicate,
-        body: keptBody ?? duplicate.body,
+        enc,
+        fp,
         timestamp: new Date().toISOString(),
         retryCount: 0,
       });
@@ -258,11 +323,13 @@ async function queueRequest(endpoint: string, options: RequestInit) {
       return { queued: true, status: 202, deduplicated: true };
     }
 
+    const newBody = typeof options.body === 'string' ? options.body : null;
+    const { enc, fp } = await encryptQueuePayload(endpoint, method, options.headers, newBody);
     await db.add(QUEUE_STORE, {
       endpoint,
       method,
-      headers: options.headers,
-      body: options.body,
+      enc,
+      fp,
       timestamp: new Date().toISOString(),
       retryCount: 0,
     });
@@ -328,8 +395,45 @@ async function invalidateRelatedCache(endpoint: string) {
     if (endpoint.includes('/submit')) {
       await db.delete(CACHE_STORE, '/assignments');
     }
+    // F4: school-module mutations (classes, enrollment, announcements,
+    // assignments, roles) read through dynamic cache keys (e.g. per-class
+    // assignment lists) that cannot be enumerated here — clear the whole
+    // cache instead. These actions are low-frequency, so the blast radius is
+    // one stale-free page load, not a performance concern.
+    if (
+      endpoint.includes('/classes') ||
+      endpoint.includes('/enroll') ||
+      endpoint.includes('/announcements') ||
+      endpoint.includes('/assignments') ||
+      endpoint.includes('/users') ||
+      endpoint.includes('/roles')
+    ) {
+      await clearApiCache();
+    }
   } catch (e) {
     console.warn('Cache invalidation failed (non-critical)', e);
+  }
+}
+
+/** Clears every entry in the API cache store. */
+export async function clearApiCache(): Promise<void> {
+  try {
+    const db = await initDB();
+    const keys = await db.getAllKeys(CACHE_STORE);
+    await Promise.all(keys.map((key) => db.delete(CACHE_STORE, key)));
+  } catch (e) {
+    console.warn('Cache clear failed (non-critical)', e);
+  }
+}
+
+/** Clears credentials and bounces to the login screen (401 / expired session). */
+export function clearCredentialsAndRedirect(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('log_token');
+  localStorage.removeItem('log_user');
+  document.cookie = 'log_token=; path=/; max-age=0';
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login';
   }
 }
 
@@ -348,13 +452,29 @@ async function syncQueue() {
     let failedCount = 0;
 
     for (const req of queuedReqs) {
+      // F2 guard (defense in depth): auth requests can only have entered the
+      // queue from an older build — drop them instead of replaying secrets.
+      if (req.endpoint && req.endpoint.startsWith('/auth/')) {
+        await db.delete(QUEUE_STORE, req.id);
+        failedCount++;
+        continue;
+      }
 
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
+          // WP-0.1: queued payloads are encrypted at rest — recover the
+          // plaintext in memory before replay. A failed decrypt keeps the
+          // record (never delete learner work on a key hiccup).
+          const plain = await decryptQueuePayload(req);
+          if (!plain) {
+            console.error(`Cannot decrypt ${req.endpoint} — keeping in queue`);
+            failedCount++;
+            break;
+          }
           // Re-attach the current token so records queued under an expired
           // session can still sync after the user logs back in.
-          const replayHeaders: Record<string, string> = { ...(req.headers || {}) };
+          const replayHeaders: Record<string, string> = headersToRecord(plain.headers);
           if (typeof window !== 'undefined') {
             const freshToken = localStorage.getItem('log_token');
             if (freshToken) replayHeaders['Authorization'] = `Bearer ${freshToken}`;
@@ -362,7 +482,7 @@ async function syncQueue() {
           const response = await fetch(`${BASE_URL}${req.endpoint}`, {
             method: req.method,
             headers: replayHeaders,
-            body: req.body,
+            body: plain.body,
           });
 
           if (response.ok || response.status === 409) {
@@ -386,6 +506,21 @@ async function syncQueue() {
             toast('Session expired. Please log in to sync your saved changes.', { icon: '🔒' });
             failedCount++;
             return;
+          }
+
+          // 403 consent_required (WP-0.1 enforcement round): the server-side
+          // consent gate rejected a learner mutation. This is NOT a terminal
+          // error — the record stays queued and the flush stops so the learner
+          // (or guardian) can grant consent, after which the next online event
+          // syncs it. Deleting here would silently lose offline work.
+          if (response.status === 403) {
+            const errData = await response.json().catch(() => ({}));
+            if (errData.code === 'consent_required') {
+              console.error(`Guardian consent required for ${req.endpoint} — queue preserved`);
+              toast('Guardian consent is needed to sync saved changes. Please grant it in Settings.', { icon: '🛡️' });
+              failedCount++;
+              return;
+            }
           }
 
           // Other client error (4xx) — don't retry, remove from queue
@@ -419,6 +554,18 @@ async function syncQueue() {
   } catch (e) {
     console.error('Failed to process sync queue', e);
   }
+}
+
+/**
+ * Public flush entry point — used by the boot loader, SyncIsland's "Sync now"
+ * button, the command palette, and post-login/sneakernet-import flows.
+ */
+export async function flushSyncQueue(): Promise<{ synced: number; failed: number }> {
+  const before = await getSyncQueueCount();
+  if (before === 0) return { synced: 0, failed: 0 };
+  await syncQueue();
+  const after = await getSyncQueueCount();
+  return { synced: before - after, failed: after };
 }
 
 /**

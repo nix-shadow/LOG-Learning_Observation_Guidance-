@@ -49,6 +49,7 @@ func main() {
 	activityRepo := repository.NewActivityRepository(database.DB)
 	completionRepo := repository.NewCompletionRepository(database.DB)
 	schoolRepo := repository.NewSchoolRepository(database.DB)
+	privacyRepo := repository.NewPrivacyRepository(database.DB)
 
 	// Initialize Services
 	authService := service.NewAuthService(userRepo, authRepo)
@@ -57,12 +58,37 @@ func main() {
 	courseService := service.NewCourseService(courseRepo)
 	moderatorService := service.NewModeratorService(modRepo)
 	schoolService := service.NewSchoolService(schoolRepo)
+	privacyService := service.NewPrivacyService(privacyRepo)
 
 	// Initialize Handlers
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, schoolService)
 	syncHandler := handler.NewSyncHandler(syncService)
 	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
 	schoolHandler := handler.NewSchoolHandler(schoolService)
+	privacyHandler := handler.NewPrivacyHandler(privacyService)
+
+	// ---------------------------------------------------------------------------
+	// Retention purge job (WP-0.1 enforcement round): runs at startup and then
+	// daily, enforcing the InactiveAccountRetentionYears learner window and the
+	// AuditLogRetentionYears audit window. Learner erasures go through the full
+	// DeleteAccount erasure map (school context survives, anonymized audit row
+	// written); audit rows are deleted past their window. A manual trigger is
+	// exposed at POST /api/v1/admin/maintenance/purge.
+	// ---------------------------------------------------------------------------
+	purgeExpired := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		report, err := privacyService.PurgeExpiredData(ctx)
+		if err != nil {
+			slog.Error("Retention purge failed", "error", err)
+			return
+		}
+		slog.Info("Retention purge run",
+			"users_purged", report.UsersPurged,
+			"audit_rows_purged", report.AuditRowsPurged,
+		)
+	}
+	go purgeExpired()
 
 	// Use gin.New() + only the Logger and Recovery middlewares we control
 	// so we avoid gin.Default()'s panic recovery leaking stack traces to clients.
@@ -121,16 +147,17 @@ func main() {
 	r.Use(handler.RequestIDMiddleware())
 
 	// ---------------------------------------------------------------------------
-	// Public Auth Routes — rate limited
+	// Public Auth Routes — rate limited per route: each endpoint gets its own
+	// bucket so a classroom of 30 students behind one school IP can verify OTPs
+	// without one hammered route starving the others (see middleware.go).
 	// ---------------------------------------------------------------------------
 	authRoutes := r.Group("/api/v1/auth")
-	authRoutes.Use(handler.RateLimitMiddleware())
 	{
-		authRoutes.POST("/request-otp", authHandler.RequestOTP)
-		authRoutes.POST("/verify-otp", authHandler.VerifyOTP)
-		authRoutes.POST("/forgot-password", authHandler.ForgotPassword)
-		authRoutes.POST("/google", authHandler.GoogleAuth)
-		authRoutes.POST("/login", authHandler.Login)
+		authRoutes.POST("/request-otp", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitRequestOTP, time.Minute)), authHandler.RequestOTP)
+		authRoutes.POST("/verify-otp", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitVerifyOTP, time.Minute)), authHandler.VerifyOTP)
+		authRoutes.POST("/forgot-password", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPassword, time.Minute)), authHandler.ForgotPassword)
+		authRoutes.POST("/google", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitLogin, time.Minute)), authHandler.GoogleAuth)
+		authRoutes.POST("/login", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitLogin, time.Minute)), authHandler.Login)
 	}
 
 	// ---------------------------------------------------------------------------
@@ -157,18 +184,30 @@ func main() {
 		apiRoutes.GET("/learning-journey", learnerHandler.GetLearningJourney)
 		apiRoutes.GET("/chart-data", learnerHandler.GetChartData)
 		apiRoutes.GET("/courses", learnerHandler.GetCourses)
+		// Server-side consent gate (WP-0.1 enforcement round): learner
+		// mutations require an active guardian grant, even if the login UI is
+		// bypassed. The 403 code "consent_required" is honored by the offline
+		// queue (records are preserved, never deleted).
+		apiRoutes.POST("/courses/:id/enroll", handler.RequireConsent(privacyRepo), learnerHandler.Enroll)
+		apiRoutes.DELETE("/courses/:id/enroll", handler.RequireConsent(privacyRepo), learnerHandler.Unenroll)
 		apiRoutes.GET("/activities/:id/modules", learnerHandler.GetMicroModules)
-		apiRoutes.POST("/activities/:id/complete", learnerHandler.CompleteActivity)
-		apiRoutes.POST("/sync/bulk", syncHandler.SyncBulk)
+		apiRoutes.POST("/activities/:id/complete", handler.RequireConsent(privacyRepo), learnerHandler.CompleteActivity)
+		apiRoutes.POST("/sync/bulk", handler.RequireConsent(privacyRepo), syncHandler.SyncBulk)
 		// Logout: revokes the caller's JWT by adding its JTI to the blocklist
 		apiRoutes.POST("/auth/logout", authHandler.LogoutHandler)
-		apiRoutes.PUT("/auth/password", authHandler.UpdatePassword)
+		apiRoutes.PUT("/auth/password", handler.RequireConsent(privacyRepo), authHandler.UpdatePassword)
 		apiRoutes.POST("/auth/logout-all", schoolHandler.LogoutAll)
 		// Announcements — read-only for learners
 		apiRoutes.GET("/announcements", schoolHandler.ListAnnouncements)
 		// Assignments — learners see their class assignments and submit answers
 		apiRoutes.GET("/assignments", schoolHandler.ListMyAssignments)
-		apiRoutes.POST("/assignments/:assignment_id/submit", schoolHandler.SubmitAssignment)
+		apiRoutes.POST("/assignments/:assignment_id/submit", handler.RequireConsent(privacyRepo), schoolHandler.SubmitAssignment)
+		// Privacy (WP-0.1): consent evidence, personal-data export, erasure.
+		// Rate limited per IP — same hardening as the auth routes.
+		apiRoutes.POST("/me/consent", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPrivacyWrite, time.Minute)), privacyHandler.RecordConsent)
+		apiRoutes.GET("/me/consent", privacyHandler.GetMyConsent)
+		apiRoutes.GET("/me/export", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPrivacyExport, time.Minute)), privacyHandler.ExportMyData)
+		apiRoutes.DELETE("/me", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPrivacyWrite, time.Minute)), privacyHandler.DeleteAccount)
 	}
 
 	// ---------------------------------------------------------------------------
@@ -204,6 +243,7 @@ func main() {
 		adminRoutes.POST("/announcements", schoolHandler.CreateAnnouncement)
 		adminRoutes.GET("/audit-log", schoolHandler.ListAuditLog)
 		adminRoutes.GET("/export/students.csv", schoolHandler.ExportStudentsCSV)
+		adminRoutes.POST("/maintenance/purge", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPrivacyWrite, time.Minute)), privacyHandler.PurgeNow)
 	}
 
 	port := os.Getenv("PORT")
@@ -237,6 +277,23 @@ func main() {
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Daily retention ticker — stops on shutdown alongside the server.
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				purgeExpired()
+			case <-done:
+				return
+			}
+		}
+	}()
+
 	<-quit
 	slog.Info("Shutting down server...")
 

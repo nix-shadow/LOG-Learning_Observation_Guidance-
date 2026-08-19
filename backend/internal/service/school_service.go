@@ -17,14 +17,15 @@ type SchoolService interface {
 	CreateAnnouncement(ctx context.Context, title, body, authorID string) (*domain.Announcement, error)
 	ListAnnouncements(ctx context.Context, limit int) ([]domain.Announcement, error)
 	CreateAssignment(ctx context.Context, classID, title, description, activityID, createdBy string, dueDate string) (*domain.Assignment, error)
-	AssignmentsForClass(ctx context.Context, classID string) ([]domain.Assignment, error)
+	AssignmentsForClass(ctx context.Context, classID, callerID string, isAdmin bool) ([]domain.Assignment, error)
 	AssignmentsForLearner(ctx context.Context, learnerID string) ([]domain.Assignment, error)
 	SubmitAssignment(ctx context.Context, assignmentID, learnerID, note string) (*domain.Submission, error)
 	FindSubmission(ctx context.Context, assignmentID, learnerID string) (*domain.Submission, error)
-	SubmissionsForAssignment(ctx context.Context, assignmentID string) ([]domain.Submission, error)
+	SubmissionsForAssignment(ctx context.Context, assignmentID, callerID string, isAdmin bool) ([]domain.Submission, error)
 	SubmissionCount(ctx context.Context, assignmentID string) (int64, error)
+	SubmissionCounts(ctx context.Context, assignmentIDs []string) (map[string]int64, error)
 	WriteAuditLog(ctx context.Context, userID, action, detail, ip string)
-	ListAuditLogs(ctx context.Context, limit int) ([]domain.AuditLog, error)
+	ListAuditLogs(ctx context.Context, limit, offset int) ([]domain.AuditLog, int64, error)
 	RevokeAll(ctx context.Context, userID string) error
 	RevokedBefore(ctx context.Context, userID string) (*domain.UserRevocation, error)
 }

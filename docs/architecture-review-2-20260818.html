@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LOG Platform — Architecture Review #2 (2026-08-19)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="html/assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-14">
+    <p class="text-brand-amber/80 text-sm font-bold uppercase tracking-[0.25em] mb-3">LOG · Learning Observation Guidance</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Architecture Review #2</h1>
+    <p class="text-white/60 text-lg mb-6">Second hardening pass — security, offline-sync integrity, and honest-state audit of the backend and frontend. Verdicts below are <strong class="text-white">live</strong>, verified by build + test runs.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">Backend: 10 findings fixed</span>
+      <span class="badge badge-ok">Frontend: 17 findings fixed</span>
+      <span class="badge badge-ok">5 new Go tests</span>
+      <span class="badge badge-ok">48 Jest tests green</span>
+      <span class="badge badge-medium">Backlog: 5 candidates</span>
+    </div>
+    <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">10</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Backend fixes</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">17</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Frontend fixes</p></div>
+      <div class="seam rounded-2xl p-4"><p class="text-3xl font-extrabold text-red-300">0</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Open findings</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">5</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Backlog candidates</p></div>
+    </div>
+  </header>
+
+  <!-- Summary -->
+  <section class="mb-14">
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">Scope &amp; Method</h2>
+    <p class="text-white/70 leading-relaxed mb-4">
+      This round re-audited the <strong>auth/rate-limit seam</strong>, <strong>OTP lifecycle</strong>, <strong>JWT claim validation</strong>,
+      <strong>export sanitization</strong>, <strong>read-scoping of teacher data</strong>, and the <strong>frontend offline-sync UX</strong>
+      (flush triggers, cache invalidation, honest queued/error/empty states, dead UI). Every claim was verified against source with
+      <code>file:line</code> evidence and the full build+test suite.
+    </p>
+    <div class="grid md:grid-cols-2 gap-4 text-sm">
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2">Backend verification</p>
+        <p class="text-white/60 font-mono">gofmt -l . empty · go build ✓ · go vet ✓ · go test -count=1 ./... → ok (2.5s)</p>
+      </div>
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2">Frontend verification</p>
+        <p class="text-white/60 font-mono">npx tsc --noEmit ✓ · npx jest → 48/48 ✓ · npx next build ✓ (15 routes)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BACKEND ============ -->
+  <h2 class="text-3xl font-bold mb-8 tracking-tight" id="backend">Backend Findings <span class="badge badge-ok ml-2">10 fixed</span></h2>
+
+  <div class="space-y-10 mb-16">
+
+    <!-- B1: rate limiter -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">B1 — Shared auth rate-limit bucket spanned all auth routes</h3>
+      </div>
+      <p class="text-white/70 mb-3">One limiter covered <code>/api/v1/auth/*</code>: 5 requests/min anywhere (login + OTP + password reset) exhausted the shared bucket; per-route limits were impossible.</p>
+      <ul class="text-white/60 text-sm space-y-1 mb-4">
+        <li>→ <code>backend/internal/handler/middleware.go</code>: <code>newRateLimiter(limit, window)</code> + background <code>cleanupLoop</code>; exported <code>RateLimitLogin=10</code>, <code>RateLimitRequestOTP=5</code>, <code>RateLimitVerifyOTP=20</code>, <code>RateLimitPassword=10</code>, <code>NewLimiter</code>, <code>RateLimitMiddlewareWith</code>.</li>
+        <li>→ <code>backend/main.go</code>: per-route limiters on request-otp (5/min), verify-otp (20/min), forgot-password (10/min), google (10/min), login (10/min).</li>
+      </ul>
+      <div class="mermaid">
+flowchart LR
+  subgraph Before
+    A[client] --> L1[shared bucket 5/min]
+    L1 --> R1[/auth/login/]
+    L1 --> R2[/auth/request-otp/]
+    L1 --> R3[/auth/verify-otp/]
+  end
+  subgraph After
+    C[client] --> L2[login 10/min]
+    C --> L3[request-otp 5/min]
+    C --> L4[verify-otp 20/min]
+    C --> L5[password 10/min]
+    C --> L6[google 10/min]
+  end
+      </div>
+    </div>
+
+    <!-- B2: OTP cooldown -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">B2 — RequestOTP destroyed the live OTP before verification</h3>
+      </div>
+      <p class="text-white/70 mb-3">Every re-request deleted the previous OTP server-side while the user still held the old code — a second request made verification impossible. No cooldown existed.</p>
+      <ul class="text-white/60 text-sm space-y-1 mb-4">
+        <li>→ <code>backend/internal/service/auth_service_impl.go</code>: sentinel <code>ErrOTPCooldown</code>; only expired/near-expiry records are deleted; the live OTP survives a rejected re-request.</li>
+        <li>→ <code>backend/internal/handler/auth_handler.go</code>: <code>ErrOTPCooldown</code> → 429.</li>
+        <li>→ Test <code>TestRequestOTPCooldownReturns429</code>: first 200, second 429, live OTP still verifiable after.</li>
+      </ul>
+    </div>
+
+    <!-- B3: JWT hardening -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">B3 — JWT accepted without exp / jti claims</h3>
+      </div>
+      <p class="text-white/70 mb-3">Middleware validated the signature but tolerated tokens without <code>exp</code> (never-expiring) or <code>jti</code> (un-revocable — the blocklist is keyed by jti).</p>
+      <ul class="text-white/60 text-sm space-y-1 mb-4">
+        <li>→ <code>backend/internal/handler/middleware.go</code>: <code>jwt.WithExpirationRequired()</code>; <code>jti</code> must be present and non-empty, else 401 "Invalid token claims".</li>
+        <li>→ <code>LogoutHandler</code>: guards non-numeric <code>exp</code>; audit <code>auth.logout</code> records <code>jti=…</code> (<code>auth_handler.go</code>).</li>
+      </ul>
+    </div>
+
+    <!-- B4: CSV injection -->
+    <div class="leak rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">B4 — CSV export formula injection (spreadsheet malware)</h3>
+      </div>
+      <p class="text-white/70 mb-3">Student names/phones beginning with <code>= + - @</code> or tab/CR execute as formulas when opened in Excel/Sheets.</p>
+      <ul class="text-white/60 text-sm space-y-1 mb-4">
+        <li>→ <code>backend/internal/handler/export_handler.go</code>: <code>sanitizeCSVCell</code> prefixes <code>'</code>; UTF-8 BOM written so Nepali characters survive Excel; skipped classes counted in the audit detail.</li>
+        <li>→ Test <code>TestStudentsCSVExportSanitizesFormulaCells</code>: BOM present, <code>'=SUM(A1:A9)</code> and <code>'+977</code> sanitized, no raw formula at line start.</li>
+      </ul>
+    </div>
+
+    <!-- B5: read scoping -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">B5 — Teacher reads not scoped to own classes</h3>
+      </div>
+      <p class="text-white/70 mb-3">Assignment/submission reads accepted any moderator ID — an intruder teacher could enumerate another teacher's assignments and learner submissions.</p>
+      <ul class="text-white/60 text-sm space-y-1 mb-4">
+        <li>→ <code>backend/internal/service/learner_service.go</code> + repos: reads scoped via caller <code>teacher_id</code>.</li>
+        <li>→ <code>backend/internal/handler/class_handler.go</code>: unenroll of a non-member → 404 (<code>ErrNotEnrolled</code>).</li>
+        <li>→ Tests: <code>TestAssignmentReadsScopedToTeacher</code> (intruder 403, owner 200, admin bypass, honest <code>submissions: 0</code>), <code>TestUnenrollNonMemberReturns404</code>.</li>
+      </ul>
+      <div class="mermaid">
+flowchart LR
+  subgraph Before
+    M1[any moderator] --> Q1[assignment reads]
+    Q1 --> D1[all assignments in DB]
+  end
+  subgraph After
+    M2[teacher] --> Q2[reads scoped by teacher_id]
+    Q2 --> D2[own classes only]
+    M3[intruder teacher] --> Q3[403 Forbidden]
+  end
+      </div>
+    </div>
+
+    <!-- B6: google error -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">B6 — Google token validation leaked provider detail</h3>
+      </div>
+      <p class="text-white/70 mb-3">Generic <code>"Invalid Google token"</code> returned; provider detail goes to server logs via <code>slog.Warn</code> (<code>auth_service_impl.go</code>).</p>
+    </div>
+
+    <!-- B7: soft-delete role reset -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">B7 — OTP restore resurrected the old role</h3>
+      </div>
+      <p class="text-white/70 mb-3">VerifyOTP un-deleted soft-deleted users but kept the former role. Role now resets to <code>RoleStudent</code> on restore — least privilege (<code>auth_service_impl.go</code>).</p>
+    </div>
+
+    <!-- B8: admin handler -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">B8 — CreateActivity error shape &amp; import hygiene</h3>
+      </div>
+      <ul class="text-white/60 text-sm space-y-1">
+        <li>→ <code>backend/internal/handler/admin.go</code>: converted to <code>RespondError</code>; errors/gorm imports.</li>
+        <li>→ <code>backend/internal/repository/moderator_repo.go</code>: gofmt.</li>
+      </ul>
+    </div>
+
+    <!-- B9: FK comment -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-low">LOW · FIXED</span>
+        <h3 class="text-xl font-bold">B9 — db.go comment over-claimed FK enforcement</h3>
+      </div>
+      <p class="text-white/70 mb-3"><code>database/db.go</code> now documents the truth: <code>_foreign_keys=on</code> is honored by SQLite, but <code>AutoMigrate</code> creates <strong>no</strong> FK constraints (models declare no association tags) — referential integrity is enforced at the service layer.</p>
+    </div>
+
+    <!-- B10: roster tests -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">B10 — Roster tests still asserted the pre-fix fabricated roster</h3>
+      </div>
+      <p class="text-white/70 mb-3">Three tests (global roster, needs-attention, constant query count) failed against the caller-scoped model. Stubbed <code>c.Set("userID","mod-1")</code>; needs-attention cross-check scoped to the teacher's classes; seed students enroll into <code>cls-1</code> with cleanup (<code>handlers_test.go</code>, <code>roster_test.go</code>).</p>
+    </div>
+
+  </div>
+
+  <!-- ============ FRONTEND ============ -->
+  <h2 class="text-3xl font-bold mb-8 tracking-tight" id="frontend">Frontend Findings <span class="badge badge-ok ml-2">17 fixed</span></h2>
+
+  <div class="space-y-10 mb-16">
+
+    <!-- F1 -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">F1 — Sync queue only flushed on the window <code>online</code> event</h3>
+      </div>
+      <p class="text-white/70 mb-3">A user who re-logged-in after expiry (or imported a <code>.logsync</code> file) had no path to flush the queue until the next connectivity event.</p>
+      <ul class="text-white/60 text-sm space-y-1 mb-4">
+        <li>→ <code>src/lib/api.ts</code>: boot <code>window 'load'</code> flush; exported <code>flushSyncQueue()</code> → <code>{synced, failed}</code>.</li>
+        <li>→ <code>src/app/login/page.tsx</code>: flush after login/register/Google auth — queued work from an expired session replays with the fresh token (AGENTS.md replay semantics).</li>
+        <li>→ <code>src/app/dashboard/page.tsx</code>: sneaker-net import flushes immediately and reports <code>N actions synced</code>.</li>
+        <li>→ <code>src/components/SyncIsland.tsx</code>: tap-to-sync with spin state + aria-label.</li>
+        <li>→ <code>src/components/CommandPalette.tsx</code>: "Force Data Sync" actually flushes with toasts.</li>
+      </ul>
+      <div class="mermaid">
+flowchart LR
+  subgraph Before
+    E1[offline] --> E2[queue fills]
+    E2 -. waits .-> E3[window online event only]
+  end
+  subgraph After
+    S1[queue fills] --> S2[flush triggers]
+    S2 --> S3[window load]
+    S2 --> S4[login success]
+    S2 --> S5[.logsync import]
+    S2 --> S6[SyncIsland tap]
+    S2 --> S7[CommandPalette force]
+  end
+      </div>
+    </div>
+
+    <!-- F2 -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">F2 — Auth requests were queued to IndexedDB in plaintext</h3>
+      </div>
+      <p class="text-white/70 mb-3">Offline <code>/auth/login</code> attempts stored raw passwords/OTPs in <code>sync-queue</code>. <code>queueRequest</code> now rejects <code>/auth/*</code> with an <code>HttpError</code>, and legacy queued auth entries are dropped on flush (defense in depth) — <code>src/lib/api.ts</code>.</p>
+    </div>
+
+    <!-- F4 -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">F4 — Mutating requests never invalidated the GET cache</h3>
+      </div>
+      <p class="text-white/70 mb-3">After a submit/completion, dashboards could serve 24h-stale cache. <code>invalidateRelatedCache</code> now clears <code>/dashboard</code>, <code>/learning-journey</code>, <code>/chart-data</code> for completions and <code>/sync/bulk</code>; submissions clear <code>/assignments</code>; any class/enroll/announcement/assignment/user/role mutation clears the whole API cache (<code>clearApiCache</code>, exported) — <code>src/lib/api.ts</code>.</p>
+    </div>
+
+    <!-- F5 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">F5 — "Log out all devices" left the local cache behind</h3>
+      </div>
+      <p class="text-white/70 mb-3"><code>src/app/settings/page.tsx</code> now awaits <code>clearApiCache()</code> before completing the action — a shared school device no longer hands the next user another account's cached dashboards.</p>
+    </div>
+
+    <!-- F6 -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">F6 — 401s left the user half-logged-in</h3>
+      </div>
+      <p class="text-white/70 mb-3">Any 401 from <code>fetchWithCache</code> now calls the exported <code>clearCredentialsAndRedirect()</code> — removes <code>log_token</code>/<code>log_user</code>, clears the cookie, redirects to <code>/login</code> — and throws an <code>HttpError</code>. The expired-token path uses the same helper so both routes stay consistent (<code>src/lib/api.ts</code>).</p>
+    </div>
+
+    <!-- F7 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">F7 — No submitting state on create/enroll/publish — double-POST risk</h3>
+      </div>
+      <ul class="text-white/60 text-sm space-y-1">
+        <li>→ <code>AssignmentManager</code> (<code>isCreating</code>), <code>ClassManager</code> (<code>isCreating</code>/<code>isEnrolling</code>), <code>AnnouncementComposer</code> (<code>isPublishing</code>): buttons disable + <code>Loader2</code> spinner during flight.</li>
+        <li>→ Dashboard submit button already disabled via <code>disabled:opacity-40</code>.</li>
+      </ul>
+    </div>
+
+    <!-- F8 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">F8 — Queued offline writes claimed success as if committed</h3>
+      </div>
+      <p class="text-white/70 mb-3">When the offline layer returns the optimistic <code>202 {queued: true}</code>, toasts now say "saved offline · will sync when back online" instead of "created/published/submitted" — in <code>AssignmentManager</code>, <code>ClassManager</code>, <code>AnnouncementComposer</code>, and the dashboard submission form.</p>
+    </div>
+
+    <!-- F9 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">F9 — Command palette routed to a dead page and faked a sync</h3>
+      </div>
+      <p class="text-white/70 mb-3"><code>/learning-journey</code> → <code>/learning</code>; dead "Profile Settings" entry removed; "Force Data Sync" now calls <code>flushSyncQueue</code> with honest toasts (<code>src/components/CommandPalette.tsx</code>).</p>
+    </div>
+
+    <!-- F10 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">F10 — AssignmentManager stale-response race on rapid edits</h3>
+      </div>
+      <p class="text-white/70 mb-3">A <code>requestSeq</code> ref now discards out-of-order responses so the form never overwrites the newest submission list with an older one (<code>src/components/moderator/AssignmentManager.tsx</code>).</p>
+    </div>
+
+    <!-- F11 + F14 lesson -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">F11/F14 — Lesson page rendered fabricated demo content + fake completion</h3>
+      </div>
+      <p class="text-white/70 mb-3">The entire <code>lessonContent</code> demo, confetti, and demo renderer were deleted from <code>src/app/learning/[id]/page.tsx</code>. The page now shows honest states only:</p>
+      <ul class="text-white/60 text-sm space-y-1 mb-4">
+        <li>→ <strong>load error</strong>: "Could not load this lesson" + Try Again (reload) — a failed fetch is not an empty state.</li>
+        <li>→ <strong>empty</strong>: "Lesson content is not ready yet" + back to /learning — real, un-fabricated zero state.</li>
+        <li>→ Completion rendering is delegated to <code>MicroModuleViewer</code>, which owns the real server-acknowledged completion flow.</li>
+      </ul>
+      <div class="mermaid">
+flowchart LR
+  subgraph Before
+    L1[lesson page] --> L2[demo lessonContent]
+    L2 --> L3[confetti + fake completed step]
+  end
+  subgraph After
+    L4[lesson page] --> L5{state?}
+    L5 -->|error| L6[Could not load this lesson + Try Again]
+    L5 -->|no content| L7[Not ready yet + back link]
+    L5 -->|content| L8[MicroModuleViewer real completion]
+  end
+      </div>
+    </div>
+
+    <!-- F12 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-low">LOW · FIXED</span>
+        <h3 class="text-xl font-bold">F12 — Unused dependencies</h3>
+      </div>
+      <p class="text-white/70 mb-3">Removed <code>lottie-react</code>, <code>clsx</code>, <code>tailwind-merge</code>, <code>canvas-confetti</code> (+<code>@types/canvas-confetti</code>) from <code>package.json</code> — zero importers after the demo removal; <code>jest.setup.ts</code> confetti mock deleted; <code>npm install</code> clean.</p>
+    </div>
+
+    <!-- F13 partial -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · PARTIAL</span>
+        <h3 class="text-xl font-bold">F13 — Accessibility labels on admin/teacher forms</h3>
+      </div>
+      <p class="text-white/70 mb-3">aria-labels added to <code>ClassManager</code> (name/grade/section/teacher), <code>AnnouncementComposer</code> (title/message), <code>AssignmentManager</code> (title/description/activity/due-date), and <code>SyncIsland</code>. Contrast fix (brand teal/amber ≈ 2:1) stays in the backlog — it needs a token-level change, not per-component patching.</p>
+    </div>
+
+    <!-- F14 rest -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">MEDIUM · FIXED</span>
+        <h3 class="text-xl font-bold">F14 — Error states masquerading as empty states (ClassManager, AuditLogTable)</h3>
+      </div>
+      <ul class="text-white/60 text-sm space-y-1">
+        <li>→ <code>ClassManager</code>: red banner "Could not load class data…" + table says "Class list unavailable — reconnect to load." (never "No classes yet." on failure).</li>
+        <li>→ <code>AuditLogTable</code>: distinct "Could not load the audit log." block; empty state reserved for real zero entries.</li>
+        <li>→ Both jest suites updated to assert the distinction.</li>
+      </ul>
+    </div>
+
+    <!-- F15 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-low">LOW · FIXED</span>
+        <h3 class="text-xl font-bold">F15 — Dead buttons</h3>
+      </div>
+      <ul class="text-white/60 text-sm space-y-1">
+        <li>→ <code>RosterOverview</code>: dead "Message" button + empty Action column removed (table colSpan 4→3).</li>
+        <li>→ Admin page: dead "Create Activity" button removed; "Manage Classes" now scrolls to the real class section; "Send Broadcast" scrolls to the composer (already wired).</li>
+      </ul>
+    </div>
+
+    <!-- F16 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-low">LOW · FIXED</span>
+        <h3 class="text-xl font-bold">F16 — CSV download revoke raced the download</h3>
+      </div>
+      <p class="text-white/70 mb-3"><code>src/app/admin/page.tsx</code>: anchor appended to the DOM, clicked, removed, and <code>URL.revokeObjectURL</code> deferred 1000ms — immediate revoke can abort the download in some browsers.</p>
+    </div>
+
+    <!-- F17 -->
+    <div class="deep rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-low">LOW · FIXED</span>
+        <h3 class="text-xl font-bold">F17 — Observation page coupled two independent fetches</h3>
+      </div>
+      <p class="text-white/70 mb-3"><code>Promise.all</code> removed (<code>src/app/observation/page.tsx</code>): a <code>/chart-data</code> failure no longer blanks the KPI section; <code>activity_data</code> is guarded with an array check.</p>
+    </div>
+
+    <!-- M8 -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">M8 — Zero-value dates rendered as "1/1/1" deadlines</h3>
+      </div>
+      <p class="text-white/70 mb-3">SQLite zero-time assignments (<code>0001-01-01T00:00:00Z</code>) rendered as a real-looking deadline. <code>formatDueDate</code> (in <code>AssignmentManager</code> and the dashboard) guards <code>NaN</code> and <code>year &lt; 2000</code> → "No deadline".</p>
+    </div>
+
+    <!-- courses -->
+    <div class="seam rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">HIGH · FIXED</span>
+        <h3 class="text-xl font-bold">F-catalog — Courses page displayed a fabricated enrollment count</h3>
+      </div>
+      <p class="text-white/70 mb-3"><code>Course.Enrolled</code> was invented seed data (1250, 980, 740… in <code>backend/database/db.go</code>), never computed from real enrollments — a "No Hallucinations" violation (AGENTS.md §1). The card's enrollment figure and <code>enrolled</code> field are removed (<code>src/app/courses/page.tsx</code>); the backend field is left in place, flagged for the backlog.</p>
+    </div>
+
+  </div>
+
+  <!-- ============ BACKLOG ============ -->
+  <section id="candidates" class="mb-16">
+    <h2 class="text-3xl font-bold mb-2 tracking-tight">Backlog Candidates <span class="badge badge-medium ml-2">documented, not implemented</span></h2>
+    <p class="text-white/50 mb-8">Deliberately deferred — each needs a design decision, a cross-cutting refactor, or product input.</p>
+    <div class="grid md:grid-cols-2 gap-5">
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">DESIGN</span>
+        <h4 class="font-bold mb-2">C1 — Audit-log pagination</h4>
+        <p class="text-white/60 text-sm">Audit entries grow unbounded; the admin table loads everything. Needs a page/cursor API + UI before data volumes matter.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">REFACTOR</span>
+        <h4 class="font-bold mb-2">C2 — Unify completion logic</h4>
+        <p class="text-white/60 text-sm"><code>completion_repo.go</code> and <code>sync_repo.go</code> both implement best-score completion; tests pin current behavior. Consolidate into one seam so the two paths can never drift.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">ARCHITECTURE</span>
+        <h4 class="font-bold mb-2">C3 — admin.go service seam</h4>
+        <p class="text-white/60 text-sm">Admin handlers still reach into repositories directly; mirror the SchoolHandler pattern (struct + constructor + actor/audit) for testability.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-low mb-3">DATA MODEL</span>
+        <h4 class="font-bold mb-2">C4 — Real FK constraints</h4>
+        <p class="text-white/60 text-sm">Gorm association tags would let <code>AutoMigrate</code> emit real FOREIGN KEY constraints; today integrity lives at the service layer (documented in db.go).</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-low mb-3">HONESTY</span>
+        <h4 class="font-bold mb-2">C5 — Backend <code>Course.Enrolled</code> seed data</h4>
+        <p class="text-white/60 text-sm">Field remains in the model/seed; either compute it from <code>class_members</code> or drop it from the API so the fiction cannot resurface.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">CARRYOVER</span>
+        <h4 class="font-bold mb-2">C6 — Brand contrast (teal/amber ≈ 2:1)</h4>
+        <p class="text-white/60 text-sm">White-on-brand colors fail WCAG AA; needs token-level palette work. Also: recharts dynamic import, per-page retry polish, shared PageState component.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ VERIFICATION ============ -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-6 tracking-tight">Verification Runs</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Suite</th>
+            <th class="pb-3 pr-4">Command</th>
+            <th class="pb-3">Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 text-white/70">Backend fmt</td><td class="py-3 pr-4 font-mono text-white/50">gofmt -l .</td><td class="py-3 text-green-400 font-bold">EMPTY</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 text-white/70">Backend build + vet</td><td class="py-3 pr-4 font-mono text-white/50">go build ./... · go vet ./...</td><td class="py-3 text-green-400 font-bold">PASS</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 text-white/70">Backend tests</td><td class="py-3 pr-4 font-mono text-white/50">go test -count=1 ./...</td><td class="py-3 text-green-400 font-bold">ok · 2.5s</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 text-white/70">Frontend types</td><td class="py-3 pr-4 font-mono text-white/50">npx tsc --noEmit</td><td class="py-3 text-green-400 font-bold">PASS</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 text-white/70">Frontend tests</td><td class="py-3 pr-4 font-mono text-white/50">npx jest</td><td class="py-3 text-green-400 font-bold">48/48 · 8 suites</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 text-white/70">Frontend build</td><td class="py-3 pr-4 font-mono text-white/50">npx next build</td><td class="py-3 text-green-400 font-bold">PASS · 15 routes · PWA</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">LOG · Learning Observation Guidance — Architecture Review #2 · 2026-08-19 · Companion: <span class="text-white/60">docs/ENHANCEMENT.md</span> (findings table synced) · Generated from live build/test runs, not speculation.</p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="html/index.html">← Research Hub</a>
+  <a class="doc-nav-home" href="html/index.html">Research Hub</a>
+  <a class="doc-nav-link" href="#top">Top ↑</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LOG — Global Research Hub · 16-Agent Study (2026-08-19)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-14">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3">LOG · Learning Observation Guidance</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Global Research Hub</h1>
+    <p class="text-white/60 text-lg mb-6">Sixteen parallel research agents surveyed the worldwide LMS landscape and Nepal's education reality — market data, user complaints, learning science, offline-first engineering, AI trends, and child-data law. Every figure below is sourced; nothing is invented. <strong class="text-white">Compiled 2026-08-19.</strong></p>
+    <div class="flex flex-wrap gap-3 mb-6">
+      <span class="badge badge-ok">16 research agents</span>
+      <span class="badge badge-ok">200+ sources</span>
+      <span class="badge badge-ok">7 report files</span>
+      <span class="badge badge-high">Live thread mining</span>
+      <span class="badge badge-medium">Evidence → design rules</span>
+    </div>
+    <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">7</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Report files</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">16</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Research agents</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">10</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Complaint themes</p></div>
+      <div class="ok rounded-2xl p-4"><p class="text-3xl font-extrabold text-green-300">30+</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Design rules for LOG</p></div>
+    </div>
+  </header>
+
+  <!-- How to use -->
+  <section class="mb-14">
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">How this hub is organized</h2>
+    <p class="text-white/70 leading-relaxed mb-6">
+      Each report file is self-contained, interactive (tab filters, Mermaid diagrams, filterable evidence tables), and ends with <strong>design rules</strong> that map findings directly onto LOG's architecture
+      (Next.js 14 + Go/Gin + SQLite, offline-first <code>fetchWithCache</code> / <code>sync-queue</code> layer, RBAC, honest-zero states). The final playbook — <em>06-log-playbook.html</em> — synthesizes everything into problem/solution report cards ranked by impact.
+    </p>
+    <div class="mermaid">
+flowchart LR
+  subgraph Evidence["16 research agents (2026-08-19)"]
+    M1[Global LMS market]
+    M2[Reddit + G2/Capterra voices]
+    M3[Nepal system + connectivity]
+    M4[Offline-first platforms]
+    M5[Learning science + mobile-first]
+    M6[AI + gamification + accessibility]
+    M7[Assessment + privacy + OER]
+  end
+  Evidence --> SYN[Playbook: Making LOG the Best]
+  SYN --> R1[Problem/solution report cards]
+  SYN --> R2[Prioritized roadmap]
+  SYN --> R3[Architecture implications]
+    </div>
+  </section>
+
+  <!-- Report cards -->
+  <h2 class="text-3xl font-bold mb-8 tracking-tight">Reports</h2>
+  <div class="grid md:grid-cols-2 gap-6 mb-16">
+
+    <a class="card-link" href="01-global-market-and-users.html">
+      <div class="deep rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">01</span>
+          <h3 class="card-title text-xl font-bold">Global Market &amp; User Voices</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">Market size, growth segments, vendor landscape — cross-examined against what users actually complain about: Reddit thread mining (Canvas/Brightspace/Moodle/GC) and G2/Capterra/TrustRadius review mining (2,000+ reviews).</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-low">$29B market</span>
+          <span class="badge badge-low">10 complaint themes</span>
+          <span class="badge badge-low">Ratings patterns</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="02-nepal-reality.html">
+      <div class="deep rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">02</span>
+          <h3 class="card-title text-xl font-bold">Nepal Reality — System, Connectivity, People</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">SEE/NEB exam culture, 7.04M students, Flash Report infrastructure numbers, NTA broadband data, device reality, teacher/parent needs from community spaces, and the edtech competitors already in Nepal.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-low">7.04M students</span>
+          <span class="badge badge-low">20% school internet</span>
+          <span class="badge badge-low">SEE 65.98%</span>
+          <span class="badge badge-low">Competitor audit</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="03-offline-and-evidence.html">
+      <div class="deep rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">03</span>
+          <h3 class="card-title text-xl font-bold">Offline-First Platforms &amp; Learning Science</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">Kolibri, Kiwix, DIKSHA, EdoBEST, M-Shule, Eneza, Funda Wande — the evidence base for what works offline, at what cost per SD gained — plus the learning-science foundations (retrieval practice, feedback, spaced repetition).</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-low">M-Shule +0.46 SD</span>
+          <span class="badge badge-low">Funda Wande +0.5 SD</span>
+          <span class="badge badge-low">24h TTL parity</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="04-ai-engagement-accessibility.html">
+      <div class="deep rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">04</span>
+          <h3 class="card-title text-xl font-bold">AI, Gamification, Accessibility</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">Khanmigo/AI tutor RCT evidence, 731% AI tool growth, gamification that survives RCT scrutiny (Duolingo A/B data), and WCAG 2.2 + Nepali/multilingual UI requirements for a child-first platform.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-low">WestEd +0.15 SD</span>
+          <span class="badge badge-low">WCAG 2.2 AA</span>
+          <span class="badge badge-low">Nepali typography</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="05-assessment-privacy-oer.html">
+      <div class="deep rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">05</span>
+          <h3 class="card-title text-xl font-bold">Assessment, Child Privacy, Nepal OER</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">Formative-assessment &amp; observation frameworks (CAS, EWS), Nepal's Privacy Act 2075 + IT &amp; Cybersecurity Bill 2082, the $6.25M Respondus biometric settlement — and the full catalog of Nepali OER (E-Pustakalaya 9,361 books, E-Paath 540+ modules).</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-low">Privacy Act 2075</span>
+          <span class="badge badge-low">9,361 books</span>
+          <span class="badge badge-low">CC BY-NC-SA</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="06-log-playbook.html">
+      <div class="ok rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">06 · READ FIRST</span>
+          <h3 class="card-title text-xl font-bold">Playbook — Making LOG the Best LMS</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">The synthesis. 12 problem/solution report cards ranked by impact and feasibility — each one maps a documented failure mode or opportunity to a concrete LOG feature, with Mermaid diagrams and a prioritized roadmap.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-ok">12 report cards</span>
+          <span class="badge badge-ok">Priority roadmap</span>
+          <span class="badge badge-ok">Architecture map</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="07-phased-implementation-plan.html">
+      <div class="ok rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">07 · DO NEXT</span>
+          <h3 class="card-title text-xl font-bold">Phased Implementation Plan</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">The executable roadmap: 5 phases, 22 work packages, 64 tasks — every task with an acceptance criterion and an evidence reference back to a source. Includes an interactive progress tracker (localStorage), delivery gantt, risk register, KPIs, verification matrix and full backlog cross-reference.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-ok">5 phases</span>
+          <span class="badge badge-ok">22 work packages</span>
+          <span class="badge badge-ok">Interactive tracker</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="08-wp01-privacy-pack.html">
+      <div class="ok rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">08 · SHIPPED</span>
+          <h3 class="card-title text-xl font-bold">WP-0.1 Privacy Pack — Shipped</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">Research-to-shipped record for the first work package: guardian consent at registration (NP/EN), personal-data export, account erasure with an anonymization map, sync-queue encryption at rest (AES-GCM-256), and the breach runbook — with the Go/Jest tests that prove each acceptance criterion.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-ok">All 6 tasks done</span>
+          <span class="badge badge-ok">Policy 2026-08-v1</span>
+          <span class="badge badge-ok">57 Jest + Go green</span>
+          <span class="badge badge-ok">Runbook</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="09-wp02-honesty-state.html">
+      <div class="ok rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">09 · SHIPPED</span>
+          <h3 class="card-title text-xl font-bold">WP-0.2 Honesty &amp; State Hygiene — Shipped</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">The record for the honesty work package: real server-persisted enrollment state (catalog counts derived from actual rows, idempotent enroll/unenroll), bounded paginated audit logs, the executable honesty scanner test that bans placeholder stubs, and queue-integrity regression tests proving 401 never deletes learner work.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-ok">All 4 tasks done</span>
+          <span class="badge badge-ok">Enrollment persisted</span>
+          <span class="badge badge-ok">65 Jest + Go green</span>
+          <span class="badge badge-ok">No invented numbers</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="card-link" href="11-accessibility-audit.html">
+      <div class="ok rounded-3xl p-7 h-full">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">11 · SHIPPED</span>
+          <h3 class="card-title text-xl font-bold">WP-0.3 Accessibility &amp; Bundle — Shipped</h3>
+        </div>
+        <p class="text-white/60 text-sm mb-4">The audit record for the accessibility &amp; bundle work package: AA contrast tokens with measured ratios (all 9.2:1+), global 44px focus targets + visible focus ring, reduced-motion on every animation layer, recharts chunked behind a dynamic import (Observation page 241 kB → 129 kB first load), and the installable PWA manifest with proper-size icons.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge badge-ok">All 5 tasks done</span>
+          <span class="badge badge-ok">WCAG 2.2 AA</span>
+          <span class="badge badge-ok">−112 kB /observation</span>
+          <span class="badge badge-ok">PWA installable</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- Methodology -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-6 tracking-tight">Method &amp; Honesty Constraints</h2>
+    <div class="grid md:grid-cols-2 gap-4 text-sm">
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2">Evidence standard</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• Every number traces to a cited source or a live fetch.</li>
+          <li>• Unverifiable items are flagged — never guessed.</li>
+          <li>• Complaints counted from actual threads/reviews found in the research window.</li>
+        </ul>
+      </div>
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2">Alignment with LOG principles (AGENTS.md)</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• No fabricated fallbacks — honest <code>0</code>/empty/error states.</li>
+          <li>• Offline-first: never bypass <code>fetchWithCache</code>/<code>sync-queue</code>.</li>
+          <li>• Supportive language: guidance derived from real backend data only.</li>
+          <li>• Child privacy: no biometrics, no training-data capture, no committed secrets.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Source atlas -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-6 tracking-tight">Source Atlas</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Category</th>
+            <th class="pb-3 pr-4">Key sources</th>
+            <th class="pb-3">Used in</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">Market</td><td class="py-3 pr-4">G2, Capterra, TrustRadius, Grand View / MarketsandMarkets syntheses</td><td class="py-3">01</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">User voices</td><td class="py-3 pr-4">r/Professors, r/Teachers, r/canvas, r/moodle, r/elearning, r/instructionaldesign, r/k12sysadmin</td><td class="py-3">01</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">Nepal system</td><td class="py-3 pr-4">CEHRD Flash Report 2082, IEMIS, NEB, Economic Survey 2082/83, NSO 2021</td><td class="py-3">02</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">Nepal connectivity</td><td class="py-3 pr-4">NTA MIS (Chaitra 2082), World Bank ETRI, Kathmandu Post / Nepali Times</td><td class="py-3">02</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">Offline-first</td><td class="py-3 pr-4">Kolibri, Kiwix, DIKSHA, EdoBEST, M-Shule BJET 2024, Funda Waende RCTs, RESPECT standards</td><td class="py-3">03</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">Learning science</td><td class="py-3 pr-4">Hattie meta-analyses, retrieval-practice g=0.50, feedback d=0.73, J-PAL / EdTech Hub syntheses</td><td class="py-3">03</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">AI / engagement</td><td class="py-3 pr-4">Khanmigo, WestEd RCT, Duolingo A/B data, WCAG 2.2, Unicode Nepali typography</td><td class="py-3">04</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4">Privacy / OER</td><td class="py-3 pr-4">Privacy Act 2075, IT &amp; Cybersecurity Bill 2082, OLE Nepal catalogs, CDC, CEHRD Sikai Chautari, Kiwix ZIM</td><td class="py-3">05</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">LOG · Learning Observation Guidance — Global Research Hub · 2026-08-19 · Companions: <span class="text-white/60">docs/PRODUCT_RESEARCH.md · docs/LMS_EDTECH_COMPARISON.md · docs/ENHANCEMENT.md · docs/architecture-review-2-20260818.html</span></p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="11-accessibility-audit.html">← 11 · Accessibility &amp; Bundle</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="01-global-market-and-users.html">01 · Market & Users →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

@@ -37,8 +37,13 @@ describe('syncExport', () => {
       const result = await exportSyncQueue();
       const payload = JSON.parse(result);
 
-      expect(payload.version).toBe('1.0');
-      expect(payload.data).toEqual(mockQueue);
+      expect(payload.version).toBe('1.1'); // 1.1 = decrypted payloads (WP-0.1)
+      expect(payload.data[0]).toMatchObject({
+        id: 1,
+        endpoint: '/api/test',
+        method: 'POST',
+        body: '{"data":"test"}',
+      });
       expect(payload.timestamp).toBeDefined();
     });
   });

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>03 — Offline-First Platforms &amp; Learning Science | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 03</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Offline-First Platforms &amp; Learning Science</h1>
+    <p class="text-white/60 text-lg mb-6">What actually works in low-connectivity education — measured, RCT-tested — and the learning-science foundations LOG's guidance layer should be built on.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">M-Shule +0.46 SD literacy</span>
+      <span class="badge badge-ok">Funda Wande +0.5 SD (2yr)</span>
+      <span class="badge badge-ok">Retrieval practice g=0.50</span>
+      <span class="badge badge-high">Nudges: 6/10 null</span>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="flex flex-wrap gap-2 mb-8">
+    <button class="tab-btn active badge" data-tab="platforms">Offline-First Platforms</button>
+    <button class="tab-btn badge" data-tab="mobile">Mobile-First Evidence</button>
+    <button class="tab-btn badge" data-tab="science">Learning Science</button>
+    <button class="tab-btn badge" data-tab="rules">Design Rules → LOG</button>
+  </div>
+
+  <!-- ============ PLATFORMS TAB ============ -->
+  <section id="tab-platforms" class="tab-panel active">
+
+    <p class="text-white/70 mb-6">The proven playbook for low-connectivity regions: <strong class="text-white">local content first, sync when possible, phones as the delivery device, and structured teacher support as the multiplier.</strong> LOG's architecture (PWA + IndexedDB 24h cache + sync-queue + .logsync sneakernet) already mirrors the winners.</p>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">GOLD STANDARD RCT</span>
+          <h3 class="text-xl font-bold">Funda Wande — the strongest structured-pedagogy evidence</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Eastern Cape RCT (SA-TIED WP156): <strong class="text-white">+0.17 SD reading proficiency after 1 year</strong> = 20–27% of a year's learning (Grade 2); in-service coaching at 1:5 coach:school; 90–93% of teachers used materials daily.</li>
+          <li>• Limpopo RCT (Feb 2023, 120 schools, 3 arms): <strong class="text-white">+0.5 SD in both reading and math after 2 years</strong> in Materials+Training+Teacher-Assistant arm — the largest foundational gains ever measured in South Africa.</li>
+          <li>• Key insight: tech (pre-loaded flash drives, videos) was the <em>carrier</em>, not the intervention. Structured materials + teacher support are what moved learning.</li>
+          <li>→ LOG implication: content packaging + teacher-facing support materials are the intervention; the app is the carrier.</li>
+        </ul>
+      </div>
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">M-SHULE RCT</span>
+          <h3 class="text-xl font-bold">M-Shule (Kenya) — adaptive SMS LMS: +0.46 SD at $22.70/SD</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Adaptive SMS LMS on any feature phone; ~20,000 households, 30 counties; <strong class="text-white">US$2–5 per learner/month</strong>; works where 25% of Kenyans lack electricity and 77.5% lack internet.</li>
+          <li>• RCT (Angrist et al., 2024, <em>BJET</em>; 2,600 students, Tusome content): <strong class="text-white">+0.46 SD literacy (d=0.24) at US$22.70 per SD gained</strong> — better cost-effectiveness than average personalised-learning apps (~0.18 SD).</li>
+          <li>• 0.181 learning-adjusted years (LAYS) per learner in EdTech Hub evaluation; 1M+ learning messages delivered.</li>
+          <li>→ LOG implication: adaptive, level-matched practice beats one-size content; and it can be done at feature-phone grade if needed.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">SCALE REFERENCES</span>
+          <h3 class="text-xl font-bold">DIKSHA (India) — the print-to-digital bridge at 600M+ scale</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">600M+ "energised textbooks" with 12B+ QR codes</strong> linking to content in 35+ languages; NDEAR open architecture.</li>
+          <li>• Works fully offline: content bundles (.ecar via SD card), QR scanning offline, Android 5.1+; per-state dashboards for QR scans, downloads, distinct devices.</li>
+          <li>• The reference model for print-to-digital bridging in low-connectivity settings — exactly Nepal's textbook-centric reality.</li>
+          <li>→ LOG implication: QR codes on school materials → offline lesson content is a cheap, proven adoption wedge in Nepal.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">COMMUNITY HUBS</span>
+          <h3 class="text-xl font-bold">Ideas Box / Kolibri / Kiwix — offline content at the edge</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Ideas Box (Libraries Without Borders): pop-up offline server + solar + Wi-Fi; 191 boxes in 25 countries; <strong class="text-white">Burundi evaluation: +23% greater academic improvement</strong> than regular classrooms (Grade 4: French +31.1% vs 9.4%; Math +38.45% vs 5.5%).</li>
+          <li>• Ideas Cube equips 70 rural schools in Senegal with zero internet.</li>
+          <li>• Kolibri/Kiwix: canonical offline content-packaging platforms (bundled downloads, local-area distribution).</li>
+          <li>• Rumie: 2,100 six-minute "learning bytes" for low bandwidth; SMS distribution reached 42,000 users; 87% of 515 surveyed Pakistanis wanted phone-delivered educational content.</li>
+          <li>• The Future is Offline (LWB+Kiron): MOOCs on SD cards, offline app, <strong class="text-white">certification validated via SMS</strong>.</li>
+          <li>→ LOG implication: LOG's .logsync sneakernet aligns with the proven "file transfer + local import" pattern — keep it first-class.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">CAUTION</span>
+          <h3 class="text-xl font-bold">What the evidence says NOT to do</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">Nudges often backfire:</strong> EdTech Hub synthesis (2024) of 10 West Africa nudge-messaging studies: 6 had negative/null/insufficient effects; SMS nudges backfired on caregivers <em>without</em> formal schooling; over-frequent caregiver monitoring demotivated teachers; cost ~US$7.56/child. Low cost ≠ cost-effective.</li>
+          <li>• <strong class="text-white">Hardware alone is a Bad Buy:</strong> GEEAP "Smart Buys" (13,000+ studies): Great Buys = information campaigns, structured pedagogy, teaching at the right level (TaRL); Bad Buys = hardware alone, inputs alone.</li>
+          <li>• <strong class="text-white">Engagement collapses without structure:</strong> Shupavu291 (Kenya SMS): under 25% of students returned after joining; usage spikes during holidays/exams; no formal learning-gain evidence at scale.</li>
+          <li>• <strong class="text-white">Implementation capacity, not technology, is the binding constraint:</strong> Khan Academy UP RCT (NBER w34683): a lab-in-charge raised usage 7.2 → 47.4 min/week (6.6x) and math +0.47 SD in 31 weeks. "The central constraint is not technology or content, but organizational structures."</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ MOBILE TAB ============ -->
+  <section id="tab-mobile" class="tab-panel">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">0.89 SD</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Per $100 phone tutoring</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">+0.37σ</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Mindspark math (Delhi RCT)</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">$15</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Self-led tech / learner / yr</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">&lt;25MB</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Per 15-min session budget</p></div>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">MOST COST-EFFECTIVE</span>
+          <h3 class="text-xl font-bold">Phone tutoring: 0.89 SD per US$100 (Botswana RCT, Nature Human Behaviour 2022)</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• 4,500 households: SMS alone ≈ no effect; <strong class="text-white">SMS + weekly 15–20-min teacher phone call = +0.12 SD</strong>, or 0.89 SD per US$100 — among the most cost-effective learning interventions measured anywhere.</li>
+          <li>• Philippines (IPA replication): <strong class="text-white">+40% math gains at ~US$12/child = 3.4 LAYS per $100</strong>; government-led delivery as effective as NGO-led.</li>
+          <li>• Angrist et al. (2023, multi-country RCT <strong class="text-white">incl. Nepal</strong>): phone tutoring delivers "up to four years of high-quality instruction for $100."</li>
+          <li>→ LOG implication: LOG guidance + teacher phone follow-up = a documented, Nepal-included intervention pathway.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">ADAPTIVE SOFTWARE</span>
+          <h3 class="text-xl font-bold">Mindspark (India) — best-evidenced adaptive software in LMICs</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Delhi efficacy RCT (AER 2019, 619 students, 4.5 months): <strong class="text-white">+0.37σ math, +0.23σ Hindi</strong>; parents paid INR 200/month (~$3); projected &lt;US$2/student at scale.</li>
+          <li>• Rajasthan scale-up RCT (40 schools, ~6,500 students, 18 months): <strong class="text-white">+0.22σ math, +0.20σ Hindi = 50–66% productivity gain</strong> at ~US$78/pupil over two years; effects rank ~90th percentile of LMIC RCTs.</li>
+          <li>• "Usage time is a low-cost proxy for implementation quality."</li>
+          <li>• Scale: 2,200+ government schools, 266,000+ students across 13 states (2024–25).</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">SMARTPHONE-BASED</span>
+          <h3 class="text-xl font-bold">Chimple (Haryana RCT 2022–23): games on parents' phones, teacher-assigned</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Game-based foundational learning on <strong class="text-white">parents' smartphones, teacher-assigned at home</strong>; offline-capable; ~90% of households had a smartphone.</li>
+          <li>• <strong class="text-white">+0.25 SD math (0.37 SD Grade 1); +0.14–0.30 SD English</strong>; 1 hr/week on app ≈ 0.24 SD.</li>
+          <li>• Effects <em>depended</em> on teachers using the formative dashboard — teacher visibility drives outcomes.</li>
+          <li>→ LOG implication: teacher dashboard of student practice = the multiplier (matches CSF finding: teachers as learning agents +11% super-active users).</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">COST REALITY</span>
+          <h3 class="text-xl font-bold">Cost benchmarks — what per-learner economics say</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• UNICEF/World Bank: <strong class="text-white">US$48/student/year</strong> = universal digital learning 2021–2030; LICs spend only ~$55/student/year total; LMICs $309.</li>
+          <li>• GEEAP cost-benefit (2023): structured pedagogy + TaRL ≈ <strong class="text-white">$18/student/year (BCR 65:1)</strong>; TaRL $12.50–23.43/child; self-led tech median <strong class="text-white">$15/student/yr</strong>.</li>
+          <li>• Affordability ceiling: non-recurrent finance is &lt;US$10/student/year in some Commonwealth LICs; tablets cost $50–100/child/yr — "no scaling of technology will reduce that cost enough"; <strong class="text-white">own-device mobile is the only path under $10</strong>.</li>
+          <li>• Eneza (Kenya SMS): 10 KSh/week (~$0.10) via airtime billing; 10M+ learners reached since 2013 — but the <25% return rate is the honest caveat.</li>
+          <li>→ LOG implication: own-device mobile + airtime-cheap payloads is the only economic path for Nepal's community schools.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">ENGINEERING BUDGETS</span>
+          <h3 class="text-xl font-bold">RESPECT standards — concrete budgets to design against</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• 15 minutes of use must consume <strong class="text-white">&lt;25MB</strong>; installed size ≤25% above Google guidelines; offline SSO; background sync via WorkManager; no Play Services dependency (UstadMobile RESPECT).</li>
+          <li>• Google "Build for Billions": assume 2G; offline-first with local DB as source of truth; queue outbound requests; WebP at render size; never refetch; text-before-media sequencing.</li>
+          <li>• Android Go: entry-level phones 15% faster app launch, preloaded apps 50% smaller, Chrome Data Saver ~600MB saved/user/year.</li>
+          <li>• Data budgets for Nepal: 1GB = NPR 300–500 (~$2.2–3.7); many rural households earn &lt;NPR 20,000/month. <strong class="text-white">A 25MB/15-min budget ≈ NPR 12/session</strong> — must be smaller for daily school use.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ SCIENCE TAB ============ -->
+  <section id="tab-science" class="tab-panel">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">g=0.50</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Retrieval practice</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">d=0.73</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Feedback (Hattie)</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">+0.35 SD</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Adaptive personalisation</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">7%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Of edtech cos ran RCTs</p></div>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">CORE ENGINE</span>
+          <h3 class="text-xl font-bold">The learning mechanisms LOG should build on</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">Retrieval practice</strong> (test-enhanced learning): g=0.50 — quizzing beats re-reading. Practice quizzes are not just exam prep; they ARE the learning.</li>
+          <li>• <strong class="text-white">Feedback</strong>: d=0.73 (Hattie) — immediate, task-level feedback is among the most powerful interventions. LOG's instant practice feedback maps here.</li>
+          <li>• <strong class="text-white">Spaced repetition</strong>: distributed practice outperforms massed; algorithms (SM-2 style) make it automatic — LOG streak/practice-schedule logic should be spaced, not daily-firehose.</li>
+          <li>• <strong class="text-white">Personalisation / teach-to-the-level</strong>: Major et al. meta (16 RCTs, 53,029 learners): +0.18 SD overall; adaptive personalisation = <strong class="text-white">+0.35 SD</strong> — personalisation is the mechanism that works.</li>
+          <li>• <strong class="text-white">Interleaving</strong> (mixed practice) beats blocking — worth encoding in question-set design.</li>
+          <li>• <strong class="text-white">Growth-mindset / supportive framing</strong>: "This area could use more practice" (LOG's core tone) aligns with feedback research — feedback on process, not person.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">META-WARNING</span>
+          <h3 class="text-xl font-bold">Meta-evidence: how technology is used matters more than what technology is used</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Rodriguez-Segura (2020, 67 studies): cost-effective clusters = tech-enabled behaviour change, instruction improvement, self-led learning (+0.275 SD median, ~$15/yr); access-to-technology alone = low cost-effectiveness.</li>
+          <li>• UNESCO GEM Report 2023: only <strong class="text-white">7% of edtech companies had run RCTs</strong>; TALIS 2018: only 43% of lower-secondary teachers felt prepared to use tech for teaching; "plug-in gaps" procurement is the norm; benefits concentrated among advantaged.</li>
+          <li>• GEEAP verdict: "how technology is used matters more than what technology is used."</li>
+          <li>→ LOG implication: never sell the tech; sell the workflow. Teacher dashboard + guided practice + parent visibility = the use case that works.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ RULES TAB ============ -->
+  <section id="tab-rules" class="tab-panel">
+
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">Design Rules distilled for LOG</h2>
+    <div class="grid md:grid-cols-2 gap-5 mb-10">
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 01</span>
+        <h4 class="font-bold mb-2">Practice = retrieval, not re-reading</h4>
+        <p class="text-white/60 text-sm">Quizzing is the learning engine (g=0.50). Every activity should end in retrieval practice with instant, task-level feedback (d=0.73) — not "watch and done."</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 02</span>
+        <h4 class="font-bold mb-2">Spaced, not firehose</h4>
+        <p class="text-white/60 text-sm">Distributed practice beats massed. The practice scheduler should space reviews over days/weeks (SM-2 style) and reflect that honestly in the learning journey.</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 03</span>
+        <h4 class="font-bold mb-2">Personalise to the level</h4>
+        <p class="text-white/60 text-sm">Adaptive teach-to-the-level = +0.35 SD vs +0.18 SD for generic tech. LOG's per-learner activity status must drive what practice a learner sees next — real data, no hallucination.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 04</span>
+        <h4 class="font-bold mb-2">Teacher dashboard is the multiplier</h4>
+        <p class="text-white/60 text-sm">Chimple/Mindspark/CSF all show outcomes hinge on teacher visibility and assignment. The moderator view must make "who needs what practice" one glance — this is the actual product.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 05</span>
+        <h4 class="font-bold mb-2">Sell the workflow, not the tech</h4>
+        <p class="text-white/60 text-sm">85% implementation failure rate is about conditions. LOG onboarding = structure + materials + teacher support (Funda Wande pattern), not feature demos.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 06</span>
+        <h4 class="font-bold mb-2">No engagement nudges that backfire</h4>
+        <p class="text-white/60 text-sm">6/10 nudge studies null/negative; caregiver monitoring can demotivate. Nudge sparingly, supportively, and only with real data — never spam.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 07</span>
+        <h4 class="font-bold mb-2">Content packs, not per-resource fetches</h4>
+        <p class="text-white/60 text-sm">DIKSHA .ecar / Kolibri bundles / Kiwix ZIM pattern: bundle content for offline import. LOG's .logsync import already fits; extend it to lesson content packs.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 08</span>
+        <h4 class="font-bold mb-2">QR codes as the print bridge</h4>
+        <p class="text-white/60 text-sm">12B QR codes on 600M textbooks is the proven adoption wedge in textbook-centric systems like Nepal's. QR on school materials → offline lesson = cheap and magical.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 09</span>
+        <h4 class="font-bold mb-2">Budget: &lt;25MB/15-min session, wifi-only media</h4>
+        <p class="text-white/60 text-sm">RESPECT standards are the testable budget. Media downloads on wifi-only with explicit size UI; payloads gzip/Brotli (70–90% smaller); WebP images.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 10</span>
+        <h4 class="font-bold mb-2">Honest usage is a feature, not a bug</h4>
+        <p class="text-white/60 text-sm">Shupavu291's <25% return rate was discovered by honest analytics. LOG should surface real engagement (including zero) to teachers — honest zeros are the ethical and effective choice.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 11</span>
+        <h4 class="font-bold mb-2">Phone-call follow-up workflow</h4>
+        <p class="text-white/60 text-sm">0.89 SD/$100 with weekly teacher calls (RCT includes Nepal). LOG's teacher-facing "who to call" list — driven by real progress data — operationalizes the best-cost intervention.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 12</span>
+        <h4 class="font-bold mb-2">Cost ceiling discipline</h4>
+        <p class="text-white/60 text-sm">Self-led tech median $15/learner/yr; Nepal community schools can't exceed it. Own-device mobile + zero-infrastructure = the only path under $10. Design the cost model into the product.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 03 · Offline-First Platforms &amp; Learning Science · 2026-08-19 · Sources: Funda Wande RCTs (SA-TIED WP156, Limpopo), M-Shule RCT (BJET 2024), DIKSHA, EdTech Hub, GEEAP Smart Buys, J-PAL, Mindspark RCTs (AER 2019, Rajasthan 2025), Chimple RCT, Khan Academy UP RCT (NBER w34683), Botswana phone-tutoring RCT (Nature Human Behaviour 2022), RESPECT standards, Rodriguez-Segura (2020), UNESCO GEM 2023 · <a href="index.html" class="text-white/60 hover:text-white">← Back to hub</a></p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="02-nepal-reality.html">← 02 · Nepal Reality</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="04-ai-engagement-accessibility.html">04 · AI & Access →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

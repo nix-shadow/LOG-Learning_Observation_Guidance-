@@ -2,15 +2,50 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"log-backend/database"
 	"log-backend/internal/domain"
+	"log-backend/internal/repository"
+	"log-backend/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
+
+// TestUnenrollNonMemberReturns404 proves removing a student who is not
+// enrolled reports a 404 (Not Found) instead of a misleading success.
+func TestUnenrollNonMemberReturns404(t *testing.T) {
+	h := newSchoolTestHandler(t)
+	admin := newTestUser(t, domain.RoleAdmin)
+	teacher := newTestUser(t, domain.RoleModerator)
+
+	ctx := context.Background()
+	repo := repository.NewSchoolRepository(database.DB)
+	class := &domain.Class{ID: service.GenerateSecureID("cls"), Name: "Grade 10 C", Grade: "10", Section: "C", TeacherID: teacher.ID, CreatedAt: time.Now()}
+	if err := repo.CreateClass(ctx, class); err != nil {
+		t.Fatalf("create class: %v", err)
+	}
+	t.Cleanup(func() {
+		database.DB.Where("id = ?", class.ID).Delete(&domain.Class{})
+	})
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) { c.Set("userID", admin.ID); c.Next() })
+	r.DELETE("/api/v1/admin/classes/:id/enroll/:user_id", h.UnenrollStudent)
+
+	// user-123 is enrolled in cls-1, not in this brand-new class
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/api/v1/admin/classes/"+class.ID+"/enroll/user-123", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for non-member unenroll, got %v: %s", w.Code, w.Body.String())
+	}
+}
 
 // TestClassLifecycle proves create -> enroll -> roster -> count -> unenroll
 // works end to end and only STUDENT users can be enrolled.

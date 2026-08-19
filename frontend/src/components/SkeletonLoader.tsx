@@ -1,4 +1,4 @@
-import { motion, Transition } from 'framer-motion';
+import { m as motion, type Transition } from 'framer-motion';
 
 interface SkeletonProps {
   type: 'card' | 'text' | 'chart' | 'stats';

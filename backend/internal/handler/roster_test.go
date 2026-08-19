@@ -64,6 +64,9 @@ func seedRosterStudents(t *testing.T, count int) {
 			ID: id, Name: "Roster Student", Email: "roster" + id + "@test.edu",
 			Phone: &phone, Role: domain.RoleStudent, IsVerified: true,
 		})
+		// Enroll into the seeded demo class so the teacher-scoped roster
+		// (mod-1 / cls-1) actually contains them.
+		database.DB.Create(&domain.ClassMember{ClassID: "cls-1", UserID: id, JoinedAt: time.Now()})
 		ids = append(ids, id)
 		// Half the students have progress rows, half have none — the batched
 		// lookup must cover both shapes.
@@ -78,6 +81,7 @@ func seedRosterStudents(t *testing.T, count int) {
 	}
 	t.Cleanup(func() {
 		database.DB.Where("learner_id IN ?", ids).Delete(&domain.Progress{})
+		database.DB.Where("user_id IN ?", ids).Delete(&domain.ClassMember{})
 		database.DB.Where("id IN ?", ids).Delete(&domain.User{})
 	})
 }

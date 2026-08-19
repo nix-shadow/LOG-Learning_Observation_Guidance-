@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -73,9 +73,20 @@ function Particles({ count = 2000 }) {
 }
 
 export default function ThreeBackgroundCanvas() {
+  // WP-0.3 bundle research round: a hidden tab keeps rendering the animation
+  // loop at 60fps (battery + thermal waste). Pause the frameloop entirely
+  // when the tab is not visible.
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const onVisibility = () => setVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
   return (
     <div className="fixed inset-0 z-[-1] pointer-events-none bg-brand-darker opacity-60">
-      <Canvas camera={{ fov: 75, position: [0, 0, 30] }}>
+      <Canvas frameloop={visible ? 'always' : 'never'} camera={{ fov: 75, position: [0, 0, 30] }}>
         <color attach="background" args={['#050505']} />
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} color="#FF0070" />

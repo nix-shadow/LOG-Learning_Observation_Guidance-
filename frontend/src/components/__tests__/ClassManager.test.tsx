@@ -68,15 +68,16 @@ describe('ClassManager', () => {
     expect(await screen.findByText('No students registered yet.')).toBeInTheDocument();
   });
 
-  it('shows an error toast and honest empty table when the class fetch fails', async () => {
+  it('flags a failed class fetch distinctly from the empty state', async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === '/admin/classes') return Promise.reject(new Error('offline'));
       if (url === '/admin/users') return Promise.resolve({ users: sampleUsers });
       return Promise.resolve({});
     });
     renderManager();
-    expect(await screen.findByText('No classes yet.')).toBeInTheDocument();
-    expect(toast.error).toHaveBeenCalledWith('Failed to load classes');
+    expect(await screen.findByText(/Could not load class data/)).toBeInTheDocument();
+    expect(await screen.findByText(/Class list unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText('No classes yet.')).not.toBeInTheDocument();
   });
 
   it('blocks class creation when a required field is missing', async () => {

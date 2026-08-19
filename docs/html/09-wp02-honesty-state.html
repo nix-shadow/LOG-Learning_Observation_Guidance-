@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>09 — WP-0.2 Honesty &amp; State Hygiene | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 09 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-0.2 — Honesty &amp; State Hygiene</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-0.2 work package (tracker tasks wp02t01–wp02t04): real server-persisted enrollment state, paginated audit logs, an executable honesty guarantee for the "no invented numbers" rule, and regression tests locking in the offline queue's integrity. Every acceptance criterion maps to code, a test, or a measured check below.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">Enrollment persisted server-side</span>
+      <span class="badge badge-ok">Audit logs paginated</span>
+      <span class="badge badge-ok">Honesty scanner tests (TS + Go)</span>
+      <span class="badge badge-ok">Queue-integrity tests</span>
+      <span class="badge badge-ok">65 Jest + Go green</span>
+      <span class="badge badge-ok">Round 2: zero-week, timestamps, revert (2026-08-19)</span>
+    </div>
+  </header>
+
+  <!-- ============ wp02t01 ENROLLMENT ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp02t01 ✓</span>
+      <h2 class="text-2xl font-bold">Persist real enrollment state (C5)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>per-learner <code class="code">Course.Enrolled</code> state persisted server-side; dashboard goal ring and catalog derive every number from real data.</em> Before WP-0.2, <code class="code">enrolled</code> counts were static seed integers — a fabricated number. Now every number derives from real rows.</p>
+      <h4 class="font-bold mb-3">Backend</h4>
+      <ul class="text-white/70 text-sm space-y-1.5 mb-4">
+        <li>• New <code class="code">Enrollment</code> model (<code class="code">domain.go</code>, auto-migrated in <code class="code">db.go</code>) with <code class="code">uniqueIndex:uq_enrollment</code> on (user, course) — one row per learner per course, no duplicates possible.</li>
+        <li>• <code class="code">Course.IsEnrolled bool gorm:"-"</code> — a per-caller annotation, never a stored column.</li>
+        <li>• Endpoints <code class="code">POST/DELETE /api/v1/courses/:id/enroll</code> (learner_handler.go): idempotent both ways, <code class="code">404</code> on unknown course, and the create is race-safe — a unique-index conflict on the insert falls back to "already enrolled" (two tabs enrolling at once cannot double-book).</li>
+        <li>• Catalog counts now derive from the real table: <code class="code">UPDATE courses SET enrolled = (SELECT COUNT(*) FROM enrollments …)</code> runs at every startup (so legacy static seed values are corrected), and the catalog query counts the caller's own rows for <code class="code">IsEnrolled</code> (course_repo.go).</li>
+        <li>• Demo learner seed: user-123 enrolled in course-1 and course-3 — the catalog/dashboard numbers shown to the demo user are real rows, not literals.</li>
+      </ul>
+      <h4 class="font-bold mb-3">Frontend</h4>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• Catalog cards (<code class="code">src/app/courses/page.tsx</code>) render an "Enrolled ✓" toggle backed by the new endpoints, with live counts from the API.</li>
+        <li>• Offline behavior stays honest: an enrollment click while offline goes through the sync queue and shows "will sync" — never a fake success.</li>
+        <li>• <code class="code">invalidateRelatedCache</code> (F4) treats <code class="code">/enroll</code> as low-frequency and clears the whole cache, so a synced enrollment is reflected everywhere.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ wp02t02 AUDIT PAGINATION ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp02t02 ✓</span>
+      <h2 class="text-2xl font-bold">Audit-log pagination (C1)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>audit-log listing is paginated; no unbounded row load; page size configurable.</em></p>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <code class="code">GET /api/v1/audit-logs</code> (audit_handler.go) now accepts <code class="code">limit</code> (default 50, max 200) and <code class="code">offset</code> (default 0), and returns <code class="code">total</code> alongside <code class="code">entries</code> for page-count math — never an unbounded row load.</li>
+        <li>• Invalid values fall back to defaults; the cap (200) keeps any single request bounded.</li>
+        <li>• Regression test <code class="code">TestAuditLogPagination</code> walks pages and proves no rows are skipped or duplicated across page boundaries.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ wp02t03 HONEST ZERO ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp02t03 ✓</span>
+      <h2 class="text-2xl font-bold">Honest-zero sweep</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>goal ring, moderator roster and chart-data empty states audited — every component shows honest <code class="code">0</code>/empty state; a unit test asserts no placeholder stubs exist.</em></p>
+      <ul class="text-white/70 text-sm space-y-1.5 mb-4">
+        <li>• <code class="code">src/app/observation/page.tsx</code>: progress fields that rendered <code class="code">undefined</code> when the API had no data now render <code class="code">?? 0</code>; the two charts show honest empty-state overlays ("No activity data yet — your progress chart appears here after your first completed activity") instead of blank canvases.</li>
+        <li>• Dashboard goal ring and moderator roster were already honest — confirmed in the sweep (the audited-surface test below locks them in).</li>
+        <li>• New <code class="code">frontend/__tests__/honesty.test.ts</code> makes the AGENTS.md §1 rule <strong class="text-white">executable</strong>: it walks all shipped <code class="code">src/**</code> files and fails on fabricated-fallback identifiers (<code class="code">placeholderStudent</code>, <code class="code">fakeData</code>, …) and render-time fabrication patterns (hardcoded named objects, <code class="code">Math.random()</code> scores, hardcoded data-point arrays), plus asserts the three audited surfaces still exist.</li>
+        <li>• The scanner runs on every <code class="code">npx jest</code> — a future regression reintroducing a stub fails CI, not a code review.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ wp02t04 QUEUE INTEGRITY ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp02t04 ✓</span>
+      <h2 class="text-2xl font-bold">Queue-integrity regression tests</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>Jest suite covers: 401 retains queue, token re-attach at flush, cache invalidation after <code class="code">/complete</code> and <code class="code">/sync/bulk</code>.</em> Three new tests in <code class="code">__tests__/api.test.ts</code>, exercising the encrypted WP-0.1 queue end-to-end:</p>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <strong class="text-white">401 retains queue</strong> — a flush that hits a 401 (expired session) keeps every queued record; the flush stops and the user must re-login. Deleting would lose learner work, so the test asserts nothing is removed.</li>
+        <li>• <strong class="text-white">Token re-attach at flush</strong> — records queued under an expired session sync after re-login because the flush re-attaches the current token from localStorage at replay time; the test simulates login-after-queue and asserts the replayed request carries the fresh token.</li>
+        <li>• <strong class="text-white">Cache invalidation after /sync/bulk</strong> — a successful bulk sync clears the <code class="code">/dashboard</code>, <code class="code">/learning-journey</code> and <code class="code">/chart-data</code> cache entries (the completion path already invalidates via <code class="code">/activities/:id/complete</code>; this closes the sneakernet/import path).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ ROUND 2 ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">Round 2</span>
+      <h2 class="text-2xl font-bold">Follow-up round (2026-08-19) — four honesty gaps closed</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">The research sweep re-read every <em>number-producing</em> path. Four gaps surfaced; all four shipped with tests.</p>
+      <ul class="text-white/70 text-sm space-y-2">
+        <li><strong class="text-white">1 · Fabricated "zero week" deleted.</strong> <code class="code">GetChartData</code> used to synthesize a 7-day window of zeros when a learner had no activity — an invented series (AGENTS.md §1 violation) that also faked the chart&apos;s x-axis. It now returns an empty slice; the frontend empty state renders instead. Locked by <code class="code">TestGetChartDataHonestEmpty</code> + <code class="code">TestGetChartDataOnlyRealRows</code>.</li>
+        <li><strong class="text-white">2 · Completion timestamps are honest.</strong> The backend used to stamp completions with server time — fine online, but offline completions (queued, flushed later) got the flush time, not the learner&apos;s completion time, corrupting streak/day analytics. <code class="code">POST /activities/:id/complete</code> now accepts <code class="code">completed_at_unix_ms</code> + <code class="code">timezone_iana</code> from the client; the backend clamps into <code class="code">[now−14d, now+24h]</code> (a device with a broken clock cannot rewrite history), falls back to server-now on garbage, and computes the learner-local calendar date for DailyActivity rows. Tests: <code class="code">TestAttemptStatsCompletedAtHonestClamp</code> (4 cases), <code class="code">TestCompleteActivityUsesClientTimestamp</code>, <code class="code">TestSyncBulkTimestampParity</code>.</li>
+        <li><strong class="text-white">3 · Enrollment toggle stops lying on errors.</strong> <code class="code">courses/page.tsx</code> used <code class="code">.catch(() =&gt; null)</code> — a failed request left the UI flipped while the server state never changed. Now the state flips only on success or queue-acceptance; 4xx shows &quot;Enrollment not changed: …&quot; and leaves the card untouched.</li>
+        <li><strong class="text-white">4 · Honesty scanner now guards the backend too.</strong> <code class="code">backend/internal/honesty/honesty_test.go</code> walks all Go sources (excluding <code class="code">_test.go</code> and vendor) and fails on fabricated-pattern identifiers and <code class="code">rand</code>-based scores — the mirror of the TS scanner. Runtime-built pattern strings (<code class="code">"Mon"</code> concatenated) keep the scanner from matching itself.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ ROUND 3 ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">Round 3</span>
+      <h2 class="text-2xl font-bold">Enforcement round (2026-08-19) — freshness markers &amp; scanner hardening</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">The &quot;max&quot; pass on WP-0.2: data is honest, now it must also be <em>visibly</em> fresh — and the honesty guarantee itself gets stronger.</p>
+      <ul class="text-white/70 text-sm space-y-2">
+        <li><strong class="text-white">1 · as_of freshness marker shipped.</strong> <code class="code">GET /dashboard</code> and <code class="code">GET /chart-data</code> now include the server-clock <code class="code">as_of</code> timestamp. The dashboard hero and the Observation charts render &quot;Updated &lt;date&gt; at &lt;time&gt;&quot; from it — a cached payload (24h TTL) can no longer masquerade as live data; staleness is visible, not hidden. The chart label is a polite live region (<code class="code">aria-live</code>).</li>
+        <li><strong class="text-white">2 · Go scanner now catches week-builder and date-window fabrication.</strong> Two new runtime-assembled patterns: a hardcoded weekday-name slice (<code class="code">"Mon","Tue","Wed"</code> — the tell-tale of any future weekly-series fabrication) and a hardcoded absolute year inside <code class="code">time.Date(2XXX,</code> (a fabricated analytics window pinned to a fixed date). Verified clean against the full source tree.</li>
+        <li><strong class="text-white">3 · Frontend queue 403 handling (consent boundary, honesty of sync).</strong> The queue now distinguishes <code class="code">consent_required</code> 403s from generic 4xx: records are preserved and the flush stops with a &quot;grant consent in Settings&quot; toast — a consent-gated rejection is never treated as a terminal delete (that would silently drop offline learner work).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Verification -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">VERIFIED</span>
+      <h2 class="text-2xl font-bold">Verification run</h2>
+    </div>
+    <div class="ok rounded-3xl p-7">
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <code class="code">go vet ./... &amp;&amp; go test ./...</code> — clean (handler + service + honesty suites; the Round-2 tests add ~10 cases).</li>
+        <li>• <code class="code">npx jest</code> — 65 passed / 10 suites (was 59 before wp02t03/t04 added their 6 tests).</li>
+        <li>• <code class="code">npm run build</code> — compiled clean at the time of shipping; the later WP-0.3 build re-verified the same sources.</li>
+        <li>• Tracker 07 checkboxes wp02t01–wp02t04 marked done with evidence links to the sources above.</li>
+      </ul>
+    </div>
+    <div class="ok rounded-3xl p-7 mt-6">
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• Round 3 re-verified after the enforcement pass: <code class="code">go vet</code>/<code class="code">go test ./...</code> clean (incl. new consent-gate + purge tests), <code class="code">npx jest</code> 65/65, <code class="code">next lint</code> clean, <code class="code">npm run build</code> clean (shared First Load 87.7 kB unchanged).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 09 · WP-0.2 Honesty &amp; State Hygiene · 2026-08-19 · Sources: architecture-review-2-20260818.html (C1, C5), AGENTS.md §1/§3, ENHANCEMENT.md §2.2, frontend/__tests__/honesty.test.ts + api.test.ts, backend handler/repository sources · <a href="index.html" class="text-white/60 hover:text-white">← Back to hub</a></p>
+  </footer>
+
+</div>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="08-wp01-privacy-pack.html">← 08 · WP-0.1 Privacy Pack</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="11-accessibility-audit.html">11 · A11y &amp; Bundle →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

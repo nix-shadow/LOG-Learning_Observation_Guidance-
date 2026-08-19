@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"log-backend/internal/domain"
 	"log-backend/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -46,12 +47,44 @@ func (h *SchoolHandler) CreateAssignment(c *gin.Context) {
 
 func (h *SchoolHandler) ListAssignmentsForClass(c *gin.Context) {
 	classID := c.Param("id")
-	assignments, err := h.schoolService.AssignmentsForClass(c.Request.Context(), classID)
+	userID, _ := c.Get("userID")
+	role, _ := c.Get("role")
+	assignments, err := h.schoolService.AssignmentsForClass(c.Request.Context(), classID, userID.(string), role == domain.RoleAdmin)
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to load assignments")
+		switch {
+		case errors.Is(err, service.ErrClassNotFound):
+			RespondError(c, http.StatusNotFound, "Not Found", "Class not found")
+		case errors.Is(err, service.ErrNotClassTeacher):
+			RespondError(c, http.StatusForbidden, "Forbidden", err.Error())
+		default:
+			RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to load assignments")
+		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"class_id": classID, "assignments": assignments})
+
+	// Attach real submission counts (one batched GROUP BY query, not a COUNT
+	// per assignment) so the teacher list never shows a fabricated "0".
+	ids := make([]string, 0, len(assignments))
+	for _, a := range assignments {
+		ids = append(ids, a.ID)
+	}
+	counts, err := h.schoolService.SubmissionCounts(c.Request.Context(), ids)
+	if err != nil {
+		counts = map[string]int64{}
+	}
+	result := make([]gin.H, 0, len(assignments))
+	for _, a := range assignments {
+		result = append(result, gin.H{
+			"id":          a.ID,
+			"class_id":    a.ClassID,
+			"title":       a.Title,
+			"description": a.Description,
+			"activity_id": a.ActivityID,
+			"due_date":    a.DueDate,
+			"submissions": counts[a.ID],
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"class_id": classID, "assignments": result})
 }
 
 // ListMyAssignments returns assignments for all classes the learner belongs to,
@@ -119,9 +152,18 @@ func (h *SchoolHandler) SubmitAssignment(c *gin.Context) {
 // assignment, including the learner name for a readable roster.
 func (h *SchoolHandler) SubmissionsForAssignment(c *gin.Context) {
 	assignmentID := c.Param("assignment_id")
-	subs, err := h.schoolService.SubmissionsForAssignment(c.Request.Context(), assignmentID)
+	userID, _ := c.Get("userID")
+	role, _ := c.Get("role")
+	subs, err := h.schoolService.SubmissionsForAssignment(c.Request.Context(), assignmentID, userID.(string), role == domain.RoleAdmin)
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to load submissions")
+		switch {
+		case errors.Is(err, service.ErrAssignmentNotFound), errors.Is(err, service.ErrClassNotFound):
+			RespondError(c, http.StatusNotFound, "Not Found", "Assignment not found")
+		case errors.Is(err, service.ErrNotClassTeacher):
+			RespondError(c, http.StatusForbidden, "Forbidden", err.Error())
+		default:
+			RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to load submissions")
+		}
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"assignment_id": assignmentID, "submissions": subs})

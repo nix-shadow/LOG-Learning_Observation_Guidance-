@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>05 — Assessment, Child Privacy &amp; Nepal OER | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 05</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Assessment, Child Privacy &amp; Nepal OER</h1>
+    <p class="text-white/60 text-lg mb-6">Three agents: formative assessment and observation frameworks (what good guidance actually measures), child-data privacy (Nepal's Privacy Act 2075, IT &amp; Cybersecurity Bill 2082, the $6.25M biometric settlement), and the full catalog of Nepali OER that LOG can integrate.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-high">CAS burden documented</span>
+      <span class="badge badge-high">Biometric settlement $6.25M</span>
+      <span class="badge badge-ok">9,361 books available</span>
+      <span class="badge badge-ok">CC BY-NC-SA integration path</span>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="flex flex-wrap gap-2 mb-8">
+    <button class="tab-btn active badge" data-tab="assessment">Assessment &amp; Observation</button>
+    <button class="tab-btn badge" data-tab="privacy">Child Data Privacy</button>
+    <button class="tab-btn badge" data-tab="oer">Nepal OER Catalog</button>
+    <button class="tab-btn badge" data-tab="rules">Design Rules → LOG</button>
+  </div>
+
+  <!-- ============ ASSESSMENT TAB ============ -->
+  <section id="tab-assessment" class="tab-panel active">
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">THEORY OF CHANGE</span>
+          <h3 class="text-xl font-bold">Formative assessment works — when the teacher has time to act</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Formative assessment (Hattie: d≈0.4–0.9 range; feedback d=0.73) is among the strongest interventions — but it hinges on <em>teacher capacity to respond</em>.</li>
+          <li>• Nepal's CAS (Continuous Assessment System) is mandated but failing: "heavy workload, large class sizes, lack of formal training, insufficient time for documentation" (Mangal Research Journal 2025). Teachers see CAS as paperwork, not pedagogy.</li>
+          <li>• The 2025 CAS study's core finding: documentation burden crowds out the remedial teaching CAS was designed to trigger.</li>
+          <li>→ LOG implication: the observation/guidance layer must <strong class="text-white">automate the documentation</strong> so the teacher gets the remedial action, not the form-filling.</li>
+        </ul>
+      </div>
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">FRAMEWORKS</span>
+          <h3 class="text-xl font-bold">What good observation frameworks measure</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">CLASS (Classroom Assessment Scoring System)</strong>: emotional support, classroom organization, instructional support — the research backbone of classroom observation; correlates with learning gains when scored reliably.</li>
+          <li>• <strong class="text-white">Early Warning Systems (EWS)</strong>: attendance, behavior, course performance as predictors of dropout — the metric set LOG's learning-journey data maps onto directly.</li>
+          <li>• <strong class="text-white">Error-pattern analysis</strong> (from formative-assessment research): diagnosing <em>which</em> misconception produced a wrong answer, not just "wrong" — this is what turns a quiz into guidance.</li>
+          <li>• <strong class="text-white">Skills-based observation</strong> (e.g., ELP/reading-level bands): mastery bands instead of percentages — "approaching / meeting / exceeding" framing fits supportive language.</li>
+          <li>→ LOG implication: guidance = attendance + practice + error-pattern → next-action. Never "you failed"; always "this area could use more practice."</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">MECHANICS</span>
+          <h3 class="text-xl font-bold">Assessment mechanics that survive field conditions</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">Retrieval + immediate feedback</strong> is both the learning mechanism (g=0.50) and the formative signal — practice quizzes ARE the assessment engine.</li>
+          <li>• <strong class="text-white">Mastery thresholds with re-quiz loops</strong> (Mindspark/adaptive pattern): repeat with varied questions until threshold, then advance — no permanent failures, honest progress.</li>
+          <li>• <strong class="text-white">Per-learner status</strong> (LOG's roadmap item: per-learner activity status) is exactly the EWS data model — attendance + completion + score as time series.</li>
+          <li>• <strong class="text-white">Authentic work samples</strong> (photo upload of notebook work — cheap on any phone) give teachers evidence where MCQ can't (Nepal's "checking copies" practice digitized).</li>
+          <li>• <strong class="text-white">Anti-cheating by design</strong>: question banks with random selection + varied numerics beat fixed "Ten Sets Collections" that enable WhatsApp answer-sharing.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ PRIVACY TAB ============ -->
+  <section id="tab-privacy" class="tab-panel">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">2075</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Nepal Privacy Act (2018)</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">§61–62</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">IT &amp; Cybersecurity Bill 2082</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">$6.25M</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Biometric-data settlement</p></div>
+      <div class="ok rounded-2xl p-4"><p class="text-3xl font-extrabold text-green-300">0</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Biometrics in LOG</p></div>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">LAW</span>
+          <h3 class="text-xl font-bold">Nepal's privacy law landscape for children's data</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">Privacy Act 2075 (2018)</strong>: Nepal's general data-protection law — collection must be for a stated purpose, minimal, and with consent; sensitive personal data (incl. children's data in practice) gets stricter treatment; data breach notification duties.</li>
+          <li>• <strong class="text-white">IT &amp; Cybersecurity Bill 2082</strong> (§61–62): criminalizes unauthorized access/exfiltration of personal data and provides for data-protection enforcement — a strengthening regime that will make edtech data handling a compliance matter, not a vibe.</li>
+          <li>• Children as a special category: international consensus (UNCRC Art. 16, GDPR Art. 8) treats children's data as higher-risk; Nepal's courts have referenced child-protection principles in data disputes.</li>
+          <li>• Schools are data controllers in practice: report cards, attendance, health notes, fee records — LOG holds this data for schools, so LOG is a processor with fiduciary obligations.</li>
+        </ul>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">THE CAUTIONARY TALE</span>
+          <h3 class="text-xl font-bold">Respondus $6.25M biometric settlement — the anti-pattern</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Respondus settled a <strong class="text-white">$6.25M class action</strong> over biometric data collection — face scans and fingerprints captured over 8 years without proper consent (Illinois BIPA-style claim).</li>
+          <li>• Students reported <strong class="text-white">bricked computers</strong> from LockDown Browser (r/UniversityofArkansas warning, r/WWU 2026 thread).</li>
+          <li>• Proctoring tools "have serious bias problems… much worse at recognizing dark skin" (r/highereducation) — biometric proctoring is a fairness disaster for a country as diverse as Nepal.</li>
+          <li>• r/Professors on Canvas AI: "private student information via assignment extensions, extra quiz time, gradebook notes" — every stored datum is a potential training-data or leak vector.</li>
+          <li>→ LOG implication: no cameras, no biometrics, no LLM training on learner data. Log only what's needed for guidance; delete on request; document retention.</li>
+        </ul>
+      </div>
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">LOG'S CURRENT POSTURE</span>
+          <h3 class="text-xl font-bold">Where LOG already stands — and the gaps</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• ✅ <strong class="text-white">No plaintext OTPs/passwords</strong> (bcrypt hashing), no plaintext auth in sync-queue (F2 fix rejects /auth/* offline queuing).</li>
+          <li>• ✅ <strong class="text-white">JWT expiry + jti revocation</strong>, role re-validation on every request (demotion/soft-delete respected).</li>
+          <li>• ✅ <strong class="text-white">Audit logging</strong> (auth.login, auth.logout, admin ops) — the foundation of data-usage accountability.</li>
+          <li>• ✅ <strong class="text-white">No external LLM integrations</strong> — no learner data ever leaves for model training.</li>
+          <li>• ⚠️ <strong class="text-white">Gaps to close:</strong> documented data-retention policy; deletion/export endpoints per user (child's guardian); consent records for guardian sign-off; breach-notification flow; privacy notice in Nepali + English.</li>
+          <li>• ⚠️ <strong class="text-white">Sync-queue content:</strong> queued records contain learner answers — must be encrypted at rest in IndexedDB (today it's plaintext local storage; low risk locally, but a school-shared-device consideration).</li>
+        </ul>
+        <div class="mermaid mt-4">
+flowchart TB
+  subgraph LOG posture
+    L1[bcrypt + JWT jti revocation] --> L2[role re-validation each request]
+    L2 --> L3[audit log all auth/admin]
+    L3 --> L4[no LLM - data never trains]
+  end
+  subgraph To close
+    G1[retention policy + deletion API]
+    G2[guardian consent records]
+    G3[breach notification flow]
+    G4[privacy notice NE + EN]
+  end
+  L4 --> G1
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ OER TAB ============ -->
+  <section id="tab-oer" class="tab-panel">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">9,361</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Books (E-Pustakalaya)</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">540+</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Interactive modules (E-Paath)</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">58</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Courses (Sikai Chautari)</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">0</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Khan Academy Nepali (verified)</p></div>
+    </div>
+
+    <div class="overflow-x-auto mb-8">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Source</th>
+            <th class="pb-3 pr-4">Owner</th>
+            <th class="pb-3 pr-4">Catalog (verified)</th>
+            <th class="pb-3 pr-4">Grades</th>
+            <th class="pb-3 pr-4">Languages</th>
+            <th class="pb-3 pr-4">License</th>
+            <th class="pb-3">Offline</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">E-Pustakalaya</td><td class="py-3 pr-4">OLE Nepal</td><td class="py-3 pr-4">9,361 books · 3,444 audio · 1,897 video</td><td class="py-3 pr-4">K–adult</td><td class="py-3 pr-4">Nepali, English, Newari, Tharu, Tibetan+</td><td class="py-3 pr-4">CC BY-NC-SA 3.0</td><td class="py-3 text-green-400 font-bold">Yes · 1,700+ servers</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">E-Paath</td><td class="py-3 pr-4">OLE Nepal</td><td class="py-3 pr-4">540+ interactive modules</td><td class="py-3 pr-4">1–8</td><td class="py-3 pr-4">Nepali, English, Chepang, NSL</td><td class="py-3 pr-4">CC / free-open</td><td class="py-3 text-green-400 font-bold">Yes</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">CDC textbooks</td><td class="py-3 pr-4">Govt. (CDC)</td><td class="py-3 pr-4">Full ECD–12 PDF set + teacher guides</td><td class="py-3 pr-4">ECD–12</td><td class="py-3 pr-4">Nepali, English, Sanskrit, 15 mother-tongues</td><td class="py-3 pr-4">Free download, <span class="text-amber-300">no CC mark</span></td><td class="py-3 text-white/40">No (PDFs)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Sikai Chautari</td><td class="py-3 pr-4">Govt. (CEHRD)</td><td class="py-3 pr-4">58 courses · 40,757 users</td><td class="py-3 pr-4">ECED–12 + PD</td><td class="py-3 pr-4">Nepali, English, NSL</td><td class="py-3 pr-4">Free, open Moodle</td><td class="py-3 text-white/40">No</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">NEB model questions</td><td class="py-3 pr-4">Govt. (NEB)</td><td class="py-3 pr-4">Model papers (Google Drive)</td><td class="py-3 pr-4">10–12</td><td class="py-3 pr-4">Nepali/English</td><td class="py-3 pr-4">Free download</td><td class="py-3 text-white/40">No</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Nepali Wikipedia</td><td class="py-3 pr-4">Wikimedia</td><td class="py-3 pr-4">30,049 articles</td><td class="py-3 pr-4">Reference</td><td class="py-3 pr-4">Nepali</td><td class="py-3 pr-4">CC BY-SA 4.0</td><td class="py-3 text-green-400 font-bold">Yes (Kiwix ZIM)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Khan Academy</td><td class="py-3 pr-4">KA (US)</td><td class="py-3 pr-4">840+ courses global</td><td class="py-3 pr-4">K–college</td><td class="py-3 pr-4"><span class="text-red-300 font-bold">Nepali NOT supported</span></td><td class="py-3 pr-4">CC BY-NC-SA</td><td class="py-3 text-white/40">No</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">INTEGRATION PATH</span>
+          <h3 class="text-xl font-bold">Recommended architecture: LOG as the guidance layer over Nepal's best content</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">E-Pustakalaya / E-Paath</strong> via API partnership (OLE Nepal's redesign roadmap explicitly includes API integration; NGO-partner friendly — info@olenepal.org). CC BY-NC-SA allows reuse with attribution + non-commercial + share-alike; offline servers can be mirrored.</li>
+          <li>• <strong class="text-white">CDC + NEB PDFs</strong> mirrored with a licensing memo (verify with CDC: ed@moecdc.gov.np) — the legal gap is the biggest obstacle, not the technical one.</li>
+          <li>• <strong class="text-white">Sikai Chautari courses</strong> via Moodle REST web services — read access needs no account.</li>
+          <li>• <strong class="text-white">Nepali Wikipedia</strong> via official Kiwix ZIM files bundled offline.</li>
+          <li>• <strong class="text-white">Khan Academy</strong>: link-out only (no Nepali localization exists — verified) — a content gap LOG could itself fill with curriculum-aligned practice.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">GAPS</span>
+          <h3 class="text-xl font-bold">The honest gaps in Nepal's OER ecosystem</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">License fragmentation:</strong> E-Pustakalaya/KA are CC BY-NC-SA (non-commercial); CDC/NEB PDFs carry no explicit open license — a federated catalog needs a licensing memo per source.</li>
+          <li>• <strong class="text-white">Interactive content ends at grade 8:</strong> E-Paath covers 1–8; grades 9–12 have only static PDFs + NEB samples. LOG's practice engine could be the interactive layer for 9–12.</li>
+          <li>• <strong class="text-white">No Khan Academy Nepali</strong> — no big-brand adaptive math in Nepali; open lane.</li>
+          <li>• <strong class="text-white">No shared metadata/API standard</strong> — LOG must build its own metadata layer (LOM-style tags, grade/subject/language indexing).</li>
+          <li>• <strong class="text-white">Government content is online-only</strong> — no Kiwix-style distribution of official textbooks exists.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ RULES TAB ============ -->
+  <section id="tab-rules" class="tab-panel">
+
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">Design Rules distilled for LOG</h2>
+    <div class="grid md:grid-cols-2 gap-5 mb-10">
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 01</span>
+        <h4 class="font-bold mb-2">Automate the CAS documentation</h4>
+        <p class="text-white/60 text-sm">Nepal's CAS fails because paperwork crowds out remediation. LOG's observation layer must auto-generate the records so teachers act on them, not file them.</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 02</span>
+        <h4 class="font-bold mb-2">EWS data model: attendance + practice + scores</h4>
+        <p class="text-white/60 text-sm">Early-warning signals are the guidance engine. LOG's per-learner activity status (roadmap item) is exactly this — complete the time-series so trends exist.</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 03</span>
+        <h4 class="font-bold mb-2">Error-pattern diagnosis, not just scores</h4>
+        <p class="text-white/60 text-sm">Tag questions by misconception so guidance names the skill gap ("this area could use more practice") instead of reporting a number.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 04</span>
+        <h4 class="font-bold mb-2">No biometrics, no cameras, no LLM training</h4>
+        <p class="text-white/60 text-sm">The $6.25M settlement and bias evidence make proctoring-tech indefensible for children. LOG's anti-cheating = varied question banks, honest practice, no surveillance.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 05</span>
+        <h4 class="font-bold mb-2">Guardian consent + deletion rights</h4>
+        <p class="text-white/60 text-sm">Privacy Act 2075 + IT Bill 2082 §61-62 trend: build consent records and per-child data export/deletion endpoints now, before compliance is forced.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 06</span>
+        <h4 class="font-bold mb-2">Retention policy + breach flow, documented</h4>
+        <p class="text-white/60 text-sm">State retention windows (e.g., current school year + N) in a Nepali+English privacy notice; wire a breach-notification path into the audit log today.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 07</span>
+        <h4 class="font-bold mb-2">Encrypt sync-queue at rest</h4>
+        <p class="text-white/60 text-sm">Queued learner answers sit in IndexedDB on shared school devices. Encrypt local queue payloads — cheap, and closes the shared-device hole.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 08</span>
+        <h4 class="font-bold mb-2">Integrate OLE Nepal, don't rebuild</h4>
+        <p class="text-white/60 text-sm">9,361 books + 540+ modules + 1,700+ offline servers already exist. LOG's moat is guidance over content, not content itself.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 09</span>
+        <h4 class="font-bold mb-2">Own the 9–12 interactive gap</h4>
+        <p class="text-white/60 text-sm">No interactive curriculum content exists for grades 9–12 in Nepali — the SEE-exam lane. Practice questions for 9–12 are the clearest content opportunity in the country.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 10</span>
+        <h4 class="font-bold mb-2">Licensing memo per OER source</h4>
+        <p class="text-white/60 text-sm">CC BY-NC-SA vs no-CC-mark PDFs: LOG must record attribution + license per item in its own metadata layer (honesty principle applies to content provenance too).</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 11</span>
+        <h4 class="font-bold mb-2">Mastery bands, not percentages</h4>
+        <p class="text-white/60 text-sm">"Approaching / meeting / exceeding" framing fits supportive language and avoids the GPA-comparison culture documented in parent research.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 12</span>
+        <h4 class="font-bold mb-2">Digitize "checking copies" via photos</h4>
+        <p class="text-white/60 text-sm">Notebook-photo uploads (works on any phone, offline-queueable) give teachers authentic evidence and parents visible work — replacing the paper diary without losing its role.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 05 · Assessment, Child Privacy &amp; Nepal OER · 2026-08-19 · Sources: Mangal Research Journal 2025 (CAS), Hattie/CLASS/EWS frameworks, Privacy Act 2075, IT &amp; Cybersecurity Bill 2082, Respondus settlement coverage, OLE Nepal catalogs (live fetch), CDC moecdc.gov.np, CEHRD Sikai Chautari, NEB, Nepali Wikipedia (Kiwix), Khan Academy (verified: no Nepali) · <a href="index.html" class="text-white/60 hover:text-white">← Back to hub</a></p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="04-ai-engagement-accessibility.html">← 04 · AI & Access</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="06-log-playbook.html">06 · Playbook →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

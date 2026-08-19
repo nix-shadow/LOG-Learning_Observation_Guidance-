@@ -31,14 +31,6 @@ func (r *userRepo) FindByEmail(ctx context.Context, email string) (*domain.User,
 	return &user, nil
 }
 
-func (r *userRepo) FindByPhone(ctx context.Context, phone string) (*domain.User, error) {
-	var user domain.User
-	if err := r.db.WithContext(ctx).First(&user, "phone = ?", phone).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
-
 func (r *userRepo) FindByPhoneUnscoped(ctx context.Context, phone string) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.WithContext(ctx).Unscoped().First(&user, "phone = ?", phone).Error; err != nil {

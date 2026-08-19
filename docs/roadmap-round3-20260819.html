@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LOG — Round 3 Audit + LMS Research + Enhancement Roadmap (2026-08-19)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="html/assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-14">
+    <p class="text-brand-amber/80 text-sm font-bold uppercase tracking-[0.25em] mb-3">LOG · Learning Observation Guidance</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Round 3 — Bugs · LMS Research · Roadmap</h1>
+    <p class="text-white/60 text-lg mb-6">Deep audit round 3 (frontend + backend) with <strong class="text-white">verified</strong> evidence, plus a feature matrix from Moodle / Canvas / Google Classroom / Kolibri / Duolingo research (full report: <code>docs/LMS_EDTECH_COMPARISON.md</code>). <strong class="text-amber-300">Status: research &amp; plan only — implementation starts after the go-ahead.</strong></p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-critical">2 CRITICAL</span>
+      <span class="badge badge-high">6 HIGH</span>
+      <span class="badge badge-medium">14 MEDIUM</span>
+      <span class="badge badge-low">10 LOW</span>
+      <span class="badge badge-ok">23 feature ideas researched</span>
+    </div>
+  </header>
+
+  <!-- ============ PHASE A: CRITICAL BUGS ============ -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-8 tracking-tight">Phase A — Critical Bugs (fix first, small diffs)</h2>
+    <div class="space-y-8">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">CRITICAL · VERIFIED</span>
+          <h3 class="text-xl font-bold">A1 — Cross-account SW cache leak is STILL LIVE (round-1 finding 1.6)</h3>
+        </div>
+        <p class="text-white/70 mb-3"><code>next.config.mjs:6-8</code> filters the cross-origin catch-all by <strong>string</strong>, but next-pwa 5.6 defines it as a <strong>function</strong> (<code>node_modules/next-pwa/cache.js</code>, <code>urlPattern: ({url}) =&gt; !isSameOrigin</code>). Verified in the generated <code>public/sw.js</code>: <code>cacheName:"cross-origin", NetworkFirst, maxAgeSeconds:3600</code> is still registered. Every authenticated GET (dashboard/roster — with Authorization header) is SW-cached by URL only, survives logout → user B inherits user A's data offline on shared school devices.</p>
+        <ul class="text-white/60 text-sm space-y-1">
+          <li><strong>Fix:</strong> filter function-based entries whose <code>urlPattern</code> matches <code>!isSameOrigin</code> (or replace <code>runtimeCaching</code> with an explicit same-origin allowlist), then rebuild; add <code>caches.delete('cross-origin')</code> + <code>caches.delete('apis')</code> in <code>logout()</code>/<code>clearCredentialsAndRedirect()</code> as belt-and-braces.</li>
+        </ul>
+        <div class="mermaid mt-4">
+flowchart LR
+  A[User A fetches /dashboard] --> B[SW caches cross-origin response keyed by URL]
+  A2[User A logs out] -. cache survives .-> C
+  B --> C[User B opens app offline]
+  C --> D[B receives A's dashboard data — leak]
+  E[Fix: drop cross-origin catch-all] --> F[SW caches nothing API-related]
+  F --> G[IndexedDB layer owns offline data]
+        </div>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">CRITICAL · VERIFIED</span>
+          <h3 class="text-xl font-bold">A2 — Per-route rate limits are dead code (round-2 fix was incomplete)</h3>
+        </div>
+        <p class="text-white/70 mb-3"><code>backend/internal/handler/middleware.go:62-64</code> — <code>allow()</code> still uses the package constants <code>rateLimitWindow</code>/<code>rateLimitMax</code> (5/min) instead of <code>rl.window</code>/<code>rl.limit</code>. Every limiter — <code>NewLimiter(RateLimitVerifyOTP=20)</code>, <code>RateLimitLogin=10</code>, etc. — actually enforces 5/min, so a class of 30 students still hits the NAT lockout. Any future budget tuning is silently ignored.</p>
+        <ul class="text-white/60 text-sm space-y-1">
+          <li><strong>Fix:</strong> use <code>rl.limit</code>/<code>rl.window</code> in <code>allow()</code>; add a unit test asserting <code>NewLimiter(20, time.Minute)</code> admits 20 requests (this exact test would have caught it).</li>
+        </ul>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">HIGH</span>
+          <h3 class="text-xl font-bold">A3 — Exported .logsync sneakernet files embed the JWT</h3>
+        </div>
+        <p class="text-white/70 mb-3"><code>syncExport.ts:6-26</code> dumps raw queue records including <code>headers.Authorization: Bearer &lt;JWT&gt;</code> into a file explicitly carried on USB and handed to a teacher; if the importing device lacks a fresh token, replay falls back to the stored header and syncs as the original student. A stolen USB = a stolen session (up to 24h).</p>
+        <ul class="text-white/60 text-sm space-y-1">
+          <li><strong>Fix:</strong> strip <code>headers</code> (and any <code>Authorization</code>) in <code>exportSyncQueue()</code>; validate <code>version === '1.0'</code>, per-item shape, and a 5 MB size cap in <code>importSyncFile()</code>; route imports through the same best-score merge as <code>queueRequest</code>.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">HIGH · FUNCTIONAL GAP</span>
+          <h3 class="text-xl font-bold">A4 — OTP is never delivered — "OTP sent" is a mock</h3>
+        </div>
+        <p class="text-white/70 mb-3">Zero SMS/WhatsApp/email gateway exists (<code>auth_service_impl.go:32-64</code>); the code exists only in the DB. Combined with seed users that have real phone numbers and <strong>empty password hashes</strong> (<code>db.go:90-97</code>), seeded admin/teacher accounts cannot log in at all outside a dev console.</p>
+        <ul class="text-white/60 text-sm space-y-1">
+          <li><strong>Fix:</strong> gate delivery behind <code>SMS_PROVIDER</code> env and fail loudly when unset (no fake success); seed bcrypt password hashes for admin/teacher so email login works today; document the limitation in the demo path.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ PHASE B: ROUND-3 FINDINGS ============ -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-8 tracking-tight">Phase B — Round-3 Findings to Fix (frontend)</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Sev</th>
+            <th class="pb-3 pr-4">Finding</th>
+            <th class="pb-3 pr-4">Location</th>
+            <th class="pb-3">Fix</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">base64url decode throws on unpadded payloads — a legit ADMIN token can be bounced from /admin</td><td class="py-3 pr-4 font-mono text-xs">middleware.ts:27, AuthContext.tsx:37, api.ts:138</td><td class="py-3">shared padding-safe decoder util</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Login 401 misreported — wrong password says "Session expired"</td><td class="py-3 pr-4 font-mono text-xs">api.ts:176-179</td><td class="py-3">skip redirect on /auth/* endpoints</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">No stale-while-revalidate: a transient blip deletes readable stale cache</td><td class="py-3 pr-4 font-mono text-xs">api.ts:217-241</td><td class="py-3">return stale + background refetch; delete only on 404/410</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Unguarded JSON.parse(log_user) → white screen on corrupt storage</td><td class="py-3 pr-4 font-mono text-xs">AuthContext.tsx:100</td><td class="py-3">try/catch → logout; clear cookie if localStorage empty but cookie set</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Hardcoded 'act-2' fallback — fabricated content (AGENTS.md violation)</td><td class="py-3 pr-4 font-mono text-xs">learning/[id]/page.tsx:14</td><td class="py-3">missing id → redirect /learning</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Fetch failures rendered as "empty" on learning + guidance pages</td><td class="py-3 pr-4 font-mono text-xs">learning/page.tsx, guidance/page.tsx</td><td class="py-3">error state + retry (reuse learning/[id] pattern)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">settings/admin use raw fetch — bypass offline layer, no 401 cleanup</td><td class="py-3 pr-4 font-mono text-xs">settings/page.tsx:57,88 · admin/page.tsx:58</td><td class="py-3">route via fetchWithCache / explicit 401 → clearCredentialsAndRedirect</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">adaptiveEngine.ts: dead file that writes FABRICATED guidance into the cache (doc claims deleted)</td><td class="py-3 pr-4 font-mono text-xs">src/lib/adaptiveEngine.ts</td><td class="py-3">delete file; fix ENHANCEMENT.md §2.8</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">4 listener sets + global 5s IndexedDB poll; OfflineBanner.tsx is dead code</td><td class="py-3 pr-4 font-mono text-xs">api.ts, SyncIsland, useSyncQueue, OfflineBanner</td><td class="py-3">one useConnectivity hook; refresh on sync events; delete OfflineBanner</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Fixed bottom nav overlays content on mobile (pb-safe class undefined)</td><td class="py-3 pr-4 font-mono text-xs">Navigation.tsx:87, layout.tsx:39</td><td class="py-3">main pb-24 + safe-area utility in tailwind.config</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Light theme renders white-on-white (pages hardcode text-white)</td><td class="py-3 pr-4 font-mono text-xs">globals.css, all pages</td><td class="py-3">dark-only or semantic tokens (backlog C6)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">recharts statically imported (~400KB) on the observation page</td><td class="py-3 pr-4 font-mono text-xs">observation/page.tsx:7</td><td class="py-3">next/dynamic ssr:false (ThreeBackground pattern)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Zero error/not-found boundaries — a crash = white screen</td><td class="py-3 pr-4 font-mono text-xs">src/app/ (none)</td><td class="py-3">add error.tsx + not-found.tsx + loading.tsx</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-low">LOW</span></td><td class="py-3 pr-4">redirect param dead; prefix match /learningx; InstallPrompt X unlabeled; dashboard optional chaining; rating NaN</td><td class="py-3 pr-4 font-mono text-xs">middleware.ts:54,45 · InstallPrompt.tsx:80 · dashboard:162 · courses:161</td><td class="py-3">consume/remove, exact match, aria-label, `|| []`, `?? 0`</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="text-3xl font-bold mt-14 mb-8 tracking-tight">Phase B — Round-3 Findings to Fix (backend)</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Sev</th>
+            <th class="pb-3 pr-4">Finding</th>
+            <th class="pb-3 pr-4">Location</th>
+            <th class="pb-3">Fix</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">ListMyAssignments reports class total, not the learner's own status (N+1)</td><td class="py-3 pr-4 font-mono text-xs">assignment_handler.go:99-113</td><td class="py-3">return own submitted:bool + note (batched)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Token blocklist purged only at startup → unbounded growth</td><td class="py-3 pr-4 font-mono text-xs">database/db.go:80</td><td class="py-3">hourly ticker sweep (mirror limiter cleanup)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">SyncBulk: no item cap; all-or-nothing transaction stalls SQLite writer</td><td class="py-3 pr-4 font-mono text-xs">sync_repo.go:27-28</td><td class="py-3">cap ≤500 items; per-item failures tracked</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-low">LOW</span></td><td class="py-3 pr-4">Non-improved replay counted as neither processed nor failed → "synced 0"</td><td class="py-3 pr-4 font-mono text-xs">sync_repo.go:89-92</td><td class="py-3">processedCount++ before continue</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">CreateActivity audit outside tx; Order via Count()+1 race</td><td class="py-3 pr-4 font-mono text-xs">admin.go:184-211</td><td class="py-3">audit in tx; MAX(order)+1</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">UpdatePassword: no audit, stolen token survives password change</td><td class="py-3 pr-4 font-mono text-xs">auth_service_impl.go:197-213</td><td class="py-3">audit + revoke current jti</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">CreateClass accepts any teacher_id (student or ghost teacher)</td><td class="py-3 pr-4 font-mono text-xs">school_service_impl.go:30-43</td><td class="py-3">verify MODERATOR role before assign</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">Enroll silently skips invalid IDs — no feedback</td><td class="py-3 pr-4 font-mono text-xs">school_repo.go:49-67</td><td class="py-3">return skipped IDs in response</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-medium">MED</span></td><td class="py-3 pr-4">SubmitAssignment ignores DueDate — no late flag</td><td class="py-3 pr-4 font-mono text-xs">school_service_impl.go:159-191</td><td class="py-3">is_late in response (accept, don't reject)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-low">LOW</span></td><td class="py-3 pr-4">Phone logged to stdout on OTP generation (PII)</td><td class="py-3 pr-4 font-mono text-xs">auth_handler.go:48</td><td class="py-3">drop or hash phone in logs</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-low">LOW</span></td><td class="py-3 pr-4">GenerateSecureID silently degrades to time.Now() on rand failure</td><td class="py-3 pr-4 font-mono text-xs">auth_utils.go:29-31</td><td class="py-3">panic/return error (predictable PK/JTI)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-low">LOW</span></td><td class="py-3 pr-4">/readyz returns 200 without DB ping; CORS lacks Vary: Origin</td><td class="py-3 pr-4 font-mono text-xs">main.go:149, 96-118</td><td class="py-3">ping SQLite; set Vary when reflecting</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-low">LOW</span></td><td class="py-3 pr-4">VerifyOTP attempts check-then-act — race can exceed the 5-attempt budget</td><td class="py-3 pr-4 font-mono text-xs">auth_service_impl.go:77-88</td><td class="py-3">atomic UPDATE attempts+1 WHERE attempts&lt;5</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4"><span class="badge badge-low">LOW</span></td><td class="py-3 pr-4">ForgotPassword stub returns "instructions sent" (no mechanism)</td><td class="py-3 pr-4 font-mono text-xs">auth_handler.go:81-83</td><td class="py-3">implement or return 501 honestly</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ LMS RESEARCH ============ -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-2 tracking-tight">LMS Research — What Others Do &amp; What LOG Should Steal</h2>
+    <p class="text-white/50 mb-8">Full 22-feature matrix + citations in <code>docs/LMS_EDTECH_COMPARISON.md</code>. Highlights:</p>
+    <div class="grid md:grid-cols-3 gap-5 mb-10">
+      <div class="grow rounded-2xl p-6">
+        <h4 class="font-bold mb-2 text-green-300">Kolibri / KA Lite (offline king)</h4>
+        <p class="text-white/60 text-sm leading-relaxed">Content packs via USB, LAN peer import, learn-only devices auto-syncing on school Wi-Fi, Pi-as-access-point serving 35 tablets, mobile "school van" model. LOG's .logsync is exactly this pattern — the gap is content-pack distribution and roster provisioning.</p>
+      </div>
+      <div class="deep rounded-2xl p-6">
+        <h4 class="font-bold mb-2 text-blue-300">Moodle / Canvas (school ops)</h4>
+        <p class="text-white/60 text-sm leading-relaxed">Gradebook, competency frameworks, forums, parent/guardian accounts, CSV rosters, badges, completion tracking. LOG covers class/enroll/assign/announce — missing gradebook-level visibility and roster import.</p>
+      </div>
+      <div class="leak rounded-2xl p-6">
+        <h4 class="font-bold mb-2 text-amber-300">Duolingo (retention)</h4>
+        <p class="text-white/60 text-sm leading-relaxed">Streak freezes (17.2 vs 11.6 day streaks), class-scoped leagues of ~30, day-one badges (33.4% vs 20.4% retention), spaced repetition (SM-2). Research warns: rewards decoupled from real progress backfire — LOG's supportive-language principle is the right frame.</p>
+      </div>
+    </div>
+
+    <h3 class="text-2xl font-bold mb-6 tracking-tight">What LOG already does better than the majors</h3>
+    <p class="text-white/70 mb-6">No mainstream LMS ships a first-class offline queue with sneakernet sync, optimistic 202 writes, and honest queued-state UX. The recommended roadmap below never trades that away.</p>
+
+    <h3 class="text-2xl font-bold mb-6 tracking-tight">Anti-patterns — explicitly do NOT build</h3>
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div class="seam rounded-2xl p-5"><p class="font-bold mb-1">✗ Video streaming-first content</p><p class="text-white/60">Needs progressive download / content packs; Nepal median upload ~14 Mbps, 68.5% internet in Karnali.</p></div>
+      <div class="seam rounded-2xl p-5"><p class="font-bold mb-1">✗ Real-time chat / live classes</p><p class="text-white/60">Dependent on connectivity; async teacher replies to guidance notes work offline.</p></div>
+      <div class="seam rounded-2xl p-5"><p class="font-bold mb-1">✗ Cloud-LLM content generation</p><p class="text-white/60">Violates AGENTS.md No-Hallucinations; keep deterministic server-side guidance.</p></div>
+      <div class="seam rounded-2xl p-5"><p class="font-bold mb-1">✗ Global leaderboards</p><p class="text-white/60">Demotivate on shared devices; class-scoped, streak-based leagues are supportive.</p></div>
+      <div class="seam rounded-2xl p-5"><p class="font-bold mb-1">✗ "Occasional cloud call" features</p><p class="text-white/60">Anything gated on the network silently dies in the classroom; design offline-first.</p></div>
+      <div class="seam rounded-2xl p-5"><p class="font-bold mb-1">✗ Monetized gems/energy</p><p class="text-white/60">Pay-to-continue models have no place in Nepali public schools.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURE ROADMAP ============ -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-8 tracking-tight">Phase C — New Features (from research, Nepal-fit)</h2>
+
+    <div class="overflow-x-auto mb-12">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">#</th>
+            <th class="pb-3 pr-4">Feature</th>
+            <th class="pb-3 pr-4">Role</th>
+            <th class="pb-3 pr-4">Effort</th>
+            <th class="pb-3 pr-4">Impact</th>
+            <th class="pb-3">Why it fits Nepal</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">1</td><td class="py-3 pr-4 font-medium text-white">Teacher Class Workbench — per-learner drill-down (progress, guidance, submissions)</td><td class="py-3 pr-4">TEACHER</td><td class="py-3 pr-4"><span class="badge badge-m">M</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Closes the teacher↔student loop; roster is currently list-only (backend gap #11)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">2</td><td class="py-3 pr-4 font-medium text-white">CSV roster import/export (Kolibri pattern)</td><td class="py-3 pr-4">ADMIN</td><td class="py-3 pr-4"><span class="badge badge-s">S</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Schools manage rosters in Excel; enrolment is currently click-by-click</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">3</td><td class="py-3 pr-4 font-medium text-white">Offline quiz packs — questions bundled in content, answers captured offline + scored on sync</td><td class="py-3 pr-4">STUDENT</td><td class="py-3 pr-4"><span class="badge badge-l">L</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Replaces the +2.5 fabrication with real correctness data (roadmap item #2)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">4</td><td class="py-3 pr-4 font-medium text-white">Attendance — teacher marks per class offline, syncs as bulk events</td><td class="py-3 pr-4">TEACHER</td><td class="py-3 pr-4"><span class="badge badge-m">M</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Paper attendance is universal; digitizing it offline-first is a clear win</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">5</td><td class="py-3 pr-4 font-medium text-white">Parent/guardian PDF progress report — honest numbers, printable/shareable</td><td class="py-3 pr-4">ADMIN</td><td class="py-3 pr-4"><span class="badge badge-m">M</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Parents without smartphones get print; builds school trust</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">6</td><td class="py-3 pr-4 font-medium text-white">Nepali language toggle (next-intl)</td><td class="py-3 pr-4">ALL</td><td class="py-3 pr-4"><span class="badge badge-l">L</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Adoption enabler for low-English-literacy students; roadmap item #3</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">7</td><td class="py-3 pr-4 font-medium text-white">Class leaderboard — supportive, streak-based, no negative framing</td><td class="py-3 pr-4">STUDENT</td><td class="py-3 pr-4"><span class="badge badge-s">S</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Duolingo engagement without global demotivation</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">8</td><td class="py-3 pr-4 font-medium text-white">Streak freezes + day-one badges</td><td class="py-3 pr-4">STUDENT</td><td class="py-3 pr-4"><span class="badge badge-s">S</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Proven retention (17.2 vs 11.6 days; 33.4% vs 20.4%)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">9</td><td class="py-3 pr-4 font-medium text-white">SM-2 spaced repetition — schedule activity re-practice cards</td><td class="py-3 pr-4">STUDENT</td><td class="py-3 pr-4"><span class="badge badge-l">L</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Fits the guidance engine; deterministic, no LLM</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">10</td><td class="py-3 pr-4 font-medium text-white">Competency badges tied to real completions/quiz scores (never decorative)</td><td class="py-3 pr-4">STUDENT</td><td class="py-3 pr-4"><span class="badge badge-m">M</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Recognition for mastery, honest data only</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">11</td><td class="py-3 pr-4 font-medium text-white">Content packs on USB → .logsync-style import for lessons (Kolibri channel pattern)</td><td class="py-3 pr-4">ADMIN</td><td class="py-3 pr-4"><span class="badge badge-l">L</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">"Mobile school van" / Pi access-point deployment model</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">12</td><td class="py-3 pr-4 font-medium text-white">Teacher replies to student guidance notes (async, offline-queued)</td><td class="py-3 pr-4">TEACHER</td><td class="py-3 pr-4"><span class="badge badge-m">M</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">One-directional loop becomes a conversation, still offline-first</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">13</td><td class="py-3 pr-4 font-medium text-white">Admin assignment creation (bypass teacher-ownership rule)</td><td class="py-3 pr-4">ADMIN</td><td class="py-3 pr-4"><span class="badge badge-s">S</span></td><td class="py-3 pr-4"><span class="badge badge-ok">HIGH</span></td><td class="py-3">Today only class teachers can create assignments (backend gap #11)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">14</td><td class="py-3 pr-4 font-medium text-white">Gradebook-lite — own-submission status per learner + is_late flag</td><td class="py-3 pr-4">TEACHER</td><td class="py-3 pr-4"><span class="badge badge-m">M</span></td><td class="py-3 pr-4"><span class="badge badge-ok">MED</span></td><td class="py-3">Fixes the misleading "N submissions" today; teacher sees who has/hasn't submitted</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">15</td><td class="py-3 pr-4 font-medium text-white">SMS gateway integration for OTP (env-gated, loud failure)</td><td class="py-3 pr-4">ALL</td><td class="py-3 pr-4"><span class="badge badge-m">M</span></td><td class="py-3 pr-4"><span class="badge badge-ok">MED</span></td><td class="py-3">Makes OTP login real (Phase A4) — Nepal has cheap local SMS APIs</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">16</td><td class="py-3 pr-4 font-medium text-white">Audit-log pagination + filters</td><td class="py-3 pr-4">ADMIN</td><td class="py-3 pr-4"><span class="badge badge-s">S</span></td><td class="py-3 pr-4"><span class="badge badge-ok">MED</span></td><td class="py-3">Backlog C1; only 200 rows are visible today</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">17</td><td class="py-3 pr-4 font-medium text-white">User search/filter on /admin/users</td><td class="py-3 pr-4">ADMIN</td><td class="py-3 pr-4"><span class="badge badge-s">S</span></td><td class="py-3 pr-4"><span class="badge badge-ok">MED</span></td><td class="py-3">Pagination-only today; schools have hundreds of students</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold">18</td><td class="py-3 pr-4 font-medium text-white">Reconnect digest — "3 new guidance notes since your last visit"</td><td class="py-3 pr-4">STUDENT</td><td class="py-3 pr-4"><span class="badge badge-s">S</span></td><td class="py-3 pr-4"><span class="badge badge-ok">MED</span></td><td class="py-3">Low-bandwidth periodic check-in pattern (roadmap #5)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ EXECUTION ORDER ============ -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-8 tracking-tight">Proposed Execution Order (on go-ahead)</h2>
+    <div class="grid md:grid-cols-3 gap-5">
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">STEP 1 · BUGS</span>
+        <p class="text-white/60 text-sm leading-relaxed">A1 SW cross-origin leak · A2 rate-limiter fix + test · A3 .logsync JWT strip · A4 OTP delivery honesty + seed password hashes · base64url padding · login 401 messaging · AuthContext JSON.parse guard · act-2 fallback · error/not-found boundaries · stale-while-revalidate · listener consolidation · pb-safe nav · recharts dynamic · delete adaptiveEngine.ts + OfflineBanner.tsx.</p>
+      </div>
+      <div class="leak rounded-3xl p-6">
+        <span class="badge badge-high mb-3">STEP 2 · BACKEND TRUTH</span>
+        <p class="text-white/60 text-sm leading-relaxed">Own-submission status · blocklist sweep · sync bulk cap + per-item errors · CreateActivity tx+order · UpdatePassword audit/revoke · CreateClass teacher validation · Enroll skipped-IDs · is_late · phone-log drop · GenerateSecureID hard-fail · /readyz DB ping · CORS Vary · atomic OTP attempts.</p>
+      </div>
+      <div class="grow rounded-3xl p-6">
+        <span class="badge badge-ok mb-3">STEP 3 · FEATURES</span>
+        <p class="text-white/60 text-sm leading-relaxed">Teacher Class Workbench · CSV roster import · class leaderboard · streak freeze + badges · parent PDF report · Nepali toggle · attendance · gradebook-lite · admin assignments · audit pagination · user search · SMS gateway · SM-2 · offline quiz packs (biggest, last).</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-b border-white/10 pb-8 mb-4"></footer>
+  <p class="text-white/40 text-sm">LOG · Round 3 audit + LMS research + roadmap · 2026-08-19 · Research &amp; plan only — implementation awaits the go-ahead. Companions: <code>docs/LMS_EDTECH_COMPARISON.md</code> (research), <code>docs/architecture-review-2-20260818.html</code> (round 2).</p>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="html/index.html">← Research Hub</a>
+  <a class="doc-nav-home" href="html/index.html">Research Hub</a>
+  <a class="doc-nav-link" href="#top">Top ↑</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

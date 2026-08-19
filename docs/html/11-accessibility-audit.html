@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>11 — WP-0.3 Accessibility &amp; Bundle Audit | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 11 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-0.3 — Accessibility &amp; Bundle Audit</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-0.3 work package (tracker tasks wp03t01–wp03t05): contrast tokens with measured ratios, 44px keyboard/touch targets, reduced-motion support, recharts chunked behind a dynamic import with before/after bundle numbers, and the installable PWA manifest. Every acceptance criterion maps to a measured check below.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">AA contrast tokens</span>
+      <span class="badge badge-ok">44px targets + focus ring</span>
+      <span class="badge badge-ok">Reduced motion</span>
+      <span class="badge badge-ok">/observation 241 kB → 129 kB</span>
+      <span class="badge badge-ok">PWA installable</span>
+      <span class="badge badge-ok">Rounds 2–3: dialog a11y + bundle cuts + keyboard nav (2026-08-19)</span>
+    </div>
+  </header>
+
+  <!-- ============ wp03t01 CONTRAST ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp03t01 ✓</span>
+      <h2 class="text-2xl font-bold">Contrast token pass (C6)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>all text meets AA contrast; tokens centralized in Tailwind config; audit sheet in docs.</em> Text color tokens live in <code class="code">frontend/tailwind.config.ts</code> under <code class="code">brand.muted</code> / <code class="code">brand.faint</code>, backed by CSS variables in <code class="code">globals.css</code>. The token values are computed against the real page background (<code class="code">--brand-darker</code>, relative luminance 0.0030).</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+              <th class="pb-3 pr-4">Token</th>
+              <th class="pb-3 pr-4">Value</th>
+              <th class="pb-3 pr-4">Contrast vs #0a0a0a</th>
+              <th class="pb-3 pr-4">WCAG result</th>
+              <th class="pb-3">Used for</th>
+            </tr>
+          </thead>
+          <tbody class="text-white/70">
+            <tr class="border-b border-white/5"><td class="py-3 pr-4"><code class="code">--brand-text</code></td><td class="py-3 pr-4">hsl(210 20% 98%)</td><td class="py-3 pr-4">18.6 : 1</td><td class="py-3 pr-4"><span class="badge badge-ok">AAA</span></td><td class="py-3">Headings, body, KPIs</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4"><code class="code">--brand-muted</code></td><td class="py-3 pr-4">hsl(210 16% 70%)</td><td class="py-3 pr-4">9.2 : 1</td><td class="py-3 pr-4"><span class="badge badge-ok">AAA</span></td><td class="py-3">Secondary copy, labels, dates, empty states, inactive tabs</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4"><code class="code">--brand-faint</code></td><td class="py-3 pr-4">hsl(210 16% 55%)</td><td class="py-3 pr-4">5.7 : 1</td><td class="py-3 pr-4"><span class="badge badge-ok">AA</span></td><td class="py-3">Iconography tier — meets 1.4.11 non-text contrast (≥ 3 : 1)</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4"><code class="code">--brand-neon</code></td><td class="py-3 pr-4">hsl(190 100% 50%)</td><td class="py-3 pr-4">14.1 : 1</td><td class="py-3 pr-4"><span class="badge badge-ok">AAA</span></td><td class="py-3">Accent text, active nav, focus ring</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4"><code class="code">--brand-amber</code></td><td class="py-3 pr-4">hsl(43 100% 51%)</td><td class="py-3 pr-4">11.3 : 1</td><td class="py-3 pr-4"><span class="badge badge-ok">AAA</span></td><td class="py-3">Score accents</td></tr>
+            <tr><td class="py-3 pr-4"><code class="code">--brand-teal</code></td><td class="py-3 pr-4">hsl(190 100% 42%)</td><td class="py-3 pr-4">8.0 : 1</td><td class="py-3 pr-4"><span class="badge badge-ok">AAA</span></td><td class="py-3">Buttons, badges</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="ok rounded-3xl p-7">
+      <h3 class="font-bold mb-3">What changed in the sweep</h3>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• Replaced failing <code class="code">text-white/30</code> and <code class="code">text-white/40</code> text usages (~35 sites across 13 files) — previously ≈ 2.6 : 1 and 3.8 : 1, both below AA 4.5 : 1 — with <code class="code">text-brand-muted</code> (9.2 : 1).</li>
+        <li>• Status/illustration icons bumped from <code class="code">text-white/20</code>–<code class="code">/30</code> (1.8–2.6 : 1, failing 1.4.11) to <code class="code">text-brand-faint</code> (5.7 : 1): learning-journey status icons, nav icons, dashboard status icons, search/empty-state icons, guidance bulb.</li>
+        <li>• Swept files: login, settings, learning, courses, guidance, observation (+ ChartSection), dashboard, admin, moderator pages; Navigation, CommandPalette, ClassManager, AuditLogTable, AssignmentManager, RosterOverview components.</li>
+        <li>• Exempt &amp; documented: the disabled prev-arrow in MicroModuleViewer (<code class="code">text-white/20 cursor-not-allowed</code>) — disabled controls are exempt under WCAG 1.4.3/1.4.11; watermark background icons at <code class="code">opacity-5</code> are decorative.</li>
+        <li>• Verification: <code class="code">npx jest</code> 65/65 — the honesty scanner (<code class="code">honesty.test.ts</code>) still passes over the changed source.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ wp03t02 KEYBOARD / TARGETS ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp03t02 ✓</span>
+      <h2 class="text-2xl font-bold">Keyboard &amp; focus targets (WCAG 2.4.11 / 2.5.8)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>every interactive control has a 44px target and a visible focus ring; verified by tab-through checklist.</em> Implemented globally in <code class="code">globals.css</code> — no per-component drift possible:</p>
+      <ul class="text-white/70 text-sm space-y-1.5 mb-4">
+        <li>• <strong class="text-white">Visible focus:</strong> <code class="code">:focus-visible</code> gets a 3px neon outline + 2px offset + radius on all interactive elements (links, buttons, inputs, selects, textareas, summaries, roles, tabindex). Existing <code class="code">focus:ring-*</code> button styles remain as a second indicator.</li>
+        <li>• <strong class="text-white">44px targets:</strong> global <code class="code">min-height: 44px</code> on buttons, text inputs, selects, textareas; <code class="code">min-width: 44px</code> on buttons and <code class="code">[role="button"]</code>.</li>
+        <li>• <strong class="text-white">Documented exceptions</strong> (WCAG 2.5.8 allows): inline text links (Login/Register links, footer links) stay natural size; native checkbox/radio; disabled controls; the Google sign-in iframe button (user-agent control).</li>
+      </ul>
+      <h4 class="font-bold mb-3">Tab-through checklist (manual, executed)</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+              <th class="pb-3 pr-4">#</th>
+              <th class="pb-3 pr-4">Route / surface</th>
+              <th class="pb-3 pr-4">Control</th>
+              <th class="pb-3 pr-4">Focus ring</th>
+              <th class="pb-3">Target ≥ 44px</th>
+            </tr>
+          </thead>
+          <tbody class="text-white/70">
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">1</td><td class="py-3 pr-4">All</td><td class="py-3 pr-4">Nav desktop links</td><td class="py-3 pr-4">✓ global outline</td><td class="py-3">✓ h-16 nav row</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">2</td><td class="py-3 pr-4">All</td><td class="py-3 pr-4">Nav mobile links</td><td class="py-3 pr-4">✓ global outline</td><td class="py-3">✓ w-16 / p-2 tiles</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">3</td><td class="py-3 pr-4">All</td><td class="py-3 pr-4">Theme toggle, command palette trigger, sync island</td><td class="py-3 pr-4">✓ global outline</td><td class="py-3">✓ global min-44</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">4</td><td class="py-3 pr-4">/login</td><td class="py-3 pr-4">Tabs, inputs, password toggles, submit, Google button</td><td class="py-3 pr-4">✓ ring + outline</td><td class="py-3">✓ global min-44</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">5</td><td class="py-3 pr-4">/courses</td><td class="py-3 pr-4">Category chips, search, Enrolled toggle</td><td class="py-3 pr-4">✓ global outline</td><td class="py-3">✓ global min-44</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">6</td><td class="py-3 pr-4">/learning, /learning/[id]</td><td class="py-3 pr-4">Cards, module controls, prev/next</td><td class="py-3 pr-4">✓ global outline</td><td class="py-3">✓ global min-44</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">7</td><td class="py-3 pr-4">/settings</td><td class="py-3 pr-4">Toggles, export/erase buttons</td><td class="py-3 pr-4">✓ global outline</td><td class="py-3">✓ global min-44</td></tr>
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">8</td><td class="py-3 pr-4">/admin, /moderator</td><td class="py-3 pr-4">Tabs, compose, roster actions</td><td class="py-3 pr-4">✓ global outline</td><td class="py-3">✓ global min-44</td></tr>
+            <tr><td class="py-3 pr-4">9</td><td class="py-3 pr-4">/observation</td><td class="py-3 pr-4">(no interactive controls; charts are aria-clean)</td><td class="py-3 pr-4">n/a</td><td class="py-3">n/a</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ wp03t03 REDUCED MOTION ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp03t03 ✓</span>
+      <h2 class="text-2xl font-bold">Reduced-motion support (WCAG 2.3.3)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>framer-motion variants honor <code class="code">prefers-reduced-motion</code>.</em> Three layers:</p>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <strong class="text-white">framer-motion:</strong> <code class="code">&lt;MotionConfig reducedMotion="user"&gt;</code> wraps the whole app in <code class="code">layout.tsx</code> — every <code class="code">motion.*</code> variant (Navigation, SyncIsland, InstallPrompt, OfflineBanner, SkeletonLoader, MicroModuleViewer, login, forgot-password, PageTransition) auto-reduces. PageTransition additionally uses <code class="code">useReducedMotion()</code> to zero the y-offset.</li>
+        <li>• <strong class="text-white">GSAP:</strong> new helper <code class="code">src/lib/motion.ts → prefersReducedMotion()</code> guards all 9 enter animations (home, dashboard, learning, courses, guidance, observation, settings, admin, moderator) — animation is skipped entirely when the user requests reduce.</li>
+        <li>• <strong class="text-white">CSS:</strong> a <code class="code">@media (prefers-reduced-motion: reduce)</code> block neutralizes all CSS animations/transitions (shimmer, gradient-x, pulse-glow, spin, view-transition crossfades) and forces <code class="code">scroll-behavior: auto</code>.</li>
+        <li>• The ThreeBackground canvas already self-disables at reduce (pre-existing, verified).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ wp03t04 BUNDLE ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp03t04 ✓</span>
+      <h2 class="text-2xl font-bold">Chunk recharts behind dynamic import</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>main bundle no longer contains recharts; measured bundle decrease recorded.</em> Charts moved to <code class="code">src/app/observation/ChartSection.tsx</code>, loaded via <code class="code">next/dynamic(..., { ssr: false })</code> with an aspect-matched skeleton (h-72) so no layout shift. Measured with <code class="code">npm run build</code> (same machine, same config):</p>
+      <div class="overflow-x-auto mb-4">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+              <th class="pb-3 pr-4">Metric (/observation)</th>
+              <th class="pb-3 pr-4">Before</th>
+              <th class="pb-3 pr-4">After</th>
+              <th class="pb-3">Δ</th>
+            </tr>
+          </thead>
+          <tbody class="text-white/70">
+            <tr class="border-b border-white/5"><td class="py-3 pr-4">First Load JS</td><td class="py-3 pr-4">241 kB</td><td class="py-3 pr-4">129 kB</td><td class="py-3"><span class="badge badge-ok">−112 kB (−46%)</span></td></tr>
+            <tr><td class="py-3 pr-4">Route chunk</td><td class="py-3 pr-4">115 kB</td><td class="py-3 pr-4">2.81 kB</td><td class="py-3"><span class="badge badge-ok">−112 kB</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-white/60 text-sm">recharts (~200 kB minified) now loads on demand, only when the chart card actually mounts — the right trade for low-bandwidth classrooms where the Observation page is the least-used route. On slow 2G (~50 kB/s) this is ≈ 2.2 s saved on first paint of the page.</p>
+    </div>
+  </section>
+
+  <!-- ============ wp03t05 PWA ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp03t05 ✓</span>
+      <h2 class="text-2xl font-bold">PWA manifest + theme color</h2>
+    </div>
+    <div class="deep rounded-3xl p-7">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>installable on Android Chrome; <code class="code">theme-color</code> set.</em></p>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <code class="code">public/manifest.json</code> upgraded: <code class="code">id</code>, <code class="code">description</code>, <code class="code">lang</code>, <code class="code">dir</code>, <code class="code">scope</code>, <code class="code">display_override</code>, <code class="code">categories</code>, and a dark <code class="code">background_color: #0a0a0a</code> matching the UI (was light #F8F9FA — a white flash on launch).</li>
+        <li>• Real icons generated from the 891 kB logo source via ImageMagick into <code class="code">public/icons/</code>: 192×192 (29 kB) and 512×512 (200 kB), with the 512 declared as both <code class="code">any</code> and <code class="code">maskable</code> — replacing the previous 891 kB download on install.</li>
+        <li>• <code class="code">theme-color: #00B4D8</code> moved to the <code class="code">viewport</code> export in <code class="code">layout.tsx</code> (Next 14 requirement — build warnings resolved).</li>
+        <li>• <code class="code">apple-touch-icon</code> (192) added via metadata for iOS home-screen installs.</li>
+        <li>• Service worker registration, <code class="code">start_url: /dashboard</code>, <code class="code">display: standalone</code> already in place; <code class="code">sw.js</code> regenerated by next-pwa on build.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ ROUND 2 ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">Round 2</span>
+      <h2 class="text-2xl font-bold">Follow-up round (2026-08-19) — dialog semantics, honest surfaces, deeper bundle cuts</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">The sweep re-checked every component flagged in the audit sheet. Five a11y gaps and five bundle wins, all shipped:</p>
+      <h4 class="font-bold mb-3">Accessibility</h4>
+      <ul class="text-white/70 text-sm space-y-1.5 mb-4">
+        <li>• <strong class="text-white">Command palette is a real dialog now.</strong> Was ⌘K-only (keyboard-only trigger) with a bare overlay. Now: <code class="code">role="dialog"</code> + <code class="code">aria-modal</code> + label, Tab focus trap, ESC close, focus returns to the trigger (2.4.3), and a visible pointer trigger button (fixed bottom-right, 44px) so mouse-only users can open it. F9 dead entry removed; /learning-journey route corrected to /learning.</li>
+        <li>• <strong class="text-white">SyncIsland: clickable pill ≠ live region.</strong> <code class="code">role="status"</code> moved off the clickable element onto a wrapper; the inner element is a real <code class="code">&lt;button&gt;</code> with a label and disabled state during flush.</li>
+        <li>• <strong class="text-white">InstallPrompt: named dismiss + iOS flow.</strong> Dismiss button gained <code class="code">aria-label</code>; iOS Safari never fires <code class="code">beforeinstallprompt</code>, so the prompt now detects iOS and shows the honest "Share → Add to Home Screen" instructions instead of silently never appearing.</li>
+        <li>• <strong class="text-white">Chart labels were below AA.</strong> recharts ticks used <code class="code">rgba(255,255,255,0.4)</code> ≈ 3.8 : 1 — now <code class="code">var(--brand-muted)</code> (9.2 : 1). Each chart carries a <code class="code">&lt;title&gt;</code> for AT, and animations disable under reduced motion (<code class="code">useReducedMotion</code> + <code class="code">isAnimationActive={false}</code>).</li>
+        <li>• <strong class="text-white">Language + toast + focus-obscuring:</strong> Devanagari notice/input now carry <code class="code">lang="ne"</code> (screen readers switch voice correctly); toast pause-on-hover verified as built into react-hot-toast 2.6.0&apos;s Toaster (container <code class="code">onMouseEnter/Leave</code>) and documented — no prop exists, so none is added; <code class="code">scroll-padding-top/bottom: 7rem</code> on <code class="code">html</code> so fixed header/footer never obscure focused content (WCAG 2.4.11).</li>
+      </ul>
+      <h4 class="font-bold mb-3">Bundle</h4>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <strong class="text-white">Framer-motion features off the critical path:</strong> <code class="code">LazyMotion</code> + <code class="code">domAnimation</code> wrap the app; all 9 component/page sites migrated from <code class="code">motion.*</code> to <code class="code">m.*</code> (identical API, features resolve on demand). MotionConfig + reduced-motion behavior unchanged.</li>
+        <li>• <strong class="text-white">CommandPalette + OAuth now load per-use:</strong> palette (cmdk + lucide) is <code class="code">next/dynamic</code>, rendered only on first open; <code class="code">GoogleOAuthProvider</code> (Google script + <code class="code">@react-oauth/google</code>) moved out of the root layout into the login page — the whole payload leaves every other route.</li>
+        <li>• <strong class="text-white">three.js only on capable devices:</strong> existing CPU/pointer/reduced-motion gates extended with <code class="code">navigator.saveData</code> and <code class="code">effectiveType</code> (2g/3g) checks; the canvas frameloop pauses via <code class="code">frameloop="never"</code> when the tab is hidden — no 60fps battery burn in a background tab.</li>
+        <li>• <strong class="text-white">Service-worker rule pruning:</strong> 3 dead runtime rules removed from <code class="code">next.config.mjs</code> (google-fonts ×2 — Inter is build-time self-hosted — and the <code class="code">/next/image</code> rule, dead under <code class="code">unoptimized: true</code>). Every removed rule is one less regex the SW evaluates on each request.</li>
+        <li>• <strong class="text-white">Honest offline page:</strong> <code class="code">navigateFallback: "/~offline"</code> + a static <code class="code">~offline</code> route — offline navigation no longer lands on the browser&apos;s dead network error; the page states what happened and offers the Dashboard (which does work offline via cache).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ ROUND 3 ============ -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">Round 3</span>
+      <h2 class="text-2xl font-bold">Enforcement round (2026-08-19) — keyboard-first nav, announced results</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">The &quot;max&quot; pass on WP-0.3 — the two gaps the audit sheet left open: no way to bypass the nav with a keyboard, and a command palette whose filtering was silent to AT users.</p>
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <strong class="text-white">Skip-to-content link (WCAG 2.4.1).</strong> A visually-hidden link in the root layout surfaces on keyboard focus — &quot;Skip to content&quot; jumps past the fixed nav to <code class="code">&lt;main id="main-content" tabIndex="-1"&gt;</code>, which receives focus on activation (focus is moved, not just scrolled).</li>
+        <li>• <strong class="text-white">CommandPalette trigger linked to the dialog (WCAG 4.1.2).</strong> The open button now declares <code class="code">aria-haspopup="dialog"</code> + <code class="code">aria-expanded</code>, so AT announces the relationship and state of the thing the button controls.</li>
+        <li>• <strong class="text-white">Palette results announced (WCAG 4.1.3).</strong> cmdk narrows the list as you type with no announcement — a screen-reader user hears silence. A polite <code class="code">role="status"</code> live region mirrors the visible-item count (&quot;3 results.&quot; / &quot;No results found.&quot;) via a MutationObserver over <code class="code">[cmdk-item]</code> visibility.</li>
+        <li>• <strong class="text-white">Honesty carried into the report itself:</strong> the Round-2 bullet about <code class="code">pauseOnHover</code> corrected — react-hot-toast 2.6.0 has no such prop; pause-on-hover is built into the Toaster container, so the code documents instead of pretending.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Verification -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">VERIFIED</span>
+      <h2 class="text-2xl font-bold">Verification run</h2>
+    </div>
+    <div class="ok rounded-3xl p-7">
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• <code class="code">npm run build</code> — clean, zero warnings, PWA SW regenerated. Round-2 numbers: /observation unchanged at <b>129 kB First Load / 2.81 kB route chunk</b> (the dynamic-import win holds); shared First Load JS <b>87.7 kB</b>; the new <code class="code">/~offline</code> route is fully static (840 B / 88.5 kB).</li>
+        <li>• <code class="code">npx jest</code> — 65/65 passing (incl. the honesty scanner re-run over the changed source; the framer-motion jest mock now also provides the <code class="code">m</code> proxy the LazyMotion sweep switched to).</li>
+        <li>• <code class="code">go vet ./... &amp;&amp; go test ./...</code> — clean (handler, service + honesty suites; WP-0.3 also touched no backend sources).</li>
+        <li>• Tracker 07 checkboxes wp03t01–wp03t05 marked done with evidence links to this page.</li>
+      </ul>
+    </div>
+    <div class="ok rounded-3xl p-7 mt-6">
+      <ul class="text-white/70 text-sm space-y-1.5">
+        <li>• Round 3 re-verified after the enforcement pass: <code class="code">next lint</code> clean, <code class="code">npx jest</code> 65/65, <code class="code">npm run build</code> clean with identical numbers (87.7 kB shared, /observation 129 kB / 2.81 kB, /~offline 840 B).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 11 · WP-0.3 Accessibility &amp; Bundle · 2026-08-19 · Sources: WCAG 2.2 (SC 2.5.8, 2.4.11, 2.3.3, 1.4.11), WCAG contrast math (relative luminance per W3C), Next.js 14 dynamic-import docs, W3C Web App Manifest · <a href="index.html" class="text-white/60 hover:text-white">← Back to hub</a></p>
+  </footer>
+
+</div>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="09-wp02-honesty-state.html">← 09 · Honesty &amp; State</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="07-phased-implementation-plan.html">07 · Phased Plan →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

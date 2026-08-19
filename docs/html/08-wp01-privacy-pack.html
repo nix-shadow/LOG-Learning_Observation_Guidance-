@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>08 — WP-0.1 Privacy Pack (Shipped) | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 08</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-0.1 — Privacy Pack: Shipped</h1>
+    <p class="text-white/60 text-lg mb-6">Research-to-shipped record for the first work package of the phased plan: guardian consent at registration, personal-data export, account erasure with an honest anonymization map, retention notices (NP/EN), offline sync-queue encryption at rest, and a breach-response runbook. Everything below is the actual implementation, not a proposal — with the tests that prove it.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">All 6 tasks done</span>
+      <span class="badge badge-ok">Policy 2026-08-v1</span>
+      <span class="badge badge-ok">AES-GCM-256 at rest</span>
+      <span class="badge badge-ok">65 Jest + Go suite green</span>
+      <span class="badge badge-ok">Runbook: docs/PRIVACY_RUNBOOK.md</span>
+      <span class="badge badge-ok">Round 2 + 3: enforcement &amp; transparency (2026-08-19)</span>
+    </div>
+  </header>
+
+  <!-- 1. WHY -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">1 · Why this work package was first</h2>
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2">Nepal Privacy Act 2075</p>
+        <p class="text-white/60">Data-controller duties apply to schools and ed-tech; breach notification is a legal duty. LOG treats this as a hard constraint, not a checklist (see runbook for the S1/S2/S3 procedure).</p>
+      </div>
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2">Child data is the sharpest edge</p>
+        <p class="text-white/60">05 documented the $6.25M US biometric-data settlement and Nepal&apos;s child-data scrutiny. Guardian consent must be evidenced per learner, per registration path — never assumed.</p>
+      </div>
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2">Offline-first is a privacy surface</p>
+        <p class="text-white/60">The sync-queue (IndexedDB) holds learner work between visits. It is now encrypted at rest — endpoint/method stay plaintext for routing, payloads do not.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. STATUS -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">2 · Task status vs the plan tracker (07)</h2>
+    <div class="ok rounded-3xl p-6 overflow-x-auto">
+      <table class="w-full text-white/70">
+        <thead>
+          <tr class="text-white/40 uppercase text-xs tracking-widest">
+            <th>Task</th><th>Acceptance criterion</th><th>Where it landed</th><th>Verified by</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="ok-check">✔</td><td class="font-bold text-white">wp01t01 — Guardian consent at registration</td><td><code>POST /api/v1/me/consent</code>; login page gates register + Google on the NP/EN consent checkbox; admin users list shows <code>consent</code> (null when absent)</td><td><code>TestRecordConsentAndGet</code>, <code>TestAdminGetUsersShowsConsent</code></td></tr>
+          <tr><td class="ok-check">✔</td><td class="font-bold text-white">wp01t02 — Personal-data export endpoint</td><td><code>GET /api/v1/me/export</code> — self-describing JSON envelope, password hash stripped, <code>Cache-Control: no-store</code></td><td><code>TestExportData</code></td></tr>
+          <tr><td class="ok-check">✔</td><td class="font-bold text-white">wp01t03 — Account deletion endpoint</td><td><code>DELETE /api/v1/me</code> (requires <code>{"confirm":"DELETE"}</code>); settings page purges sync-queue, cache and queue key locally after success</td><td><code>TestDeleteAccountRequiresConfirmation</code>, <code>TestDeleteAccountErasure</code></td></tr>
+          <tr><td class="ok-check">✔</td><td class="font-bold text-white">wp01t04 — Retention policy + bilingual notices</td><td>Policy block served by <code>GET /me/consent</code>; NP/EN notices on login + settings; 2y / 3y / 90-day constants in <code>domain/privacy.go</code></td><td><code>TestRecordConsentAndGet</code> (policy block)</td></tr>
+          <tr><td class="ok-check">✔</td><td class="font-bold text-white">wp01t05 — Encrypt sync-queue at rest</td><td>AES-GCM-256 via WebCrypto; non-extractable key in <code>sync-keys</code> IDB store (DB v4); flush decrypts + replays; legacy records flush as-is</td><td>Jest: round-trip, fresh IV, tamper→null, legacy flush (57 pass)</td></tr>
+          <tr><td class="ok-check">✔</td><td class="font-bold text-white">wp01t06 — Breach-response runbook</td><td><code>docs/PRIVACY_RUNBOOK.md</code> — S1/S2/S3 playbook, containment, notification duty (Nepal Privacy Act 2075), recovery table, termly drill</td><td>Committed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. DATA MAP -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">3 · The erasure data map</h2>
+    <p class="text-white/60 text-sm mb-4">One transaction (<code>DeleteAccountTx</code> in <code>privacy_repo.go</code>). Learner-private rows are deleted; rows that carry the school&apos;s context are anonymized so teachers keep their rosters and history without personal data. The erasure audit entry is written atomically with <code>UserID=""</code> and <code>erasure_hash=sha256(userID)[:16]</code> — the only joinable trace, containing no personal data.</p>
+    <div class="grid md:grid-cols-2 gap-4 text-sm mb-6">
+      <div class="seam rounded-2xl p-5">
+        <p class="font-bold mb-2 text-red-300">DELETED (learner-private)</p>
+        <p class="text-white/60">LearnerActivity · Progress · Observation · Guidance · DailyActivity · Submission · ClassMember · TokenBlocklist · UserRevocation · ConsentRecord · OTPRecord (by phone) · User (hard delete, <code>Unscoped</code>)</p>
+      </div>
+      <div class="deep rounded-2xl p-5">
+        <p class="font-bold mb-2 text-blue-300">ANONYMIZED (school context survives)</p>
+        <p class="text-white/60">AuditLog <code>UserID→""</code> · Announcement <code>AuthorID→""</code> · Assignment <code>CreatedBy→""</code> · Class <code>TeacherID→""</code></p>
+      </div>
+    </div>
+    <div class="mermaid">
+      flowchart LR
+        A["DELETE /api/v1/me<br/>{confirm: 'DELETE'}"] --> B{RateLimit<br/>10/min/IP}
+        B --> C["Auth middleware<br/>reload user from DB"]
+        C --> D["DeleteAccountTx<br/>BEGIN"]
+        D --> E["DELETE learner rows"]
+        D --> F["ANONYMIZE school rows"]
+        D --> G["INSERT audit_logs<br/>UserID='' · erasure_hash=..."]
+        G --> H["COMMIT"]
+        E --> H
+        F --> H
+        H --> I["202 OK"]
+    </div>
+  </section>
+
+  <!-- 4. API -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">4 · Endpoints (student group, rate limited per IP)</h2>
+    <div class="deep rounded-3xl p-6 overflow-x-auto">
+      <table class="w-full text-white/70">
+        <thead>
+          <tr class="text-white/40 uppercase text-xs tracking-widest">
+            <th>Method · Path</th><th>Purpose</th><th>Limit</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>POST /api/v1/me/consent</code></td><td>Record consent (types: guardian/terms/privacy)</td><td>10/min</td><td>Upsert per (user,type) — re-grants never duplicate; withdrawal flips status</td></tr>
+          <tr><td><code>GET /api/v1/me/consent</code></td><td>My consent state + policy + retention block</td><td>10/min</td><td>Drives the settings card and login notice</td></tr>
+          <tr><td><code>GET /api/v1/me/export</code></td><td>Self-describing JSON export (attachment)</td><td>5/min</td><td><code>Cache-Control: no-store</code>; password hash stripped</td></tr>
+          <tr><td><code>DELETE /api/v1/me</code></td><td>Account erasure</td><td>10/min</td><td>Body must be <code>{"confirm":"DELETE"}</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5. QUEUE ENCRYPTION -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">5 · Sync-queue encryption at rest</h2>
+    <div class="grid md:grid-cols-2 gap-4 text-sm mb-6">
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Design</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• AES-GCM-256, non-extractable CryptoKey, fresh 12-byte IV per record</li>
+          <li>• Key persists in <code>sync-keys</code> IDB store (DB version 4) — survives logout so queued work syncs after re-login</li>
+          <li>• Headers + body encrypted; endpoint/method/timestamp plaintext for routing</li>
+          <li>• SHA-256 fingerprint of <code>method|endpoint|body</code> for dedup</li>
+          <li>• No WebCrypto (non-secure context)? Honest <code>enc:null</code> plaintext fallback, same as legacy records</li>
+          <li>• Decrypt failure → record preserved, never deleted; flush stops on 401 and asks for re-login</li>
+        </ul>
+      </div>
+      <div class="warn rounded-2xl p-5">
+        <p class="font-bold mb-2 text-amber-300">Sneakernet escape hatch</p>
+        <p class="text-white/60">Exported <code>.logsync</code> files contain decrypted plaintext records by design — the receiving device has no key. They are the user&apos;s own data; treat the file like a password. Export refuses to run if any record cannot be decrypted (no silent data loss).</p>
+      </div>
+    </div>
+    <div class="mermaid">
+      sequenceDiagram
+        participant UI as fetchWithCache
+        participant Q as queueRequest
+        participant C as crypto.ts
+        participant IDB as IndexedDB v4
+        participant NET as Backend
+        UI->>Q: POST /activities/:id/complete (offline)
+        Q->>C: encryptQueuePayload(headers, body)
+        C->>C: AES-GCM-256 + fingerprint
+        C-->>Q: {enc, fp}
+        Q->>IDB: sync-queue + sync-keys (non-extractable key)
+        Note over IDB: online event → flushSyncQueue
+        Q->>C: decryptQueuePayload(record)
+        C->>Q: {headers, body} + fresh Bearer token
+        Q->>NET: replay request
+        NET-->>Q: 200/4xx → delete record
+        Note over Q,IDB: 401 → stop, keep records, ask re-login
+    </div>
+  </section>
+
+  <!-- 6. VERIFICATION -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">6 · Verification (what actually ran)</h2>
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2">Backend</p>
+        <p class="text-white/60"><code>go vet ./...</code> clean · <code>go test ./...</code> → <code>ok log-backend/internal/handler</code> — covers consent upsert/validation, export envelope (no password hash), delete confirmation, full erasure map, admin consent visibility.</p>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2">Frontend unit</p>
+        <p class="text-white/60"><code>npx jest</code> → 65 passed, 10 suites (final verification run, 2026-08-19 — grew from 57 as WP-0.2/0.3 added tests) — crypto round-trip, tampered IV → null, fingerprint stability, single-key persistence, encrypted-at-rest queue, fresh IV per record, decrypted flush, legacy plaintext flush, sync-export v1.1.</p>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2">Build</p>
+        <p class="text-white/60"><code>npm run build</code> → compiled + linted (PWA, all routes). Typecheck via <code>tsc --noEmit</code> clean.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. DECISIONS LOG -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">7 · Decisions log (why, not just what)</h2>
+    <p class="text-white/60 text-sm mb-4">Every non-obvious call in this pack was made against a concrete constraint, and recorded so a future reader can disagree with it properly.</p>
+    <div class="deep rounded-3xl p-6 overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-white/40 uppercase text-xs tracking-widest">
+            <th>Decision</th><th>Chosen</th><th>Rejected because</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="font-bold text-white">Cipher for queue-at-rest</td><td><code>AES-GCM-256</code> via WebCrypto</td><td>XChaCha20-Poly1305 is better suited to streaming but has no native WebCrypto binding — the fallback would have meant hand-rolling crypto, which is how queues get compromised.</td></tr>
+          <tr><td class="font-bold text-white">Key storage</td><td>Non-extractable <code>CryptoKey</code> in IndexedDB (<code>sync-keys</code>)</td><td>localStorage keys are extractable by any same-origin script; an extractable key is the same as a plaintext queue. Non-extractable survives logout, which the sync contract requires.</td></tr>
+          <tr><td class="font-bold text-white">IV strategy</td><td>Fresh random 12-byte IV per record</td><td>Reused IVs with AES-GCM leak keystream; a per-record nonce keeps dedup honest (same payload, different ciphertext).</td></tr>
+          <tr><td class="font-bold text-white">What stays plaintext</td><td>Endpoint, method, timestamp, fingerprint</td><td>Routing needs them; fingerprint is a SHA-256 hash, not content. Encrypting everything would break the sync layer&apos;s queue semantics for zero security gain.</td></tr>
+          <tr><td class="font-bold text-white">Erasure: delete vs anonymize</td><td>Learner rows deleted; school rows anonymized</td><td>A school&apos;s class roster and announcements carry the institution&apos;s context, not the child&apos;s. Deleting them would rewrite school history; keeping them verbatim would leak the child. Empty-string anonymization is the middle that survives audit.</td></tr>
+          <tr><td class="font-bold text-white">Erasure audit trace</td><td><code>erasure_hash=sha256(userID)[:16]</code>, <code>UserID=""</code></td><td>An erasure must be provable but not joinable. A truncated hash lets an operator confirm a specific deletion happened without carrying a personal identifier in the audit log.</td></tr>
+          <tr><td class="font-bold text-white">Legacy queue records</td><td>Not migrated; flush as-is</td><td>Rewriting old records on upgrade means touching (and possibly losing) learner work. They expire naturally on flush; the window is days, not months.</td></tr>
+          <tr><td class="font-bold text-white">Export transport</td><td><code>Content-Disposition: attachment</code>, <code>Cache-Control: no-store</code></td><td>An export is a moment-in-time snapshot; caching it client-side (the default for GET via <code>fetchWithCache</code>) would serve stale personal data. Settings page fetches it directly, bypassing the cache layer deliberately.</td></tr>
+          <tr><td class="font-bold text-white">Consent re-grant</td><td>Upsert, never duplicate; withdrawal flips status</td><td>Duplicate consent rows make "which grant is active?" ambiguous for auditors. One active row per (user, type) with a status flip is the minimal honest model.</td></tr>
+          <tr><td class="font-bold text-white">Guardian evidence</td><td><code>disclosure_hash</code> = sha256 of the exact notice text rendered; required for guardian grants (400 otherwise)</td><td>An unprovable guardian grant is no evidence at all. Hashing the presented text (COPPA §312.5 practice) lets the school later prove what the guardian saw; drift between rendered text and hash invalidates the grant by construction (the JSX renders from the same constants).</td></tr>
+          <tr><td class="font-bold text-white">Disclosure hash on plain HTTP LANs</td><td>Honestly-labeled <code>djb2-&lt;hex&gt;</code> fallback, accepted by the backend</td><td>School servers may run plain HTTP without <code>crypto.subtle</code>. Blocking consent there would lock every learner out; a weak-but-flagged hash keeps the gate functional and the record honest — same philosophy as the queue&apos;s <code>enc:null</code> fallback.</td></tr>
+          <tr><td class="font-bold text-white">Client IPs on consent</td><td>Never persisted (<code>gorm:"-"</code>)</td><td>An IP adds no evidentiary weight for District Court practice and expands the attack surface for no benefit; the audit log keeps the standard fields.</td></tr>
+          <tr><td class="font-bold text-white">Post-erasure physical scrub</td><td><code>PRAGMA wal_checkpoint(TRUNCATE)</code> + <code>VACUUM</code>, plus <code>_secure_delete=ON</code> in the DSN</td><td>SQLite forensics: DELETE alone leaves recoverable cells in freelist pages and the WAL. The checkpoint empties the WAL, VACUUM rebuilds the file, and secure_delete zeroes b-tree cells. Best-effort by contract — the erasure already committed; failures are logged and the runbook covers manual follow-up.</td></tr>
+          <tr><td class="font-bold text-white">Backups around erasure</td><td>Operators destroy pre-erasure backups</td><td>A VACUUM INTO/.backup snapshot taken before the erasure still contains the rows — the live DB being scrubbed does not retroactively clean copies. Runbook §5 remediation row.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 8. FILE MAP -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">8 · Where everything lives</h2>
+    <div class="ok rounded-3xl p-6 overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-white/40 uppercase text-xs tracking-widest">
+            <th>File</th><th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>backend/internal/domain/privacy.go</code></td><td class="text-white/70">ConsentRecord model, policy/retention constants, ExportBundle envelope</td></tr>
+          <tr><td><code>backend/internal/repository/privacy_repo.go</code></td><td class="text-white/70">Consent upsert/read; export queries; <code>DeleteAccountTx</code> (single-transaction erasure + anonymization + audit write); <code>ScrubDeletedData</code> (WAL checkpoint + VACUUM)</td></tr>
+          <tr><td><code>backend/internal/service/privacy_service.go</code></td><td class="text-white/70">Validation incl. <code>disclosure_hash</code> (sha256 or <code>djb2-</code> fallback, required for guardian), password-hash stripping, erasure hash, sentinel errors</td></tr>
+          <tr><td><code>backend/internal/handler/privacy_handler.go</code></td><td class="text-white/70">The four endpoints; DTOs; audit writes; download headers; post-erasure scrub call</td></tr>
+          <tr><td><code>backend/internal/handler/privacy_test.go</code></td><td class="text-white/70">Executable spec: consent, export, erasure map, admin visibility</td></tr>
+          <tr><td><code>frontend/src/lib/crypto.ts</code> + <code>crypto.test.ts</code></td><td class="text-white/70">AES-GCM-256 queue encryption, fingerprinting, key lifecycle, honest plaintext fallback</td></tr>
+          <tr><td><code>frontend/src/lib/api.ts</code></td><td class="text-white/70">DB v4 (<code>sync-keys</code> store), encrypt-on-queue, decrypt-before-merge/flush, token re-attach</td></tr>
+          <tr><td><code>frontend/src/lib/syncExport.ts</code></td><td class="text-white/70">.logsync v1.1 — decrypted sneakernet export, refuses on undecryptable records</td></tr>
+          <tr><td><code>frontend/src/app/login/page.tsx</code> / <code>settings/page.tsx</code></td><td class="text-white/70">Bilingual guardian consent gate + <code>disclosure_hash</code> of the exact rendered notice; consent status, export download, delete-account flow</td></tr>
+          <tr><td><code>backend/database/db.go</code></td><td class="text-white/70"><code>_secure_delete=ON</code> in the DSN — zeroes deleted b-tree cells</td></tr>
+          <tr><td><code>docs/PRIVACY_RUNBOOK.md</code></td><td class="text-white/70">S1/S2/S3 breach-response playbook + §8 legal annex (Nepal law, no breach-notification duty, IT Bill 2082 watch)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 9. OPEN NOTES -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">9 · Open notes (honest flags)</h2>
+    <div class="warn rounded-3xl p-6 space-y-3 text-sm">
+      <p>• <b>No <code>POST /api/v1/auth/register</code> route exists</b> — registration happens via OTP + Google. Consent is therefore captured post-auth via <code>POST /me/consent</code>, gating both paths at the login UI. If a password-register flow is added later, it must call the consent endpoint too.</p>
+      <p>• <b>Retention purge is not yet scheduled</b> — the 2-year inactivity purge is documented (constants in <code>privacy.go</code>) but no cron exists; the runbook covers the manual procedure until a job lands.</p>
+      <p>• <b>Nepali notice text</b> — drafted for a native review per the tracker&apos;s AC (wp01t04).</p>
+      <p>• <b>Consent gating is UI-level</b> — the backend records whatever is posted; the frontend gates register/Google on the checkbox. Server-side enforcement would require an auth-flow change and is tracked in the plan&apos;s risk register.</p>
+      <p>• <b>IT &amp; Cybersecurity Bill 2082</b> — passed the House of Representatives (14 Aug 2025), pending National Assembly. Clause 61 would impose a 35-day purpose-based destruction clock. If enacted, retention moves from inactivity-based (2y) to event-based (graduation/withdrawal/request). Tracked in the tracker&apos;s risk register; revisit for policy 2026-08-v2.</p>
+    </div>
+  </section>
+
+  <!-- 10.5 ROUND 2 -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">10.5 · Round 2 — enforcement &amp; transparency (2026-08-19)</h2>
+    <p class="text-white/60 text-sm mb-4">Follow-up round driven by the research sweep: the pack&apos;s claims were checked against what the API actually returns, the legal annex against the Bill&apos;s current legislative state, and each fix shipped with its evidence. Policy version stays <code>2026-08-v1</code> — the notice text changed, so new grants carry a new <code>disclosure_hash</code>, but existing grants remain valid evidence of the text that was shown.</p>
+    <div class="grid md:grid-cols-2 gap-4 text-sm mb-6">
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Rate-limit headers (RFC 6585/9110 practice)</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• <code>X-RateLimit-Remaining</code> on every privacy/auth response — clients can show honest remaining-requests state</li>
+          <li>• <code>Retry-After</code> (window seconds) on 429 — the client knows when to retry instead of guessing</li>
+          <li>• Same headers now apply to the auth group (register/OTP/Google), which the endpoints share a limiter with</li>
+        </ul>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Erasure scrub is now verified, not assumed</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• <code>ScrubDeletedData</code> returns a <code>ScrubReport</code>: freelist page count before/after, WAL frames, WAL bytes</li>
+          <li>• Handler logs it after each deletion (<code>slog.Info</code>) — operators can confirm the checkpoint+VACUUM actually reclaimed space</li>
+          <li>• Still best-effort by contract: the erasure itself already committed; failures are logged</li>
+        </ul>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">No-disclosure commitment is data, not a checkbox</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• Policy block now returns <code>sharing.third_party_disclosure: false</code> (in <code>GET /me/consent</code> and the export envelope)</li>
+          <li>• Consent notice (EN + NP) now states explicitly: no third-party disclosure, 2y data / 3y audit retention, export and delete available any time</li>
+          <li>• Rejected checkbox theater: a fake &quot;no sharing&quot; toggle would be a compliance prop with no backend record — the notice text + policy payload is the evidence</li>
+        </ul>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Offline storage protection surfaced honestly</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• <code>navigator.storage.persist()</code> requested at boot — reduces eviction risk for the encrypted sync queue</li>
+          <li>• Settings shows a three-state card (Protected / Not granted / Checking) — never an invented value; the browser&apos;s answer is the UI</li>
+          <li>• Privacy-relevant because an evicted IndexedDB queue would lose queued learner work before sync</li>
+        </ul>
+      </div>
+    </div>
+    <div class="deep rounded-2xl p-5 text-sm">
+      <p class="font-bold mb-2 text-amber-300">Legal annex correction</p>
+      <p class="text-white/60">The IT &amp; Cybersecurity Bill 2082 passed the House of Representatives on 14 Aug 2025 and now sits with the National Assembly. Clause 61&apos;s 35-day destruction clock stands; earlier &quot;30-day&quot; figures were from a pre-introduction draft. The Privacy Act 2075 itself is unchanged (still no statutory breach-notification duty). Runbook §8 updated to match — this is why the annex says &quot;track for 2026-08-v2&quot;.</p>
+    </div>
+  </section>
+
+  <!-- 10.6 ROUND 3 -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">10.6 · Round 3 — the enforcement pass (2026-08-19)</h2>
+    <p class="text-white/60 text-sm mb-4">The &quot;max&quot; pass on WP-0.1. Round 2 made the pack transparent; this round makes it <em>enforced</em> — the consent gate moves from the login UI into the API itself, retention stops being a documented promise and becomes a running job, and the browser is told to drop cached data at logout.</p>
+    <div class="grid md:grid-cols-2 gap-4 text-sm mb-6">
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Server-side consent gate (the UI gate is no longer the only gate)</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• <code>RequireConsent</code> middleware in <code>middleware.go</code> — every learner mutation route (<code>enroll</code>, <code>unenroll</code>, <code>complete</code>, <code>sync/bulk</code>, <code>submit</code>, <code>password</code>) now 403s without an active, evidenced guardian grant; staff roles are exempt</li>
+          <li>• The 403 carries <code>code: "consent_required"</code> and the offline queue honors it: records are <b>preserved</b>, flush stops, the learner is asked to grant consent in Settings — a gate rejection is never a terminal delete of queued work (AGENTS.md §3)</li>
+          <li>• Backed by <code>HasActiveConsent</code> on the privacy repo; withdrawal flips the same row, so a raw API client cannot mutate data after consent is withdrawn</li>
+          <li>• Tests: <code>TestRequireConsentGate</code> (no-consent 403, granted passes, withdrawn blocks, staff exempt)</li>
+        </ul>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Retention purge is now a running job, not a promise</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• <code>PurgeExpiredData</code>: inactive learner accounts (no activity for 2 years) are erased via the <b>full erasure map</b> — school context survives, anonymized audit row written per erasure; audit rows past 3 years are deleted</li>
+          <li>• Runs at startup + daily ticker in <code>main.go</code>, plus manual <code>POST /api/v1/admin/maintenance/purge</code> (rate limited, returns the purge report as evidence)</li>
+          <li>• Staff are never purge candidates; <code>FindInactiveStudentIDs</code> checks both <code>learner_activities.completed_at</code> and <code>progresses.last_activity_date</code></li>
+          <li>• Tests: <code>TestPurgeExpiredData</code> (stale learner erased + audit entry written, active learner + staff kept, old audit rows dropped, fresh kept)</li>
+        </ul>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Shared-device hygiene at logout</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• <code>Clear-Site-Data: "cache", "cookies", "storage"</code> on both <code>POST /auth/logout</code> and <code>POST /auth/logout-all</code> — a school LAN shared device cannot serve cached authenticated pages or a cached <code>/me/export</code> bundle after the session is revoked</li>
+          <li>• <code>X-RateLimit-Limit</code> joins <code>X-RateLimit-Remaining</code> on every privacy/auth response (RFC 9110 draft-7 headers)</li>
+        </ul>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">What this round deliberately did not change</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• Policy version stays <code>2026-08-v1</code> — no notice text changed, so the <code>disclosure_hash</code> evidence remains valid</li>
+          <li>• <code>.logsync</code> files stay plaintext by design; the export endpoint stays uncached; IPs stay unpersisted (<code>gorm:"-"</code>)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. LEGAL ANNEX -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">10 · Legal annex (what Nepal law actually says)</h2>
+    <p class="text-white/60 text-sm mb-4">Research base for this pack, compiled 2026-08, refreshed 2026-08-19. Law moves — the IT &amp; Cybersecurity Bill 2082 passed the House of Representatives in Aug 2025 and awaits National Assembly consideration.</p>
+    <div class="ok rounded-3xl p-6 space-y-3 text-sm">
+      <p><b>Privacy Act 2075 (2018), in force.</b> §12(2) consent before collecting personal/family data. Guardian/curator consent for under-18 matters, subject to the benefit-of-the-child test. §23(4) purpose disclosure — the reason the notice text exists and its hash is recorded. §26 purpose limitation. §28 correction/removal rights. §29 penalties (up to 3 years / NPR 30,000). §31 civil remedy: District Court, <b>3-month limitation</b>. <b>No dedicated regulator and no statutory breach-notification duty.</b></p>
+      <p><b>Privacy Regulation 2077.</b> §5(2)(b) written consent required to disclose/publish electronically stored data (kept in <code>consent_records</code>); Rule 10 notice must state purpose, content, objective, collection time, method, assurances.</p>
+      <p><b>DCCS Directives 2081</b> — apply only to licensed data centers / cloud providers: breaches go to the National Cyber Security Centre (NCSC). A self-hosted school server is outside this, but the practice is free.</p>
+      <p><b>IT &amp; Cybersecurity Bill 2082</b> — passed the House of Representatives 14 Aug 2025; now pending in the National Assembly. Clause 61: destroy personal data within <b>35 days of purpose fulfillment</b>; a purpose-based clock that would replace the 2-year inactivity retention. Digital Rights Nepal has flagged drafting gaps. Track for 2026-08-v2.</p>
+      <p><b>COPPA 16 CFR §312.5</b> (US practice, adopted voluntarily, not Nepali law) — verifiable parental consent; separate consent for AI/advertising; the disclosure-hash practice this pack implements.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/10 pt-6 text-sm text-white/40">
+    <p>Companion docs: <code>docs/PRIVACY_RUNBOOK.md</code> · <code>AGENTS.md §3/§3b</code> · tracker <code>07-phased-implementation-plan.html</code> (WP-0.1 checked).</p>
+  </footer>
+</div>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="07-phased-implementation-plan.html">← 07 · Implementation Plan</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="09-wp02-honesty-state.html">09 · Honesty &amp; State →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

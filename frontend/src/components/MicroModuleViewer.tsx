@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
 
 export interface MicroModuleData {
@@ -18,6 +18,12 @@ export interface AttemptReport {
   elapsed_seconds: number;
   correct_count: number;
   total_count: number;
+  // WP-0.2 research round: the completion wall-clock + the learner's IANA
+  // timezone, so an offline completion that flushes days later is dated when
+  // it happened (server clamps to a sane window) and "today" is the learner's
+  // calendar day, not server UTC.
+  completed_at_unix_ms?: number;
+  timezone_iana?: string;
 }
 
 interface Props {
@@ -54,6 +60,8 @@ export default function MicroModuleViewer({ modules, onComplete }: Props) {
       elapsed_seconds: Math.max(0, Math.round((now - statsRef.current.startedAt) / 1000)),
       correct_count: statsRef.current.correct,
       total_count: statsRef.current.total,
+      completed_at_unix_ms: now,
+      timezone_iana: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     });
   };
 

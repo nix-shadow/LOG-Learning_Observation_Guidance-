@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>01 — Global Market &amp; User Voices | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 01</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Global Market &amp; User Voices</h1>
+    <p class="text-white/60 text-lg mb-6">Three agents: the global LMS market landscape (2025–26), Reddit thread mining of real user complaints, and G2/Capterra/TrustRadius review mining across 2,000+ reviews. The market is huge — but the dissatisfaction is louder.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">Market: $29B+</span>
+      <span class="badge badge-high">10 complaint themes</span>
+      <span class="badge badge-high">"Each suck in their own way"</span>
+      <span class="badge badge-medium">Admins vs learners split</span>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="flex flex-wrap gap-2 mb-8">
+    <button class="tab-btn active badge" data-tab="market">Market Landscape</button>
+    <button class="tab-btn badge" data-tab="reddit">Reddit Complaints</button>
+    <button class="tab-btn badge" data-tab="reviews">Review Mining</button>
+    <button class="tab-btn badge" data-tab="rules">Design Rules → LOG</button>
+  </div>
+
+  <!-- ============ MARKET TAB ============ -->
+  <section id="tab-market" class="tab-panel active">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">$29B+</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">LMS market 2025</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">9-14%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">CAGR through 2030</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">75%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Of market is corporate</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">85%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Edtech implementations fail</p></div>
+    </div>
+
+    <h2 class="text-2xl font-bold mb-4 tracking-tight">Where the money is (2025–26)</h2>
+    <div class="grid md:grid-cols-3 gap-4 mb-10">
+      <div class="deep rounded-2xl p-6">
+        <p class="text-white/60 text-xs uppercase tracking-widest mb-1">Biggest segment</p>
+        <p class="text-2xl font-extrabold text-blue-300 mb-2">Corporate / enterprise</p>
+        <p class="text-white/60 text-sm">~75% of LMS spend is corporate learning &amp; compliance. Higher-ed and K-12 are minority but highly vocal segments — the complaints below are overwhelmingly from schools.</p>
+      </div>
+      <div class="deep rounded-2xl p-6">
+        <p class="text-white/60 text-xs uppercase tracking-widest mb-1">Growth engines</p>
+        <p class="text-2xl font-extrabold text-blue-300 mb-2">AI + mobile + compliance</p>
+        <p class="text-white/60 text-sm">AI-assisted authoring is now table-stakes in buying decisions; mobile-first learner experiences and automated compliance tracking drive the 9-14% CAGR.</p>
+      </div>
+      <div class="leak rounded-2xl p-6">
+        <p class="text-white/60 text-xs uppercase tracking-widest mb-1">The inconvenient truth</p>
+        <p class="text-2xl font-extrabold text-amber-300 mb-2">85% fail in practice</p>
+        <p class="text-white/60 text-sm">EdTech Genome Project: ~85% of ~7,000 edtech implementations fail (US$13B wasted) — due to implementation conditions, not product quality.</p>
+      </div>
+    </div>
+
+    <h2 class="text-2xl font-bold mb-4 tracking-tight">Vendor landscape — the giants users complain about</h2>
+    <div class="overflow-x-auto mb-10">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Platform</th>
+            <th class="pb-3 pr-4">Vendor</th>
+            <th class="pb-3 pr-4">Segment</th>
+            <th class="pb-3">G2 score</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Canvas</td><td class="py-3 pr-4">Instructure</td><td class="py-3 pr-4">Higher-ed / K-12</td><td class="py-3">58.9/100 (53 verified) — polarized</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Brightspace / D2L</td><td class="py-3 pr-4">D2L</td><td class="py-3 pr-4">Higher-ed / K-12</td><td class="py-3">"Ugly, too many clicks"</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Blackboard Ultra</td><td class="py-3 pr-4">Anthology</td><td class="py-3 pr-4">Higher-ed</td><td class="py-3">Migration pain, batch ops slow</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Moodle</td><td class="py-3 pr-4">Open source</td><td class="py-3 pr-4">All segments</td><td class="py-3">"Slow, cluttered, bad mobile"</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Docebo</td><td class="py-3 pr-4">Docebo</td><td class="py-3 pr-4">Enterprise</td><td class="py-3">4.3/5 (741) — support as low as 1.9/10 on TrustRadius</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">TalentLMS</td><td class="py-3 pr-4">Epignosis</td><td class="py-3 pr-4">SMB</td><td class="py-3">4.6/5 (1,180) — the SMB favorite</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-bold text-white">Google Classroom</td><td class="py-3 pr-4">Google</td><td class="py-3 pr-4">K-12</td><td class="py-3">No SIS sync, can't hide posts, no student view</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mermaid mb-10">
+flowchart TB
+  subgraph Buyers
+    S1[Schools K-12] -->|most vocal| C1[complaints]
+    S2[Higher-ed] -->|most vocal| C1
+    S3[Corporate] -->|most spend| C1
+  end
+  C1 --> T1[UX too many clicks]
+  C1 --> T2[Gradebook mismatch]
+  C1 --> T3[Reporting weakness]
+  C1 --> T4[Support craters]
+  C1 --> T5[Pricing opacity]
+  T1 --> D1["Design rules for LOG"]
+  T2 --> D1
+  T3 --> D1
+  T4 --> D1
+  T5 --> D1
+    </div>
+  </section>
+
+  <!-- ============ REDDIT TAB ============ -->
+  <section id="tab-reddit" class="tab-panel">
+
+    <p class="text-white/70 mb-6">Live mining of r/Professors, r/Teachers, r/canvas, r/moodle, r/elearning, r/instructionaldesign, r/k12sysadmin (research window 2026-08-19; thread dates 2022–2026). Complaint volume ranking: <strong class="text-white">Canvas &gt; Brightspace &gt; Blackboard &gt; Moodle &gt; Schoology &gt; Google Classroom</strong>. The consensus quote: <em class="text-amber-300">"My institution used to use Blackboard, now we use Canvas. Each suck in their own way."</em> (76 upvotes)</p>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">HIGHEST FREQUENCY</span>
+          <h3 class="text-xl font-bold">1 — Clunky UX / too many clicks</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Moodle (r/Professors "worst LMS", Nov 2025): "slow as hell, overly complicated and cluttered… ass to try and use on mobile."</li>
+          <li>• Brightspace: on a 17.3" laptop "ca. one third of the screen is taken up by largely empty headers"; "everything takes way too many clicks."</li>
+          <li>• Google Classroom: can't hide old assignments — must "delete them… one at a time"; no "make a copy for each student" after posting.</li>
+          <li>• Canvas: "most user-unfriendly program… susceptible to bugs/errors"; UX tolerance carried entirely by SIS integration.</li>
+          <li>→ <strong class="text-white">What users want:</strong> one screen showing true course state; fewer clicks; batch operations; per-student due dates; a working student-preview mode ("requested for years").</li>
+        </ul>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">HIGH</span>
+          <h3 class="text-xl font-bold">2 — Admin overload (faculty time sink)</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• r/Professors "CANVAS is the worst LMS ever" (Dec 2025): peer-review needs manual resets on late submissions; poster estimates <strong class="text-white">5–10 hours/week</strong> lost to the system.</li>
+          <li>• "Tasks you can do in ten minutes in Canvas took 90 minutes in Blackboard."</li>
+          <li>• Users miss Angel-era <em>if-then automation</em>: "if a student didn't login for X days → automatic message, then up to three follow-ups… saved me so much time" (17 upvotes).</li>
+          <li>→ <strong class="text-white">What users want:</strong> trigger-based automation, one-time setup that persists, sane multi-tenant handling.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">HIGH</span>
+          <h3 class="text-xl font-bold">3 — Gradebook</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• r/Teachers (Dec 2025): weighted categories with equal-weight assignments — a 5-point quiz counted the same as a 200-point final; nobody had configured it correctly.</li>
+          <li>• "It does not sync with our grading software… 2x work. If it's not in Skyward, it's not real."</li>
+          <li>• r/QUTreddit: LMS/SIS record divergence dropped a student's GPA — corrections never propagated.</li>
+          <li>→ <strong class="text-white">What users want:</strong> one gradebook, one entry; gradebook math that matches stated weights; round-trip corrections.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">HIGH</span>
+          <h3 class="text-xl font-bold">4 — Assessment failures &amp; proctoring fallout</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• r/canvas: module assignments rendered blank ~30s; a student scored <strong class="text-white">0% on 6 assignments (30% of grade)</strong> because content never appeared; professor refused make-up.</li>
+          <li>• To-Do list shows assignments that can't be opened (unpublished module) → "Access Denied"; students told to screenshot for a paper trail.</li>
+          <li>• Respondus LockDown Browser: students report bricked computers; <strong class="text-white">$6.25M class-action settlement over biometric data</strong> (face ID/fingerprints, 8 years).</li>
+          <li>• Proctoring tools "have serious bias problems… much worse at recognizing dark skin"; timed exams "tend to be ableist."</li>
+          <li>→ <strong class="text-white">What users want:</strong> assessments that render instantly; honest failure states instead of auto-0s; no biometric capture.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">MEDIUM</span>
+          <h3 class="text-xl font-bold">5 — Pricing &amp; lock-in</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• r/k12sysadmin: Google Education Plus now requires licensing <em>all</em> staff+students — a 100-student school can't buy one license; console self-upgrade removed, forced into sales calls.</li>
+          <li>• Thinkific: $100/month and can't interact/upsell; signup required just to preview a course.</li>
+          <li>• SCORM dependence "adds additional hurdles if you want to migrate"; vendors "won't let you easily export videos or SCORM content."</li>
+          <li>→ <strong class="text-white">What users want:</strong> per-seat flexibility, open export, no forced annual locks.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">MEDIUM</span>
+          <h3 class="text-xl font-bold">6 — SSO, support &amp; data</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1">
+          <li>• "HR/SSO integrations are 'okay' until they <strong class="text-white">quietly break</strong>" — SSO must fail loudly, never silently.</li>
+          <li>• Support that answers with "just comment in the sidebar" to a real workflow bug; Moodle "error messages that don't appear to make sense."</li>
+          <li>• r/Professors on Canvas AI demo: "What was the AI trained on…? Did that document become part of its training data?" — instructors reject LLM retention.</li>
+          <li>• Healthcare nonprofits mandate GDPR compliance as a hard selection requirement.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ REVIEWS TAB ============ -->
+  <section id="tab-reviews" class="tab-panel">
+
+    <p class="text-white/70 mb-6">G2 / Capterra / TrustRadius mining across 2,000+ reviews (Docebo, Litmos, Cornerstone, Canvas 53 verified, LearnWorlds, TalentLMS, Absorb) + G2 qualitative pass (n≈review period Nov 2024–Jan 2025).</p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">273</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Mentions of onboarding</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">77</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">UX design complaints</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">71</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Time-related complaints</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">~115</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Reporting complaints (Litmos)</p></div>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">#1 COMPLAINT</span>
+          <h3 class="text-xl font-bold">Reporting is the most-hated feature across vendors</h3>
+        </div>
+        <p class="text-white/70 mb-3">Litmos: ~115 tagged "meh reports" mentions — "Reports are still 'meh', even after the reporting update." Docebo: inadequate reporting 60 mentions; advanced reporting is time-consuming. And in enterprise LMS, advanced analytics is often a <strong class="text-white">paid add-on</strong>.</p>
+        <p class="text-white/60 text-sm">→ LOG rule: native, honest, out-of-the-box reporting — real numbers or honest zeros — is a moat, not a feature.</p>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">HIGH</span>
+          <h3 class="text-xl font-bold">Ratings are polarized, and decline over time</h3>
+        </div>
+        <div class="mermaid mb-4">
+flowchart LR
+  subgraph Canvas 53 verified reviews
+    A[32% score 0-39] --> P[polarized, avg 58.9]
+    B[17% mid 40-59] --> P
+    C[32% score 80-100] --> P
+  end
+  P --> E[era decline 75.9 -&gt; 46.2 -&gt; 47.8]
+  E --> N[never recovered]
+        </div>
+        <ul class="text-white/60 text-sm space-y-1">
+          <li>• <strong class="text-white">Role split is the biggest driver:</strong> pure end-users avg 49.3 vs admins 66.1 vs dual admin+user 81.6 — a 32-point gap. Build for the person who <em>must</em> use it, not the person who chose it.</li>
+          <li>• <strong class="text-white">First impressions are permanent:</strong> &lt;6-month users rate 38.7 vs &gt;1-year veterans 67.5. The first-week experience is the product.</li>
+          <li>• K-12 reviewers avg 43.0 — "interface is not designed for young learners."</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">HIGH</span>
+          <h3 class="text-xl font-bold">Implementation &amp; migration are the #1 trap</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Timelines: &lt;500 users 4–8 weeks; 10k+ 6–12 months; NAIT ran 3 years for Moodle→Brightspace.</li>
+          <li>• "We planned for a few weeks of transition. Instead: broken records, missing completions, content that didn't transfer cleanly."</li>
+          <li>• ~30% of completion records can show incorrect statuses without upfront field mapping.</li>
+          <li>• Change management beats technical transfer: "most migrations run into trouble on adoption, not on data transfer."</li>
+          <li>→ LOG rule: design <code>.logsync</code> content packs and completion-record export as first-class, documented formats from day one.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">HIGH</span>
+          <h3 class="text-xl font-bold">Support is a rating weapon</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Docebo: ease-of-use ~8/10 but customer service as low as <strong class="text-white">1.9/10 on TrustRadius</strong>; "issues taking weeks or months to resolve."</li>
+          <li>• Canvas reviews citing bad support avg 33.2 vs 89.3 for those praising it.</li>
+          <li>• Great support = CSM + weekly Office Hours (Thought Industries) or 96% support quality (LearnWorlds).</li>
+          <li>→ LOG rule: support is where small vendors beat incumbents — respond fast, answer workflows not docs.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">MEDIUM</span>
+          <h3 class="text-xl font-bold">Pricing opacity produces the angriest reviews</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Quote-only pricing for Docebo, Cornerstone, Absorb, Litmos, Blackboard; only TalentLMS, iSpring, 360Learning, LearnWorlds publish.</li>
+          <li>• Docebo TCO "commonly starts ~$25,000/year" + paid add-ons; one customer budgeted $30K and paid $52K.</li>
+          <li>• Renewal shock: Thought Industries "new pricing model, a 50% increase, classic bait-n-switch."</li>
+          <li>• Feature gating ($249/mo plan for APIs) and per-learner fees ($5/enrollment = "a 10% cut") are the most complained-about mechanics.</li>
+          <li>→ LOG rule: transparent tiers, no per-learner fee surprises, no feature gating of core workflows.</li>
+        </ul>
+      </div>
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">WHAT WORKS</span>
+          <h3 class="text-xl font-bold">The praise side: onboarding, support, structure</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1">
+          <li>• <strong class="text-white">Onboarding/training support</strong> — 273 mentions, the single most-highlighted aspect: "Training for both administrators and end users... significantly improved adoption rates."</li>
+          <li>• Mobile praised when it's <em>monitoring</em>, not authoring: "I can easily look at student work and grade it thru the app" (Canvas, 8/53 reviews).</li>
+          <li>• OSU survey (n=463): 78% check grades on phones, 70% due dates, 62% announcements — only 8% take quizzes on mobile. <strong class="text-white">Mobile = quick-check, not learning.</strong></li>
+          <li>• Predictable structure beats features: "modules-centered courses where everything is reachable from one place, due dates accurate, feedback easy to find."</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ RULES TAB ============ -->
+  <section id="tab-rules" class="tab-panel">
+
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">Design Rules distilled for LOG</h2>
+    <div class="grid md:grid-cols-2 gap-5 mb-10">
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 01</span>
+        <h4 class="font-bold mb-2">Honest gradebook math, zero surprises</h4>
+        <p class="text-white/60 text-sm">The #1 gradebook failure is silent misconfiguration (5-point quiz weighted like a 200-point final). LOG's guidance layer derives from real backend data — show the weight math, always.</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 02</span>
+        <h4 class="font-bold mb-2">Fewer clicks, batch everything</h4>
+        <p class="text-white/60 text-sm">"No batch actions" = 75 mentions on Docebo alone. CSV roster import, batch enroll, batch grade visibility. 5-10 hrs/week lost to Canvas = the opportunity.</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 03</span>
+        <h4 class="font-bold mb-2">Never auto-0, never render blank</h4>
+        <p class="text-white/60 text-sm">Blank module → 0% on 30% of a student's grade is the worst story in the dataset. LOG already renders honest error/empty states; the offline queue must never fabricate completion.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 04</span>
+        <h4 class="font-bold mb-2">Teacher-visible student view</h4>
+        <p class="text-white/60 text-sm">"Requested for years and still missing" in every major LMS. LOG's moderator role should preview exactly what the student sees — cheap to build, huge trust win.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 05</span>
+        <h4 class="font-bold mb-2">Reporting out of the box, not an add-on</h4>
+        <p class="text-white/60 text-sm">Reporting is the #1 functional complaint across vendors and often paid-gated. LOG's dashboard/chart-data endpoints are native; keep them free and honest (0s included).</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 06</span>
+        <h4 class="font-bold mb-2">Mobile = monitoring, not authoring</h4>
+        <p class="text-white/60 text-sm">78% check grades on phones; 8% take quizzes on mobile. Keep quick-check pathways (streaks, grades, next task) mobile-clean; don't redesign authoring for phones.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 07</span>
+        <h4 class="font-bold mb-2">Trigger-based automation</h4>
+        <p class="text-white/60 text-sm">Angel-era "if not logged in for X days → message → follow-up" is remembered as the golden age. LOG's per-learner activity status can power supportive nudges (positive language only).</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 08</span>
+        <h4 class="font-bold mb-2">Onboarding is the product</h4>
+        <p class="text-white/60 text-sm">273 mentions of onboarding as the top praise driver; first impressions permanently bias ratings (38.7 vs 67.5). LOG's moderator onboarding must be a guided, 5-minute flow.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 09</span>
+        <h4 class="font-bold mb-2">Open export as a feature</h4>
+        <p class="text-white/60 text-sm">Lock-in and migration pain generate the deepest resentment. Content packs + completion-record export (.logsync already exists) = documented, first-class formats.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 10</span>
+        <h4 class="font-bold mb-2">No biometrics, no training data</h4>
+        <p class="text-white/60 text-sm">$6.25M biometric settlement + LLM training-data demands are the trust killers. LOG: no proctoring cameras, no LLM content generation, derived analytics only.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 11</span>
+        <h4 class="font-bold mb-2">Support = workflow answers</h4>
+        <p class="text-white/60 text-sm">"Just comment in the sidebar" is the anti-pattern. Fast, human, workflow-aware support is where a small team beats the giants (Think Industries Office Hours model).</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 12</span>
+        <h4 class="font-bold mb-2">Transparent pricing, per-seat flexibility</h4>
+        <p class="text-white/60 text-sm">Quote-only pricing, add-on stacking and renewal shocks are the angriest review cluster. Publish prices; never gate core workflows behind a paid tier.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 01 · Global Market &amp; User Voices · 2026-08-19 · Sources: G2/Capterra/TrustRadius mining, r/Professors r/Teachers r/canvas r/moodle r/elearning r/instructionaldesign r/k12sysadmin, EdTech Genome Project, OSU Ecampus survey n=463 · <a href="index.html" class="text-white/60 hover:text-white">← Back to hub</a></p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="index.html">← Hub</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="02-nepal-reality.html">02 · Nepal Reality →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

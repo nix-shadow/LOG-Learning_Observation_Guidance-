@@ -131,6 +131,20 @@ type Course struct {
 	Enrolled   int            `json:"enrolled"`
 	CreatedAt  time.Time      `json:"created_at"`
 	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
+	// IsEnrolled is per-learner state, derived from the enrollments table at
+	// query time — never stored on the course row (WP-0.2 C5).
+	IsEnrolled bool `json:"is_enrolled" gorm:"-"`
+}
+
+// Enrollment is the persisted, per-learner enrollment state (WP-0.2 C5).
+// One row per (user, course); catalog counts and is_enrolled derive from
+// these rows — the dashboard goal ring and course cards must never show
+// invented numbers, and a static int on Course was exactly that.
+type Enrollment struct {
+	ID        string    `json:"id" gorm:"primaryKey"`
+	UserID    string    `json:"user_id" gorm:"uniqueIndex:uq_enrollment;index"`
+	CourseID  string    `json:"course_id" gorm:"uniqueIndex:uq_enrollment;index"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type DailyActivity struct {

@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { fetchWithCache } from '@/lib/api';
+import { fetchWithCache, flushSyncQueue } from '@/lib/api';
+import { disclosureHash } from '@/lib/crypto';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import Image from 'next/image';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { GoogleLogin, GoogleOAuthProvider, CredentialResponse } from '@react-oauth/google';
 import { Eye, EyeOff } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -22,7 +23,57 @@ export default function Login() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [guardianName, setGuardianName] = useState('');
   const { login } = useAuth();
+
+  // WP-0.1: the EXACT bilingual notice text presented at consent time. The
+  // rendered checkbox text below MUST stay identical to these constants — the
+  // server stores their sha256 as disclosure_hash, the evidence that the
+  // guardian saw precisely this text (COPPA 16 CFR §312.5 practice).
+  // Research round: the notice now states the retention schedule and the
+  // explicit no-disclosure commitment so consent is about the real policy,
+  // not a vague "secure storage" promise.
+  const CONSENT_NOTICE_EN =
+    'I confirm that my guardian understands and agrees to the collection, use, and secure storage of my learning progress for educational purposes, per LOG\'s privacy policy (version 2026-08-v1). LOG never discloses learner data to third parties. Data is kept at most 2 years after last activity; audit records at most 3 years; I can export or delete my data at any time.';
+  const CONSENT_NOTICE_NP =
+    'मेरा अभिभावकले मेरो सिकाइ प्रगति डेटा शैक्षिक उद्देश्यका लागि सङ्कलन, प्रयोग र सुरक्षित भण्डारण गरिने कुरा बुझेर सहमति दिनुभएको छ भनी पुष्टि गर्दछु। LOG ले विद्यार्थी डेटा तेस्रो पक्षसँग कहिल्यै साझा गर्दैन। डेटा अन्तिम गतिविधि भएको २ वर्षसम्म मात्र राखिनेछ; अडिट रेकर्ड बढीमा ३ वर्ष; तपाईं कुनै पनि समय डेटा निर्यात वा खाता मेटाउन सक्नुहुन्छ।';
+  const CONSENT_NOTICE = `Guardian Consent · अभिभावकको सहमति\n${CONSENT_NOTICE_EN}\n${CONSENT_NOTICE_NP}`;
+
+  // WP-0.1: guardian consent is recorded as evidence after every successful
+  // registration path (register + Google). Offline, the POST is queued like
+  // any other mutation and syncs later — consent is never silently dropped.
+  const submitConsent = async (source: string) => {
+    const body = {
+      consent_type: 'guardian',
+      version: '2026-08-v1',
+      granted_by: 'guardian',
+      guardian_name: guardianName.trim() || 'Account holder',
+      guardian_contact: '',
+      language: 'ne',
+      source,
+      disclosure_hash: await disclosureHash(CONSENT_NOTICE),
+    };
+    fetchWithCache('/me/consent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => {
+        if (res && (res as { consent_type?: string }).consent_type) {
+          toast.success('Guardian consent recorded.', { icon: '✅' });
+        }
+      })
+      .catch(() => {}); // Non-blocking; consent retries with the sync queue.
+  };
+
+  // F1: a fresh token can replay the offline queue that an expired session
+  // could not (replays attach the current token at flush time).
+  const afterAuth = () => {
+    flushSyncQueue().then(({ synced }) => {
+      if (synced > 0) toast.success(`${synced} offline action(s) synced.`, { icon: '🔄' });
+    }).catch(() => {});
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +87,7 @@ export default function Login() {
       if (res.token) {
         toast.success('Logged in successfully!');
         login(res.user, res.token);
+        afterAuth();
       } else {
         toast.error(res.error || 'Login failed. Please try again.');
       }
@@ -49,6 +101,10 @@ export default function Login() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consentChecked) {
+      toast.error('Please accept the guardian consent to continue.');
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -63,6 +119,8 @@ export default function Login() {
       if (res.token) {
         toast.success('Account created! Welcome aboard 🎉');
         login(res.user, res.token);
+        submitConsent('register');
+        afterAuth();
       } else if (res.message) {
         toast.success('Account created! Please sign in.');
         setActiveTab('login');
@@ -78,6 +136,10 @@ export default function Login() {
   };
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!consentChecked) {
+      toast.error('Please accept the guardian consent to continue.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetchWithCache('/auth/google', {
@@ -88,6 +150,8 @@ export default function Login() {
       if (res.token) {
         toast.success('Google Login successful!');
         login(res.user, res.token);
+        submitConsent('google');
+        afterAuth();
       } else {
         toast.error('Google Login failed.');
       }
@@ -128,7 +192,7 @@ export default function Login() {
             className={`flex-1 pb-3 text-center text-sm font-medium transition-colors ${
               activeTab === 'login' 
                 ? 'text-brand-neon border-b-2 border-brand-neon' 
-                : 'text-white/40 hover:text-white/80'
+                : 'text-brand-muted hover:text-white/80'
             }`}
             onClick={() => setActiveTab('login')}
           >
@@ -138,7 +202,7 @@ export default function Login() {
             className={`flex-1 pb-3 text-center text-sm font-medium transition-colors ${
               activeTab === 'register' 
                 ? 'text-brand-neon border-b-2 border-brand-neon' 
-                : 'text-white/40 hover:text-white/80'
+                : 'text-brand-muted hover:text-white/80'
             }`}
             onClick={() => setActiveTab('register')}
           >
@@ -169,7 +233,7 @@ export default function Login() {
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 focus:outline-none transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-white/80 focus:outline-none transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -211,7 +275,7 @@ export default function Login() {
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 focus:outline-none transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-white/80 focus:outline-none transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -229,11 +293,40 @@ export default function Login() {
                 <button 
                   type="button" 
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 focus:outline-none transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-white/80 focus:outline-none transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+            </div>
+            {/* WP-0.1: guardian consent — required for learners under 18.
+                Bilingual notice; the evidence record is stored server-side. */}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-brand-teal"
+                />
+                <span className="text-xs text-white/70 leading-relaxed">
+                  <strong className="text-white/90">Guardian Consent · अभिभावकको सहमति</strong>
+                  <br />
+                  {CONSENT_NOTICE_EN}
+                  <br />
+                  {/* WP-0.3 a11y research round: Devanagari text must be
+                      announced with the right language profile. */}
+                  <span className="text-white/50" lang="ne">{CONSENT_NOTICE_NP}</span>
+                </span>
+              </label>
+              <input
+                type="text"
+                value={guardianName}
+                onChange={(e) => setGuardianName(e.target.value)}
+                placeholder="Guardian's name (optional) · अभिभावकको नाम (वैकल्पिक)"
+                lang="ne"
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all text-sm"
+              />
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-lg mt-4 shadow-glow">
               {loading ? 'Registering...' : 'Register'}
@@ -243,18 +336,29 @@ export default function Login() {
 
         <div className="mt-8 flex items-center justify-center space-x-4">
           <div className="h-px bg-white/10 w-full"></div>
-          <span className="text-white/40 text-sm font-medium">OR</span>
+          <span className="text-brand-muted text-sm font-medium">OR</span>
           <div className="h-px bg-white/10 w-full"></div>
         </div>
 
         <div className="mt-6 flex justify-center">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
-            theme="filled_black"
-            shape="pill"
-          />
+          {/* WP-0.3 bundle research round: GoogleOAuthProvider was mounted in
+              the root layout, pulling @react-oauth/google into every page.
+              It only serves this one button — scoped here, the script only
+              loads on the login page. */}
+          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE'}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              theme="filled_black"
+              shape="pill"
+            />
+          </GoogleOAuthProvider>
         </div>
+        <p className="mt-3 text-center text-xs text-brand-muted">
+          {activeTab === 'register' && !consentChecked
+            ? 'Guardian consent is required before creating an account or signing in with Google.'
+            : 'Continue with Google — guardian consent required for new accounts.'}
+        </p>
       </motion.div>
     </div>
   );

@@ -1,0 +1,276 @@
+/* ============================================================
+   LOG Research Hub — shared document design system
+   Warm paper, ink serif headings, flat panels, print-style tags.
+   Re-skins the legacy class vocabulary (.seam/.deep/.ok/.badge/
+   .wp/.task/.tab-btn/...) plus the dark Tailwind utilities that
+   were baked into the original markup.
+   ============================================================ */
+
+:root {
+  --paper: #f5f0e6;
+  --paper-grid: rgba(38, 32, 25, 0.035);
+  --panel: #fcf9f2;
+  --panel-tint: #f1ead9;
+  --ink: #262019;
+  --ink-2: #54493c;
+  --ink-3: #8a7d68;
+  --line: #e2d9c7;
+  --line-2: #cdc1aa;
+  --teal: #11635a;
+  --teal-ink: #0c4b44;
+  --teal-soft: #e4efeb;
+  --rust: #9c4a2d;
+  --rust-soft: #f3e8e1;
+  --sage: #4d7c58;
+  --sage-soft: #e8f0e6;
+  --steel: #3d5a80;
+  --steel-soft: #e7edf2;
+  --brick: #96393a;
+  --brick-soft: #f2e4e3;
+  --shadow: 0 1px 2px rgba(38, 32, 25, 0.05), 0 10px 30px -18px rgba(38, 32, 25, 0.25);
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", ui-monospace, Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  background-image:
+    linear-gradient(var(--paper-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+  background-size: 26px 26px;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(17, 99, 90, 0.18); }
+
+/* ---- Legacy dark-utility overrides (baked into markup) ---- */
+.text-white, .text-white\/65, .text-white\/60, .text-white\/50,
+.text-white\/40, .text-white\/80, .text-white\/70,
+.text-amber-300\/80 { color: var(--ink) !important; }
+.text-white\/60 { color: var(--ink-2) !important; }
+.text-white\/50, .text-white\/70, .text-white\/80 { color: var(--ink-2) !important; }
+.text-white\/65 { color: var(--ink-2) !important; }
+.text-white\/40, .text-white\/35 { color: var(--ink-3) !important; }
+.text-amber-300\/80 { color: var(--rust) !important; }
+.hover\:text-white\/80:hover { color: var(--teal) !important; }
+.text-red-300 { color: var(--brick) !important; }
+.text-blue-300 { color: var(--steel) !important; }
+.text-green-300, .text-green-400 { color: var(--sage) !important; }
+.border-white\/10, .border-white\/5 { border-color: var(--line) !important; }
+.bg-white\/5 { background: var(--panel-tint) !important; }
+
+/* ---- Typography ---- */
+h1, h2, h3, h4 {
+  font-family: var(--serif);
+  font-weight: 700 !important;
+  color: var(--ink) !important;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+}
+h1.font-extrabold, h2.font-extrabold, h3.font-extrabold { font-weight: 700 !important; }
+h1 { border-bottom: 1px solid var(--line-2); padding-bottom: 0.55em; }
+
+a { color: var(--teal-ink); }
+a:hover { color: var(--teal); }
+
+.mono { font-family: var(--mono); }
+
+code {
+  background: var(--panel-tint);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-family: var(--mono);
+}
+
+/* ---- Semantic panels (seam/leak/deep/ok/grow) ---- */
+.seam, .leak, .deep, .ok, .grow {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.seam { border-left-color: var(--brick); }
+.leak { border-left-color: var(--rust); }
+.deep { border-left-color: var(--steel); }
+.ok, .grow { border-left-color: var(--sage); }
+
+/* ---- Print-style tags ---- */
+.badge, .chip, .chip-s, .chip-m, .chip-l {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border: 1px solid;
+  background: transparent;
+  vertical-align: middle;
+}
+.badge-critical, .chip-l { color: var(--brick); border-color: rgba(150, 57, 58, 0.5); background: var(--brick-soft); }
+.badge-high { color: var(--rust); border-color: rgba(156, 74, 45, 0.5); background: var(--rust-soft); }
+.badge-medium, .chip-m { color: var(--steel); border-color: rgba(61, 90, 128, 0.5); background: var(--steel-soft); }
+.badge-low, .chip-s { color: var(--ink-2); border-color: var(--line-2); background: var(--panel); }
+.badge-ok { color: var(--sage); border-color: rgba(77, 124, 88, 0.5); background: var(--sage-soft); }
+
+/* ---- Hub cards ---- */
+a.card-link { text-decoration: none; display: block; }
+a.card-link > div {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+a.card-link:hover > div {
+  transform: translateY(-2px);
+  border-color: var(--teal);
+  box-shadow: 0 2px 4px rgba(38, 32, 25, 0.06), 0 18px 40px -20px rgba(17, 99, 90, 0.35);
+}
+a.card-link:hover .card-title { color: var(--teal-ink); }
+
+/* ---- Tables ---- */
+table { border-collapse: collapse; width: 100%; }
+th, td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink-2);
+  text-align: left;
+  vertical-align: top;
+}
+th { color: var(--ink-3); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* ---- Tabs ---- */
+.tab-btn {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--ink-2);
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.tab-btn:hover { border-color: var(--teal); color: var(--teal-ink); }
+.tab-btn.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ---- Plan tracker (07) ---- */
+.phase { border-top: 2px solid var(--line-2); padding-top: 1.5rem; margin-top: 2.5rem; }
+
+details.wp {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+details.wp summary {
+  cursor: pointer;
+  padding: 14px 18px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-family: var(--serif);
+  font-size: 17px;
+}
+details.wp summary::-webkit-details-marker { display: none; }
+details.wp summary .chev {
+  margin-left: auto;
+  color: var(--ink-3);
+  transition: transform 0.15s ease;
+  font-size: 13px;
+}
+details.wp[open] summary .chev { transform: rotate(90deg); }
+details.wp[open] summary { border-bottom: 1px dashed var(--line-2); }
+.wp-body { padding: 14px 18px 18px; }
+
+.task { border-left: 2px solid var(--line); padding: 2px 0 2px 14px; margin-bottom: 10px; }
+.task:hover { border-left-color: var(--line-2); }
+.task.checked { border-left-color: var(--sage); background: linear-gradient(90deg, var(--sage-soft), transparent 70%); padding-left: 14px; }
+.task input[type="checkbox"] { accent-color: var(--sage); width: 15px; height: 15px; margin-top: 4px; }
+.task.checked p.text-white { color: var(--ink-3) !important; }
+.task .ac { color: var(--ink-2); }
+.task .ev { color: var(--ink-3); font-size: 12.5px; }
+
+.filter-btn {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--ink-2);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.filter-btn:hover { border-color: var(--teal); color: var(--teal-ink); }
+.filter-btn.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+#progress-bar { background: var(--teal) !important; border-radius: 2px; }
+
+/* ---- Mermaid (light, paper-matching) ---- */
+.mermaid {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px;
+  font-family: var(--mono);
+}
+
+/* ---- Details in 08 ---- */
+table .ok-check { color: var(--sage); }
+
+/* ---- Footer ---- */
+footer { color: var(--ink-3); }
+
+/* ---- Doc navigation (prev/next strip on every page) ---- */
+.doc-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 64px;
+  padding-top: 18px;
+  border-top: 2px solid var(--line-2);
+}
+.doc-nav a {
+  text-decoration: none;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  border: 1px solid var(--line-2);
+  padding: 6px 13px;
+  border-radius: 6px;
+  background: var(--panel);
+  transition: all 0.15s;
+}
+.doc-nav a:hover { border-color: var(--teal); color: var(--teal-ink); }
+.doc-nav .doc-nav-home { font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-size: 12px; }
+.doc-footer {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  padding: 16px 0 42px;
+  font-family: var(--serif);
+  font-style: italic;
+}
+.doc-footer::before { content: "— "; }
+.doc-footer::after { content: " —"; }
+
+/* ---- Mobile: keep tables scrollable ---- */
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+  h1 { font-size: 1.9rem !important; }
+}

@@ -5,10 +5,11 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { fetchWithCache } from '@/lib/api';
-import { ShieldAlert, Users, Activity, BarChart2, PlusCircle, Megaphone, Download, GraduationCap } from 'lucide-react';
+import { ShieldAlert, Users, Activity, BarChart2, Megaphone, Download, GraduationCap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { prefersReducedMotion } from '@/lib/motion';
 import ClassManager from '@/components/admin/ClassManager';
 import AnnouncementComposer from '@/components/admin/AnnouncementComposer';
 import AuditLogTable from '@/components/admin/AuditLogTable';
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
   }, [user, isAdmin, router]);
 
   useGSAP(() => {
+    if (prefersReducedMotion()) return;
     if (!loading && data) {
       gsap.fromTo(
         gsap.utils.toArray('.gsap-stagger'),
@@ -64,8 +66,10 @@ export default function AdminDashboard() {
       const a = document.createElement('a');
       a.href = url;
       a.download = 'students_export.csv';
-      a.click();
-      URL.revokeObjectURL(url);
+      document.body.appendChild(a); // F16: keep the anchor attached — immediate
+      a.click();                      // revoke can abort the download in some browsers
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success('Student export downloaded');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Export failed');
@@ -114,7 +118,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Classes Management */}
-      <div className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-8 space-y-8">
+      <div id="class-section" className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-8 space-y-8">
         <ClassManager token={token} />
       </div>
 
@@ -139,7 +143,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+                <tr className="border-b border-white/10 text-brand-muted uppercase tracking-wider text-[10px] font-bold">
                   <th className="pb-3">Name</th>
                   <th className="pb-3">Role</th>
                   <th className="pb-3">Email / Phone</th>
@@ -167,9 +171,10 @@ export default function AdminDashboard() {
             <h2 className="text-xl font-bold text-white tracking-tight">Quick Actions</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-neon group">
-              <PlusCircle className="w-8 h-8 mb-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
-              <span className="font-bold tracking-tight">Create Activity</span>
+            <button onClick={() => document.querySelector('#class-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-neon group">
+              <GraduationCap className="w-8 h-8 mb-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+              <span className="font-bold tracking-tight">Manage Classes</span>
             </button>
             <button onClick={() => document.querySelector('#announcement-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-amber hover:bg-brand-amber/10 hover:shadow-[0_0_20px_rgba(255,183,3,0.3)] transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-amber group">
@@ -180,10 +185,6 @@ export default function AdminDashboard() {
               className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-blue hover:bg-brand-blue/10 hover:shadow-[0_0_20px_rgba(0,180,216,0.3)] transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-blue group disabled:opacity-50">
               <Download className="w-8 h-8 mb-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
               <span className="font-bold tracking-tight">{exporting ? 'Exporting…' : 'Export Students'}</span>
-            </button>
-            <button className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-purple-500 hover:bg-purple-500/10 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all flex flex-col items-center justify-center text-white/60 hover:text-purple-400 group">
-              <GraduationCap className="w-8 h-8 mb-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
-              <span className="font-bold tracking-tight">Manage Classes</span>
             </button>
           </div>
         </div>

@@ -66,8 +66,9 @@ func (r *schoolRepo) Enroll(ctx context.Context, classID string, userIDs []strin
 	})
 }
 
-func (r *schoolRepo) RemoveMember(ctx context.Context, classID, userID string) error {
-	return r.db.WithContext(ctx).Where("class_id = ? AND user_id = ?", classID, userID).Delete(&domain.ClassMember{}).Error
+func (r *schoolRepo) RemoveMember(ctx context.Context, classID, userID string) (int64, error) {
+	res := r.db.WithContext(ctx).Where("class_id = ? AND user_id = ?", classID, userID).Delete(&domain.ClassMember{})
+	return res.RowsAffected, res.Error
 }
 
 func (r *schoolRepo) ClassMembers(ctx context.Context, classID string) ([]domain.User, error) {
@@ -84,13 +85,6 @@ func (r *schoolRepo) ClassMemberCount(ctx context.Context, classID string) (int6
 	var count int64
 	err := r.db.WithContext(ctx).Model(&domain.ClassMember{}).Where("class_id = ?", classID).Count(&count).Error
 	return count, err
-}
-
-func (r *schoolRepo) IsMember(ctx context.Context, classID, userID string) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&domain.ClassMember{}).
-		Where("class_id = ? AND user_id = ?", classID, userID).Count(&count).Error
-	return count > 0, err
 }
 
 func (r *schoolRepo) ClassesOfLearner(ctx context.Context, learnerID string) ([]domain.Class, error) {
@@ -176,16 +170,45 @@ func (r *schoolRepo) SubmissionCount(ctx context.Context, assignmentID string) (
 	return count, err
 }
 
+// SubmissionCounts returns submission counts for many assignments in one
+// batched query (GROUP BY) so the teacher's assignment list never issues a
+// COUNT per assignment.
+func (r *schoolRepo) SubmissionCounts(ctx context.Context, assignmentIDs []string) (map[string]int64, error) {
+	counts := make(map[string]int64)
+	if len(assignmentIDs) == 0 {
+		return counts, nil
+	}
+	type row struct {
+		AssignmentID string
+		Count        int64
+	}
+	var rows []row
+	if err := r.db.WithContext(ctx).
+		Model(&domain.Submission{}).
+		Select("assignment_id, COUNT(*) AS count").
+		Where("assignment_id IN ?", assignmentIDs).
+		Group("assignment_id").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, rw := range rows {
+		counts[rw.AssignmentID] = rw.Count
+	}
+	return counts, nil
+}
+
 func (r *schoolRepo) WriteAuditLog(ctx context.Context, entry *domain.AuditLog) error {
 	return r.db.WithContext(ctx).Create(entry).Error
 }
 
-func (r *schoolRepo) ListAuditLogs(ctx context.Context, limit int) ([]domain.AuditLog, error) {
+func (r *schoolRepo) ListAuditLogs(ctx context.Context, limit, offset int) ([]domain.AuditLog, int64, error) {
 	var entries []domain.AuditLog
-	if err := r.db.WithContext(ctx).Order("id desc").Limit(limit).Find(&entries).Error; err != nil {
-		return nil, err
+	var total int64
+	r.db.WithContext(ctx).Model(&domain.AuditLog{}).Count(&total)
+	if err := r.db.WithContext(ctx).Order("id desc").Limit(limit).Offset(offset).Find(&entries).Error; err != nil {
+		return nil, 0, err
 	}
-	return entries, nil
+	return entries, total, nil
 }
 
 func (r *schoolRepo) RevokeAll(ctx context.Context, userID string, before time.Time) error {

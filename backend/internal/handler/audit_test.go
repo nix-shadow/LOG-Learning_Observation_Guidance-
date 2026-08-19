@@ -3,8 +3,10 @@ package handler
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -93,4 +95,84 @@ func TestAuditLogOnRoleChange(t *testing.T) {
 		t.Fatalf("unexpected audit entry: %+v", entry)
 	}
 	database.DB.Where("id = ?", entry.ID).Delete(&domain.AuditLog{})
+}
+
+// WP-0.2 C1: the audit log pages with limit+offset and reports total — no
+// unbounded row load, and pages never overlap or skip.
+func TestAuditLogPagination(t *testing.T) {
+	// Create 5 audit rows directly (the append-only writer is covered above).
+	for i := 0; i < 5; i++ {
+		e := &domain.AuditLog{
+			UserID:    "audit-pager",
+			Action:    "test.page_fixture",
+			Detail:    "i=" + strconv.Itoa(i),
+			IP:        "",
+			CreatedAt: time.Now(),
+		}
+		database.DB.Create(e)
+	}
+	defer database.DB.Where("user_id = ?", "audit-pager").Delete(&domain.AuditLog{})
+
+	schoolService := service.NewSchoolService(repository.NewSchoolRepository(database.DB))
+	h := NewSchoolHandler(schoolService)
+	r := gin.New()
+	r.GET("/api/v1/admin/audit-log", h.ListAuditLog)
+
+	get := func(query string) (entries []domain.AuditLog, total int64, code int) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/admin/audit-log?"+query, nil)
+		r.ServeHTTP(w, req)
+		var resp struct {
+			AuditLogs  []domain.AuditLog `json:"audit_logs"`
+			Pagination struct {
+				Limit  int   `json:"limit"`
+				Offset int   `json:"offset"`
+				Total  int64 `json:"total"`
+			} `json:"pagination"`
+		}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		return resp.AuditLogs, resp.Pagination.Total, w.Code
+	}
+
+	// Page 1: 2 rows (newest first). Page 2: 2 rows. Page 3: the rest.
+	// Combined, all 5 fixtures must appear exactly once across pages.
+	seen := map[string]bool{}
+	p1, total, code := get("limit=2&offset=0")
+	if code != http.StatusOK || len(p1) != 2 || total < 5 {
+		t.Fatalf("page 1: code=%d len=%d total=%d", code, len(p1), total)
+	}
+	for _, e := range p1 {
+		if strings.HasPrefix(e.Detail, "i=") {
+			seen[e.Detail] = true
+		}
+	}
+	p2, _, code := get("limit=2&offset=2")
+	if code != http.StatusOK || len(p2) != 2 {
+		t.Fatalf("page 2: code=%d len=%d", code, len(p2))
+	}
+	for _, e := range p2 {
+		if strings.HasPrefix(e.Detail, "i=") {
+			seen[e.Detail] = true
+		}
+	}
+	p3, _, code := get("limit=2&offset=4")
+	if code != http.StatusOK || len(p3) == 0 {
+		t.Fatalf("page 3: code=%d len=%d", code, len(p3))
+	}
+	for _, e := range p3 {
+		if strings.HasPrefix(e.Detail, "i=") {
+			seen[e.Detail] = true
+		}
+	}
+	for i := 0; i < 5; i++ {
+		if !seen["i="+strconv.Itoa(i)] {
+			t.Fatalf("fixture %d missing across pages — offset pagination is skipping rows", i)
+		}
+	}
+
+	// Malformed offset must degrade to 0, not error or panic.
+	_, _, code = get("offset=-3")
+	if code != http.StatusOK {
+		t.Fatalf("negative offset: expected 200, got %d", code)
+	}
 }

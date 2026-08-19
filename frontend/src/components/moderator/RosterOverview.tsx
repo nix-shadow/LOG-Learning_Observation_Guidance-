@@ -62,7 +62,7 @@ export default function RosterOverview({ token, onLoaded }: RosterOverviewProps)
         <div className="card-glow border-t-4 border-t-brand-neon gsap-stagger flex flex-col p-6">
           <h3 className="text-white/60 font-medium mb-2 uppercase tracking-wider text-xs flex items-center"><Users className="w-4 h-4 mr-2" /> Active Students</h3>
           <p className="text-5xl font-bold text-white mb-2 tracking-tight">{data?.active_students ?? 0}</p>
-          <p className="text-sm text-white/40 mt-auto">Students in your class</p>
+          <p className="text-sm text-brand-muted mt-auto">Students in your class</p>
         </div>
 
         <div className="card-glow border-t-4 border-t-brand-amber gsap-stagger flex flex-col p-6">
@@ -74,13 +74,13 @@ export default function RosterOverview({ token, onLoaded }: RosterOverviewProps)
         <div className="card-glow border-t-4 border-t-purple-500 gsap-stagger flex flex-col p-6">
           <h3 className="text-white/60 font-medium mb-2 uppercase tracking-wider text-xs flex items-center"><BookOpen className="w-4 h-4 mr-2 text-purple-400" /> Assignments Due</h3>
           <p className="text-5xl font-bold text-white mb-2 tracking-tight">{data?.assignments_due ?? 0}</p>
-          <p className="text-sm text-white/40 mt-auto">Activities awaiting completion</p>
+          <p className="text-sm text-brand-muted mt-auto">Activities awaiting completion</p>
         </div>
       </div>
 
       <div className="card-glow p-6 gsap-stagger border border-white/10">
         <h2 className="text-2xl font-bold text-white mb-8 tracking-tight">
-          Class Roster: <span className="text-brand-neon">{data?.class_name || 'Logic 101'}</span>
+          Class Roster: <span className="text-brand-neon">{data?.class_name || 'No class yet'}</span>
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -88,14 +88,13 @@ export default function RosterOverview({ token, onLoaded }: RosterOverviewProps)
               <tr className="border-b border-white/10 text-white/50 bg-white/5">
                 <th className="pb-4 pt-4 px-6 font-semibold rounded-tl-lg uppercase tracking-wider text-xs">Student Name</th>
                 <th className="pb-4 pt-4 px-6 font-semibold uppercase tracking-wider text-xs">Completion %</th>
-                <th className="pb-4 pt-4 px-6 font-semibold uppercase tracking-wider text-xs">Current Streak</th>
-                <th className="pb-4 pt-4 px-6 font-semibold rounded-tr-lg uppercase tracking-wider text-xs">Action</th>
+                <th className="pb-4 pt-4 px-6 font-semibold rounded-tr-lg uppercase tracking-wider text-xs">Current Streak</th>
               </tr>
             </thead>
             <tbody>
               {(data?.roster || []).length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 px-6 text-center text-white/50">
+                  <td colSpan={3} className="py-12 px-6 text-center text-white/50">
                     No student data available yet. Reconnect to load the latest roster.
                   </td>
                 </tr>
@@ -117,9 +116,6 @@ export default function RosterOverview({ token, onLoaded }: RosterOverviewProps)
                   </td>
                   <td className="py-5 px-6 text-white/70 font-medium">
                     <span className="bg-white/5 px-3 py-1 rounded-full text-brand-amber text-xs font-bold mr-2">{st.streak}</span> days
-                  </td>
-                  <td className="py-5 px-6">
-                    <button className="text-sm text-brand-neon font-bold hover:text-white transition-colors">Message</button>
                   </td>
                 </tr>
               ))}

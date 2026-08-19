@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"log-backend/internal/domain"
@@ -35,7 +34,7 @@ func (r *completionRepo) CompleteActivityTx(ctx context.Context, learnerID, acti
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var act domain.Activity
 		if err := tx.First(&act, "id = ?", activityID).Error; err != nil {
-			return fmt.Errorf("activity not found")
+			return service.ErrActivityNotFound
 		}
 
 		var la domain.LearnerActivity
@@ -55,7 +54,10 @@ func (r *completionRepo) CompleteActivityTx(ctx context.Context, learnerID, acti
 
 		if !alreadyCompleted {
 			la.Status = "Completed"
-			la.CompletedAt = time.Now()
+			// WP-0.2 research round: record the client's real completion
+			// instant (clamped) instead of server receive time, so offline
+			// flushes date the work when it happened, not when it synced.
+			la.CompletedAt = stats.CompletedAt(time.Now())
 			la.Score = stats.Score()
 			la.Accuracy = stats.Accuracy()
 			la.ElapsedSeconds = stats.ElapsedSeconds
@@ -97,9 +99,14 @@ func (r *completionRepo) CompleteActivityTx(ctx context.Context, learnerID, acti
 			}
 
 			// Date-aware streak: a same-day completion does not double the streak,
-			// consecutive days increment it, and a gap resets it to 1.
+			// consecutive days increment it, and a gap resets it to 1. The
+			// calendar date is the learner's local date (their timezone), so a
+			// completion at 23:00 Kathmandu time counts on the right day.
 			now := time.Now()
-			today := now.Truncate(24 * time.Hour)
+			completedAt := stats.CompletedAt(now)
+			loc := stats.Location()
+			local := completedAt.In(loc)
+			today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
 			switch {
 			case progress.LastActivityDate.IsZero():
 				progress.CurrentStreak = 1
@@ -120,14 +127,15 @@ func (r *completionRepo) CompleteActivityTx(ctx context.Context, learnerID, acti
 			}
 
 			// Write a real DailyActivity row so chart-data reflects actual completions
-			// (no fabricated fallback series).
+			// (no fabricated fallback series). Date + day name come from the
+			// learner's local calendar, not server UTC.
 			var daily domain.DailyActivity
 			if err := tx.Where("learner_id = ? AND date = ?", learnerID, today).First(&daily).Error; err != nil {
 				daily = domain.DailyActivity{
 					ID:        service.GenerateSecureID("dly"),
 					LearnerID: learnerID,
 					Date:      today,
-					DayName:   now.Weekday().String()[:3],
+					DayName:   local.Weekday().String()[:3],
 					Score:     100.0,
 					Duration:  stats.ElapsedSeconds,
 				}

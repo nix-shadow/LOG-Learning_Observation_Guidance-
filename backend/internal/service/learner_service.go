@@ -2,9 +2,22 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"log-backend/internal/domain"
+
+	"gorm.io/gorm"
 )
+
+// ErrActivityNotFound marks a completion attempt for an activity that does not
+// exist. Handlers map ONLY this sentinel to 404 — every other completion
+// failure is a server error, so a transient DB issue never looks like "activity
+// not found" (which would make the offline queue delete the learner's work).
+var ErrActivityNotFound = errors.New("Activity not found")
+
+// ErrCourseNotFound maps to 404 on enroll/unenroll. Anything else is a 500 —
+// a failed enroll must never look like a missing course.
+var ErrCourseNotFound = errors.New("Course not found")
 
 type ActivityResponse struct {
 	domain.Activity
@@ -19,12 +32,14 @@ type LearnerService interface {
 }
 
 type CourseService interface {
-	GetCourses(ctx context.Context, page, limit int) ([]domain.Course, int64, error)
+	GetCourses(ctx context.Context, userID string, page, limit int) ([]domain.Course, int64, error)
 	GetMicroModules(ctx context.Context, activityID string) ([]domain.MicroModule, error)
+	Enroll(ctx context.Context, userID, courseID string) error
+	Unenroll(ctx context.Context, userID, courseID string) error
 }
 
 type ModeratorService interface {
-	GetModeratorRoster(ctx context.Context, page, limit int) ([]map[string]interface{}, int64, int64, int64, error)
+	GetModeratorRoster(ctx context.Context, callerID string, page, limit int) ([]map[string]interface{}, int64, int64, int64, string, error)
 }
 
 type learnerService struct {
@@ -106,27 +121,19 @@ func (s *learnerService) GetLearningJourneyData(ctx context.Context, learnerID s
 	return activities, nil
 }
 
+// GetChartData returns ONLY real DailyActivity rows. Research round (WP-0.2):
+// the old fallback fabricated a 7-day all-zero series for learners with no
+// activity — invented numbers, violating AGENTS.md §1. The honest empty
+// response is an empty list; the frontend chart renders a real empty state.
 func (s *learnerService) GetChartData(ctx context.Context, learnerID string) ([]map[string]interface{}, error) {
 	acts, _ := s.learnerDataRepo.FindDailyActivities(ctx, learnerID)
-	chartData := make([]map[string]interface{}, 0)
+	chartData := make([]map[string]interface{}, 0, len(acts))
 	for _, act := range acts {
 		chartData = append(chartData, map[string]interface{}{
 			"name":     act.DayName,
 			"score":    act.Score,
 			"duration": act.Duration,
 		})
-	}
-
-	if len(chartData) == 0 {
-		chartData = []map[string]interface{}{
-			{"name": "Mon", "score": 0, "duration": 0},
-			{"name": "Tue", "score": 0, "duration": 0},
-			{"name": "Wed", "score": 0, "duration": 0},
-			{"name": "Thu", "score": 0, "duration": 0},
-			{"name": "Fri", "score": 0, "duration": 0},
-			{"name": "Sat", "score": 0, "duration": 0},
-			{"name": "Sun", "score": 0, "duration": 0},
-		}
 	}
 	return chartData, nil
 }
@@ -145,8 +152,22 @@ func NewCourseService(c domain.CourseRepository) CourseService {
 	return &courseService{courseRepo: c}
 }
 
-func (s *courseService) GetCourses(ctx context.Context, page, limit int) ([]domain.Course, int64, error) {
-	return s.courseRepo.FindCourses(ctx, page, limit)
+func (s *courseService) GetCourses(ctx context.Context, userID string, page, limit int) ([]domain.Course, int64, error) {
+	return s.courseRepo.FindCourses(ctx, userID, page, limit)
+}
+
+func (s *courseService) Enroll(ctx context.Context, userID, courseID string) error {
+	if err := s.courseRepo.Enroll(ctx, userID, courseID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrCourseNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *courseService) Unenroll(ctx context.Context, userID, courseID string) error {
+	return s.courseRepo.Unenroll(ctx, userID, courseID)
 }
 
 func (s *courseService) GetMicroModules(ctx context.Context, activityID string) ([]domain.MicroModule, error) {
@@ -161,10 +182,16 @@ func NewModeratorService(m domain.ModeratorRepository) ModeratorService {
 	return &moderatorService{modRepo: m}
 }
 
-func (s *moderatorService) GetModeratorRoster(ctx context.Context, page, limit int) ([]map[string]interface{}, int64, int64, int64, error) {
-	rosterData, total, needsAttention, err := s.modRepo.GetRoster(ctx, page, limit)
+// GetModeratorRoster returns the roster scoped to the caller's own classes,
+// with every stat derived from real backend data:
+//   - total = students enrolled in the caller's classes (never school-wide)
+//   - assignmentsDue = real assignments in the caller's classes whose due date
+//     has passed (hardcoded 0 was a fabricated number — AGENTS.md §1)
+//   - className = the caller's first real class name, "" when they have none
+func (s *moderatorService) GetModeratorRoster(ctx context.Context, callerID string, page, limit int) ([]map[string]interface{}, int64, int64, int64, string, error) {
+	rosterData, total, needsAttention, err := s.modRepo.GetRoster(ctx, callerID, page, limit)
 	if err != nil {
-		return nil, 0, 0, 0, err
+		return nil, 0, 0, 0, "", err
 	}
 
 	var roster []map[string]interface{}
@@ -196,10 +223,14 @@ func (s *moderatorService) GetModeratorRoster(ctx context.Context, page, limit i
 		})
 	}
 
-	var assignmentsDue int64 = 0 // Normally queried from somewhere else, leaving as 0 to mimic original code mostly
-	// wait, in handlers.go it queried assignmentsDue:
-	// database.DB.Model(&domain.Activity{}).Where("status = ?", "In progress").Count(&assignmentsDue)
-	// That was probably a mockup. Let's just return 0.
+	assignmentsDue, err := s.modRepo.AssignmentsDueForTeacher(ctx, callerID)
+	if err != nil {
+		assignmentsDue = 0
+	}
+	className, err := s.modRepo.FirstClassNameForTeacher(ctx, callerID)
+	if err != nil {
+		className = ""
+	}
 
-	return roster, total, needsAttention, assignmentsDue, nil
+	return roster, total, needsAttention, assignmentsDue, className, nil
 }

@@ -117,6 +117,10 @@ func (h *SchoolHandler) UnenrollStudent(c *gin.Context) {
 	classID := c.Param("id")
 	userID := c.Param("user_id")
 	if err := h.schoolService.UnenrollStudent(c.Request.Context(), classID, userID); err != nil {
+		if errors.Is(err, service.ErrNotEnrolled) {
+			RespondError(c, http.StatusNotFound, "Not Found", "Student is not enrolled in this class")
+			return
+		}
 		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to remove student")
 		return
 	}

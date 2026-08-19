@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { BookOpen, Search, Filter, Star, Clock, Users, ArrowRight, PlayCircle, WifiOff } from 'lucide-react';
+import { BookOpen, Search, Filter, Star, Clock, ArrowRight, PlayCircle, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { fetchWithCache } from '@/lib/api';
+import toast from 'react-hot-toast';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { prefersReducedMotion } from '@/lib/motion';
 
 interface Course {
   id: string;
@@ -16,7 +18,8 @@ interface Course {
   difficulty: string;
   duration: string;
   rating: number;
-  enrolled: number;
+  enrolled?: number;
+  is_enrolled?: boolean;
 }
 
 const CATEGORY_COLORS = ['bg-brand-blue', 'bg-brand-teal', 'bg-brand-amber', 'bg-purple-600', 'bg-[#FF003C]'];
@@ -56,6 +59,7 @@ export default function CoursesCatalog() {
   });
 
   useGSAP(() => {
+    if (prefersReducedMotion()) return;
     if (!loading && filteredCourses.length > 0) {
       gsap.fromTo(
         gsap.utils.toArray('.course-card'),
@@ -64,6 +68,34 @@ export default function CoursesCatalog() {
       );
     }
   }, { dependencies: [loading, activeCategory, searchTerm, filteredCourses], scope: containerRef });
+
+  // WP-0.2 C5: enrollment is persisted server-side; offline, the mutation is
+  // queued like any other and the UI reflects the optimistic intent honestly
+  // ("will sync"). Never a client-side-only state.
+  // WP-0.2 research round: a 4xx (real server rejection) must NOT flip the
+  // toggle — the previous state is restored and the error surfaces. Only
+  // success or an honest queued intent updates the UI.
+  const toggleEnrollment = async (course: Course) => {
+    const target = !course.is_enrolled;
+    try {
+      const res = await fetchWithCache(`/courses/${course.id}/enroll`, {
+        method: target ? 'POST' : 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('log_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      setCourses((prev) => prev.map((c) => (c.id === course.id ? { ...c, is_enrolled: target } : c)));
+      if (res && res.queued) {
+        toast.success(target ? 'Enrollment saved offline — will sync.' : 'Unenrollment saved offline — will sync.', { icon: '💾' });
+      } else {
+        toast.success(target ? 'Enrolled!' : 'Unenrolled.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not update enrollment.';
+      toast.error(target ? `Enrollment not changed: ${msg}` : `Unenrollment not changed: ${msg}`);
+    }
+  };
 
   if (loading) return (
     <div className="w-full space-y-8">
@@ -82,7 +114,7 @@ export default function CoursesCatalog() {
             Discover expertly crafted modules designed to help you master new skills, even offline.
           </p>
           {total > 0 && (
-            <p className="text-white/40 text-sm mb-4 font-medium tracking-wide uppercase">{total} courses available · Refresh to see the latest</p>
+            <p className="text-brand-muted text-sm mb-4 font-medium tracking-wide uppercase">{total} courses available · Refresh to see the latest</p>
           )}
           <div className="relative max-w-md group">
             <div className="absolute -inset-1 bg-gradient-to-r from-brand-neon to-brand-teal rounded-full blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
@@ -169,12 +201,22 @@ export default function CoursesCatalog() {
 
                 <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between text-sm text-white/50 font-medium">
                   <span className="flex items-center"><Clock className="w-4 h-4 mr-1.5" /> {course.duration}</span>
-                  <span className="flex items-center"><Users className="w-4 h-4 mr-1.5" /> {course.enrolled.toLocaleString()}</span>
+                  <span className="flex items-center text-brand-muted">
+                    <BookOpen className="w-4 h-4 mr-1.5" /> {course.enrolled ?? 0} enrolled
+                  </span>
                 </div>
               </div>
 
-              <div className="p-4 pt-0">
-                <Link href={`/learning/${course.id}`} className="w-full py-3 bg-white/5 border border-white/10 hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow text-white hover:text-brand-neon rounded-xl font-bold tracking-wide flex items-center justify-center transition-all duration-300">
+              <div className="p-4 pt-0 flex gap-3">
+                {course.is_enrolled && (
+                  <button
+                    onClick={() => toggleEnrollment(course)}
+                    className="px-4 py-3 bg-brand-teal/20 border border-brand-teal/40 text-brand-teal hover:bg-brand-teal/30 rounded-xl font-bold text-sm transition-all duration-300"
+                  >
+                    Enrolled ✓
+                  </button>
+                )}
+                <Link href={`/learning/${course.id}`} className="flex-1 py-3 bg-white/5 border border-white/10 hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow text-white hover:text-brand-neon rounded-xl font-bold tracking-wide flex items-center justify-center transition-all duration-300">
                   Start Learning <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
@@ -185,7 +227,7 @@ export default function CoursesCatalog() {
         {filteredCourses.length === 0 && (
           <div className="text-center py-24 card-glow bg-black/40 backdrop-blur-3xl border border-white/10 rounded-3xl">
             <div className="w-24 h-24 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Search className="w-10 h-10 text-white/20" />
+              <Search className="w-10 h-10 text-brand-faint" />
             </div>
             <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">No courses found</h3>
             <p className="text-white/50">Try adjusting your filters or search terms.</p>

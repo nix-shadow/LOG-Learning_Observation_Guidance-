@@ -35,11 +35,21 @@ func InitDB() {
 		}
 	}
 
-	// SQLite seam hardening: WAL + NORMAL for concurrent reads during writes,
-	// a 5s busy timeout so concurrent teacher/student writes never surface
-	// SQLITE_BUSY, and foreign-key enforcement for referential integrity
-	// (enroll/assign rows cannot dangle).
-	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=5000&_foreign_keys=on"), &gorm.Config{
+	// SQLite seam hardening: WAL + NORMAL for concurrent reads during writes
+	// and a 5s busy timeout so concurrent teacher/student writes never surface
+	// SQLITE_BUSY. Note: the _foreign_keys=on pragma is honored by SQLite, but
+	// gorm.AutoMigrate does NOT create FK constraints for the models below
+	// (they declare no association tags), so referential integrity is enforced
+	// at the service layer. Do not document this file as "FK-enforced" until
+	// the models carry real constraints.
+	//
+	// WP-0.1 research: _secure_delete=ON (mattn driver) makes SQLite overwrite
+	// deleted/updated cell content with zeros inside b-tree pages. It does NOT
+	// scrub the WAL file — the erasure path (privacy_repo.ScrubDeletedData)
+	// checkpoints and VACUUMs after account deletion to clear both. Backups
+	// made before a VACUUM still contain deleted data; rotate them on erasure
+	// (see docs/PRIVACY_RUNBOOK.md).
+	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=5000&_foreign_keys=on&_secure_delete=ON"), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
@@ -57,6 +67,7 @@ func InitDB() {
 		&domain.Observation{},
 		&domain.Guidance{},
 		&domain.Course{},
+		&domain.Enrollment{},
 		&domain.DailyActivity{},
 		&domain.MicroModule{},
 		&domain.TokenBlocklist{},
@@ -67,6 +78,7 @@ func InitDB() {
 		&domain.Submission{},
 		&domain.AuditLog{},
 		&domain.UserRevocation{},
+		&domain.ConsentRecord{},
 	)
 	if err != nil {
 		slog.Error("Failed to migrate database:", "error", err)
@@ -240,15 +252,31 @@ func seedData() {
 	DB.Model(&domain.Course{}).Count(&courseCount)
 	if courseCount == 0 {
 		courses := []domain.Course{
-			{ID: "course-1", Title: "Fundamentals of Logic & Gates", Category: "Computer Science", Difficulty: "Beginner", Duration: "3 hours", Rating: 4.9, Enrolled: 1250},
-			{ID: "course-2", Title: "Boolean Algebra & Truth Tables", Category: "Computer Science", Difficulty: "Intermediate", Duration: "4 hours", Rating: 4.8, Enrolled: 980},
-			{ID: "course-3", Title: "Data Structures & Offline Caching", Category: "Backend", Difficulty: "Advanced", Duration: "6 hours", Rating: 4.9, Enrolled: 740},
-			{ID: "course-4", Title: "Modern Frontend & Micro-Animations", Category: "Frontend", Difficulty: "Intermediate", Duration: "5 hours", Rating: 4.7, Enrolled: 1120},
-			{ID: "course-5", Title: "UI/UX Accessibility for Low-Bandwidth", Category: "Design", Difficulty: "Beginner", Duration: "2.5 hours", Rating: 5.0, Enrolled: 890},
+			{ID: "course-1", Title: "Fundamentals of Logic & Gates", Category: "Computer Science", Difficulty: "Beginner", Duration: "3 hours", Rating: 4.9},
+			{ID: "course-2", Title: "Boolean Algebra & Truth Tables", Category: "Computer Science", Difficulty: "Intermediate", Duration: "4 hours", Rating: 4.8},
+			{ID: "course-3", Title: "Data Structures & Offline Caching", Category: "Backend", Difficulty: "Advanced", Duration: "6 hours", Rating: 4.9},
+			{ID: "course-4", Title: "Modern Frontend & Micro-Animations", Category: "Frontend", Difficulty: "Intermediate", Duration: "5 hours", Rating: 4.7},
+			{ID: "course-5", Title: "UI/UX Accessibility for Low-Bandwidth", Category: "Design", Difficulty: "Beginner", Duration: "2.5 hours", Rating: 5.0},
 		}
 		for _, c := range courses {
 			DB.Create(&c)
 		}
+	}
+
+	// WP-0.2 C5: the Enrolled column is now a derived count. Recompute it from
+	// the enrollments table at every startup so any legacy seed value (or a
+	// direct DB edit) can never serve fabricated numbers.
+	DB.Exec("UPDATE courses SET enrolled = (SELECT COUNT(*) FROM enrollments WHERE enrollments.course_id = courses.id)")
+
+	// Seed real enrollments for the demo learner so the catalog and dashboard
+	// derive honest, non-zero numbers from actual rows.
+	var enrCount int64
+	DB.Model(&domain.Enrollment{}).Count(&enrCount)
+	if enrCount == 0 {
+		for _, courseID := range []string{"course-1", "course-3"} {
+			DB.Create(&domain.Enrollment{ID: "enr-" + courseID, UserID: "user-123", CourseID: courseID, CreatedAt: time.Now()})
+		}
+		DB.Exec("UPDATE courses SET enrolled = (SELECT COUNT(*) FROM enrollments WHERE enrollments.course_id = courses.id)")
 	}
 
 	// Seed Daily Activity

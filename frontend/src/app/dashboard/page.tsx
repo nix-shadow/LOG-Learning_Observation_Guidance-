@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { fetchWithCache, logout } from '@/lib/api';
+import { fetchWithCache, logout, flushSyncQueue } from '@/lib/api';
 import Link from 'next/link';
 import { CheckCircle2, ArrowRight, Activity, TrendingUp, Medal, Flame, Download, Upload, LogOut, ClipboardList, Megaphone, Send } from 'lucide-react';
 import { DashboardData, Activity as ActivityType, Guidance as GuidanceType, Observation as ObservationType, Announcement as AnnouncementType, Assignment as AssignmentType } from "@/lib/types";
@@ -12,9 +12,11 @@ import { downloadSyncFile, importSyncFile } from '@/lib/syncExport';
 import toast from 'react-hot-toast';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { prefersReducedMotion } from '@/lib/motion';
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [asOf, setAsOf] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -24,7 +26,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchWithCache('/dashboard')
-      .then(setData)
+      .then((res) => {
+        setData(res);
+        if (typeof res?.as_of === 'string') setAsOf(res.as_of);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
 
@@ -39,7 +44,7 @@ export default function Dashboard() {
       return;
     }
     try {
-      await fetchWithCache(`/assignments/${assignmentId}/submit`, {
+      const res = await fetchWithCache(`/assignments/${assignmentId}/submit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('log_token')}`,
@@ -47,7 +52,12 @@ export default function Dashboard() {
         },
         body: JSON.stringify({ note }),
       });
-      toast.success('Assignment submitted!');
+      // F8: queued submissions are not accepted yet — be honest about it.
+      if (res && res.queued) {
+        toast.success('Submission saved offline. Will sync when back online.', { icon: '💾' });
+      } else {
+        toast.success('Assignment submitted!');
+      }
       setNoteDrafts(prev => ({ ...prev, [assignmentId]: '' }));
       fetchWithCache('/assignments').then((d) => setAssignments(d.assignments || [])).catch(() => {});
     } catch (err) {
@@ -55,7 +65,16 @@ export default function Dashboard() {
     }
   };
 
+  // M8: zero-value due dates ("0001-01-01T00:00:00Z") must not render as 1/1/1.
+  const formatDueDate = (due?: string | null) => {
+    if (!due) return 'No deadline';
+    const d = new Date(due);
+    if (isNaN(d.getTime()) || d.getFullYear() < 2000) return 'No deadline';
+    return `Due ${d.toLocaleDateString()}`;
+  };
+
   useGSAP(() => {
+    if (prefersReducedMotion()) return;
     if (!loading && data) {
       gsap.fromTo(
         gsap.utils.toArray('.gsap-stagger'),
@@ -113,6 +132,15 @@ export default function Dashboard() {
                <span>Logout</span>
              </button>
           </div>
+          {asOf && (() => {
+            const d = new Date(asOf);
+            if (Number.isNaN(d.getTime())) return null;
+            return (
+              <p className="text-[11px] text-white/40 mt-3">
+                Data updated {d.toLocaleDateString()} at {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            );
+          })()}
         </div>
 
         <div className="relative z-10 w-40 h-40 flex-shrink-0 bg-black/50 backdrop-blur-xl rounded-full p-3 border border-white/10 shadow-glow">
@@ -174,7 +202,7 @@ export default function Dashboard() {
               <div className="space-y-5">
                 {data.activities.slice(0, 3).map((act: ActivityType) => (
                   <div key={act.id} className="flex items-start pb-5 border-b border-white/10 last:border-0 last:pb-0 group">
-                    <div className={`mt-1 flex-shrink-0 transition-transform group-hover:scale-110 ${act.status === 'Completed' ? 'text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]' : 'text-white/30'}`}>
+                    <div className={`mt-1 flex-shrink-0 transition-transform group-hover:scale-110 ${act.status === 'Completed' ? 'text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]' : 'text-brand-faint'}`}>
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div className="ml-4">
@@ -200,7 +228,7 @@ export default function Dashboard() {
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                     <p className="text-lg font-bold text-white">{a.title}</p>
                     <span className="text-xs text-white/50">
-                      {a.due_date ? `Due ${new Date(a.due_date).toLocaleDateString()}` : 'No deadline'}
+                      {a.due_date ? formatDueDate(a.due_date) : 'No deadline'}
                     </span>
                   </div>
                   {a.description && <p className="text-white/60 text-sm mb-4 whitespace-pre-wrap">{a.description}</p>}
@@ -233,7 +261,7 @@ export default function Dashboard() {
                 <div key={ann.id} className="pb-4 border-b border-white/10 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between mb-1">
                     <p className="font-bold text-white">{ann.title}</p>
-                    <span className="text-xs text-white/40">{new Date(ann.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-brand-muted">{new Date(ann.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-white/70 text-sm leading-relaxed">{ann.body}</p>
                 </div>
@@ -292,7 +320,14 @@ export default function Dashboard() {
                       if (!file) return;
                       try {
                         const count = await importSyncFile(file);
-                        toast.success(`Imported ${count} actions from sync file!`);
+                        // F1: a sneaker-net import should try to ship the queue
+                        // immediately — not wait for the next online event.
+                        const { synced } = await flushSyncQueue();
+                        if (synced > 0) {
+                          toast.success(`Imported ${count} actions — ${synced} synced to the server!`);
+                        } else {
+                          toast.success(`Imported ${count} actions from sync file!`);
+                        }
                       } catch {
                         toast.error('Failed to import sync file.');
                       }

@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LOG · Phased Implementation Plan (2026-08-19)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="pb-24">
+
+<div class="max-w-6xl mx-auto px-6 pt-12">
+
+  <!-- Header -->
+  <header class="mb-10">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3">LOG · Learning Observation Guidance</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-4">Phased Implementation Plan</h1>
+    <p class="text-white/60 text-lg mb-6">
+      The complete improvement roadmap for LOG, consolidated from the 16-agent research hub, the architecture review backlog (C1–C6), and the enhancement/bug records.
+      Five phases, twenty-two work packages, every task with an acceptance criterion and an evidence reference. Nothing is invented — every claim traces to a source file or a research report.
+      <strong class="text-white">Compiled 2026-08-19.</strong>
+      <strong class="text-white/90">Phase 0 shipped in three rounds — the Round 3 enforcement pass (server-side consent gate, retention purge job, as_of freshness, keyboard-nav a11y) is ticked in WP-0.1/0.2/0.3 with evidence in reports 08, 09 and 11.</strong>
+    </p>
+    <div class="flex flex-wrap gap-3 mb-8">
+      <span class="badge badge-ok">5 phases</span>
+      <span class="badge badge-ok">22 work packages</span>
+      <span class="badge badge-ok">12-month horizon</span>
+      <span class="badge badge-ok">AC + evidence per task</span>
+      <span class="badge badge-high">Interactive checklist</span>
+      <span class="badge badge-ok">Phase 0 · Rounds 1–3 landed</span>
+    </div>
+  </header>
+
+  <!-- Progress tracker -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold text-white mb-4 tracking-tight">Implementation tracker</h2>
+    <p class="text-white/60 text-sm mb-4">Tick tasks as they land — progress persists in this browser (localStorage). Use the filters to focus on one phase.</p>
+    <div class="deep rounded-2xl p-6 mb-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="mono text-sm text-blue-300 font-semibold" id="progress-text">0 tasks done</span>
+        <span class="mono text-sm text-white/40" id="progress-pct">0%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="progress-bar"></div></div>
+    </div>
+    <div class="flex flex-wrap gap-2" id="filters">
+      <button class="filter-btn active" data-filter="all">All phases</button>
+      <button class="filter-btn" data-filter="P0">Phase 0</button>
+      <button class="filter-btn" data-filter="P1">Phase 1</button>
+      <button class="filter-btn" data-filter="P2">Phase 2</button>
+      <button class="filter-btn" data-filter="P3">Phase 3</button>
+      <button class="filter-btn" data-filter="P4">Phase 4</button>
+    </div>
+  </section>
+
+  <!-- PHASE 0 -->
+  <section class="phase phase-p0" data-phase="P0">
+    <div class="flex items-center gap-3 mb-3 flex-wrap">
+      <h2 class="text-2xl font-extrabold text-white tracking-tight">Phase 0 · Foundation</h2>
+      <span class="badge badge-critical">weeks 1–4</span>
+    </div>
+    <p class="text-white/65 leading-relaxed mb-6">Trust, privacy and engineering hygiene. This phase is deliberately first: it is cheap, it de-risks every later phase, and it hardens the surface real classrooms will touch. RC-05 (privacy), C5/C6 (state + accessibility), C1 (audit logs), and the queue-integrity guarantees from the sync layer all land here.</p>
+
+    <details class="wp" id="wp01">
+      <summary>
+        <span class="chip chip-l">WP-0.1</span>
+        <strong class="text-white">Privacy pack</strong>
+        <span class="badge badge-high">RC-05</span>
+        <span class="text-white/40 text-sm">GDPR-style rights for Nepali learners and guardians</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t01" checked /><div>
+            <p class="text-white font-semibold">Guardian consent flow at registration</p>
+            <p class="ac"><b>AC:</b> new learner registrations record guardian/school-level consent; consent state visible and auditable in the admin UI</p>
+            <p class="ev"><b>Evidence:</b> 05-assessment-privacy-oer.html §RC-05; Nepal child-data law chapter</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t02" checked /><div>
+            <p class="text-white font-semibold">Personal-data export endpoint</p>
+            <p class="ac"><b>AC:</b> <code>GET /api/v1/me/export</code> returns the learner's own records as JSON within 30s; covered by a backend test</p>
+            <p class="ev"><b>Evidence:</b> 05 §RC-05; GDPR Art.20 analogue applied locally</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t03" checked /><div>
+            <p class="text-white font-semibold">Account deletion endpoint</p>
+            <p class="ac"><b>AC:</b> <code>DELETE /api/v1/me</code> removes the learner's data with a confirmation step; local sync-queue entries purged with consent notice</p>
+            <p class="ev"><b>Evidence:</b> 05 §RC-05; queue-integrity rules in AGENTS.md §3</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t04" checked /><div>
+            <p class="text-white font-semibold">Retention policy + bilingual notices (NP/EN)</p>
+            <p class="ac"><b>AC:</b> retention window documented in the UI and on sign-up pages; Nepali notice reviewed by a native speaker</p>
+            <p class="ev"><b>Evidence:</b> 05 §child-data law; supportive-language rule in AGENTS.md §1</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t05" checked /><div>
+            <p class="text-white font-semibold">Encrypt sync-queue at rest</p>
+            <p class="ac"><b>AC:</b> queued payloads stored as encrypted blobs in IndexedDB; flush decrypts and replays; restart-safety covered by a Jest test</p>
+            <p class="ev"><b>Evidence:</b> 03-offline-and-evidence.html; sync layer in <code>src/lib/api.ts</code></p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t06" checked /><div>
+            <p class="text-white font-semibold">Breach-response runbook</p>
+            <p class="ac"><b>AC:</b> runbook committed to <code>docs/</code>; log-review procedure and stakeholder contact list included</p>
+            <p class="ev"><b>Evidence:</b> 05 §privacy; security-hardening rules in AGENTS.md §4</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t07" checked /><div>
+            <p class="text-white font-semibold">Server-side consent gate (Round 3 enforcement)</p>
+            <p class="ac"><b>AC:</b> learner mutation routes (<code>enroll</code>, <code>unenroll</code>, <code>complete</code>, <code>sync/bulk</code>, <code>submit</code>, <code>password</code>) 403 without an active guardian grant; staff exempt; offline queue preserves records on <code>consent_required</code>; covered by <code>TestRequireConsentGate</code></p>
+            <p class="ev"><b>Evidence:</b> 08-wp01-privacy-pack.html §10.6; <code>middleware.go</code> <code>RequireConsent</code>; AGENTS.md §3b</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t08" checked /><div>
+            <p class="text-white font-semibold">Retention purge job (Round 3 enforcement)</p>
+            <p class="ac"><b>AC:</b> inactive learners erased via the full erasure map + audit rows past window deleted; runs at startup + 24h ticker + manual <code>POST /api/v1/admin/maintenance/purge</code>; staff never candidates; covered by <code>TestPurgeExpiredData</code></p>
+            <p class="ev"><b>Evidence:</b> 08 §10.6; <code>privacy_service.go</code> <code>PurgeExpiredData</code>; AGENTS.md §3b</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp01t09" checked /><div>
+            <p class="text-white font-semibold">Shared-device hygiene + rate-limit headers (Round 3 enforcement)</p>
+            <p class="ac"><b>AC:</b> <code>Clear-Site-Data: "cache","cookies","storage"</code> on logout and logout-all; <code>X-RateLimit-Limit</code> + <code>X-RateLimit-Remaining</code> on every privacy/auth response, <code>Retry-After</code> on 429</p>
+            <p class="ev"><b>Evidence:</b> 08 §10.6; <code>auth_handler.go</code>, <code>audit_handler.go</code>, <code>middleware.go</code>; AGENTS.md §3b</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp02">
+      <summary>
+        <span class="chip chip-m">WP-0.2</span>
+        <strong class="text-white">Honesty &amp; state hygiene</strong>
+        <span class="badge badge-high">C5 · C1</span>
+        <span class="text-white/40 text-sm">No invented numbers, no fabricated fallbacks</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp02t01" checked/><div>
+            <p class="text-white font-semibold">Persist real enrollment state (C5)</p>
+            <p class="ac"><b>AC:</b> per-learner <code>Course.Enrolled</code> state persisted server-side; dashboard goal ring and catalog derive every number from real data</p>
+            <p class="ev"><b>Evidence:</b> architecture-review-2-20260818.html C5; ENHANCEMENT.md §2.2 no-fabricated-fallbacks rule</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp02t02" checked/><div>
+            <p class="text-white font-semibold">Audit-log pagination (C1)</p>
+            <p class="ac"><b>AC:</b> audit-log listing is paginated; no unbounded row load; page size configurable</p>
+            <p class="ev"><b>Evidence:</b> architecture review C1; backend <code>internal/handler</code></p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp02t03" checked/><div>
+            <p class="text-white font-semibold">Honest-zero sweep</p>
+            <p class="ac"><b>AC:</b> goal ring, moderator roster and chart-data empty states audited — every component shows honest <code>0</code>/empty state; a unit test asserts no placeholder stubs exist</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §1 no-fabricated-fallbacks; ENHANCEMENT.md §2.2</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp02t04" checked/><div>
+            <p class="text-white font-semibold">Queue-integrity regression tests</p>
+            <p class="ac"><b>AC:</b> Jest suite covers: 401 retains queue, token re-attach at flush, cache invalidation after <code>/complete</code> and <code>/sync/bulk</code></p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §3; existing <code>frontend/__tests__</code></p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp02t05" checked/><div>
+            <p class="text-white font-semibold">as_of freshness markers (Round 3 enforcement)</p>
+            <p class="ac"><b>AC:</b> <code>/dashboard</code> + <code>/chart-data</code> carry the server-clock <code>as_of</code>; dashboard hero and Observation charts render &quot;Updated &lt;date&gt; at &lt;time&gt;&quot; so cached payloads never masquerade as live</p>
+            <p class="ev"><b>Evidence:</b> 09-wp02-honesty-state.html §Round 3; <code>learner_handler.go</code>; AGENTS.md §3b</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp02t06" checked/><div>
+            <p class="text-white font-semibold">Consent-gate queue handling (Round 3 enforcement)</p>
+            <p class="ac"><b>AC:</b> flush distinguishes <code>consent_required</code> 403 from generic 4xx — records preserved, flush stops with a &quot;grant consent&quot; toast; never a terminal delete</p>
+            <p class="ev"><b>Evidence:</b> 09 §Round 3; <code>src/lib/api.ts</code> flush path</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp02t07" checked/><div>
+            <p class="text-white font-semibold">Scanner hardening: week-builders + date windows (Round 3 enforcement)</p>
+            <p class="ac"><b>AC:</b> backend honesty scanner fails on hardcoded weekday series and hardcoded <code>time.Date(2XXX,</code> windows; verified clean across the source tree</p>
+            <p class="ev"><b>Evidence:</b> 09 §Round 3; <code>internal/honesty/honesty_test.go</code></p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp03">
+      <summary>
+        <span class="chip chip-m">WP-0.3</span>
+        <strong class="text-white">Accessibility &amp; bundle</strong>
+        <span class="badge badge-medium">C6</span>
+        <span class="text-white/40 text-sm">Low-bandwidth and low-vision classrooms</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp03t01" checked/><div>
+            <p class="text-white font-semibold">Contrast token pass (C6)</p>
+            <p class="ac"><b>AC:</b> all text meets AA contrast; tokens centralized in Tailwind config; audit sheet in docs</p>
+            <p class="ev"><b>Evidence:</b> architecture review C6; 04-ai-engagement-accessibility.html</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp03t02" checked/><div>
+            <p class="text-white font-semibold">Keyboard &amp; focus targets (WCAG 2.4.11)</p>
+            <p class="ac"><b>AC:</b> every interactive control has a 44px target and a visible focus ring; verified by tab-through checklist</p>
+            <p class="ev"><b>Evidence:</b> 04 §accessibility chapter</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp03t03" checked/><div>
+            <p class="text-white font-semibold">Reduced-motion support</p>
+            <p class="ac"><b>AC:</b> framer-motion variants honor <code>prefers-reduced-motion</code></p>
+            <p class="ev"><b>Evidence:</b> 04 §accessibility; motion usage in frontend</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp03t04" checked/><div>
+            <p class="text-white font-semibold">Chunk recharts behind dynamic import</p>
+            <p class="ac"><b>AC:</b> main bundle no longer contains recharts; measured bundle decrease recorded</p>
+            <p class="ev"><b>Evidence:</b> 03-offline-and-evidence.html performance budget</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp03t05" checked/><div>
+            <p class="text-white font-semibold">PWA manifest + theme color</p>
+            <p class="ac"><b>AC:</b> installable on Android Chrome; <code>theme-color</code> set</p>
+            <p class="ev"><b>Evidence:</b> 03 §offline-first platforms</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp03t06" checked/><div>
+            <p class="text-white font-semibold">Skip-to-content link (Round 3 enforcement, WCAG 2.4.1)</p>
+            <p class="ac"><b>AC:</b> visually-hidden &quot;Skip to content&quot; link surfaces on keyboard focus and moves focus to <code>&lt;main id="main-content" tabIndex="-1"&gt;</code></p>
+            <p class="ev"><b>Evidence:</b> 11-accessibility-audit.html §Round 3; <code>layout.tsx</code></p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp03t07" checked/><div>
+            <p class="text-white font-semibold">CommandPalette ARIA linkage + results live region (Round 3 enforcement, WCAG 4.1.2/4.1.3)</p>
+            <p class="ac"><b>AC:</b> trigger declares <code>aria-haspopup="dialog"</code> + <code>aria-expanded</code>; a polite <code>role="status"</code> region announces filter result counts via MutationObserver</p>
+            <p class="ev"><b>Evidence:</b> 11 §Round 3; <code>CommandPalette.tsx</code></p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp04">
+      <summary>
+        <span class="chip chip-s">WP-0.4</span>
+        <strong class="text-white">Engineering process</strong>
+        <span class="badge badge-ok">process</span>
+        <span class="text-white/40 text-sm">CI, lint, health probes</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t01"/><div>
+            <p class="text-white font-semibold">CI pipeline as PR gate</p>
+            <p class="ac"><b>AC:</b> <code>go test ./...</code>, <code>npx jest</code>, <code>go vet</code> and <code>go build</code> run on every PR; README badges</p>
+            <p class="ev"><b>Evidence:</b> ENHANCEMENT.md §5 engineering process</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t02"/><div>
+            <p class="text-white font-semibold">Makefile + golangci-lint</p>
+            <p class="ac"><b>AC:</b> <code>make build/test/lint</code> works; lint clean</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §5 running the application</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t03"/><div>
+            <p class="text-white font-semibold">Listener consolidation</p>
+            <p class="ac"><b>AC:</b> frontend serves from one port; docs updated</p>
+            <p class="ev"><b>Evidence:</b> runbook in AGENTS.md §5</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t04"/><div>
+            <p class="text-white font-semibold">Public health probes documented</p>
+            <p class="ac"><b>AC:</b> <code>/api/ping</code>, <code>/healthz</code>, <code>/readyz</code> stay public and are documented; never moved behind auth</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §4 health probes rule</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- PHASE 1 -->
+  <section class="phase phase-p1" data-phase="P1">
+    <div class="flex items-center gap-3 mb-3 flex-wrap">
+      <h2 class="text-2xl font-extrabold text-white tracking-tight">Phase 1 · Learning Engine</h2>
+      <span class="badge badge-high">weeks 5–14</span>
+    </div>
+    <p class="text-white/65 leading-relaxed mb-6">The core learning loop: correct per-learner status, a practice engine that actually teaches, a bilingual shell, retention mechanics and a moderator experience that makes teachers effective from day one. RC-01, RC-02, RC-03 and RC-09 all land here.</p>
+
+    <details class="wp" id="wp11">
+      <summary>
+        <span class="chip chip-l">WP-1.1</span>
+        <strong class="text-white">Per-learner status engine</strong>
+        <span class="badge badge-high">RC-01</span>
+        <span class="text-white/40 text-sm">Honest progress, per learner, per activity</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t01"/><div>
+            <p class="text-white font-semibold">Per-learner status model</p>
+            <p class="ac"><b>AC:</b> backend stores per-learner per-activity status (not-started / active / needs-practice / completed) and exposes it via API</p>
+            <p class="ev"><b>Evidence:</b> ENHANCEMENT.md §4 per-learner activity status</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t02"/><div>
+            <p class="text-white font-semibold">"Needs practice" determination rules</p>
+            <p class="ac"><b>AC:</b> rules documented and implemented (e.g. low quiz accuracy flags an activity); phrasing stays supportive — never "failed"</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §1 supportive language; RC-01</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t03"/><div>
+            <p class="text-white font-semibold">Status UI on dashboard + catalog</p>
+            <p class="ac"><b>AC:</b> catalog badges and dashboard chips render real per-learner status; empty states honest</p>
+            <p class="ev"><b>Evidence:</b> RC-01; 06-log-playbook.html</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t04"/><div>
+            <p class="text-white font-semibold">Status-transition tests</p>
+            <p class="ac"><b>AC:</b> Go tests cover start → active → needs-practice → completed transitions including idempotent replays</p>
+            <p class="ev"><b>Evidence:</b> queue idempotency note in ENHANCEMENT.md</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp12">
+      <summary>
+        <span class="chip chip-l">WP-1.2</span>
+        <strong class="text-white">Practice engine + SEE-first content</strong>
+        <span class="badge badge-high">RC-02</span>
+        <span class="text-white/40 text-sm">Quiz correctness, explanations, Nepal's exam reality</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t01"/><div>
+            <p class="text-white font-semibold">Quiz correctness + positive explanations</p>
+            <p class="ac"><b>AC:</b> practice module explains every answer in supportive language; question bank bilingual (NP/EN)</p>
+            <p class="ev"><b>Evidence:</b> 05-assessment-privacy-oer.html §RC-02; ENHANCEMENT.md quiz correctness</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t02"/><div>
+            <p class="text-white font-semibold">SEE 9–12 units pilot</p>
+            <p class="ac"><b>AC:</b> 2–3 SEE units (Science, English, Mathematics) with quiz banks + explanations shipped</p>
+            <p class="ev"><b>Evidence:</b> 02-nepal-reality.html SEE context; 06 playbook</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t03"/><div>
+            <p class="text-white font-semibold">Practice metrics in chart-data</p>
+            <p class="ac"><b>AC:</b> practice attempts and accuracy feed <code>/chart-data</code>; honest zeros when none</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §3 cache invalidation list</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp13">
+      <summary>
+        <span class="chip chip-l">WP-1.3</span>
+        <strong class="text-white">Bilingual shell</strong>
+        <span class="badge badge-medium">i18n</span>
+        <span class="text-white/40 text-sm">Nepali-first where it matters</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t01"/><div>
+            <p class="text-white font-semibold">next-intl wiring</p>
+            <p class="ac"><b>AC:</b> EN/NP locale switching works; default from browser + stored preference</p>
+            <p class="ev"><b>Evidence:</b> ENHANCEMENT.md §4 Nepali i18n; 02-nepal-reality.html</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t02"/><div>
+            <p class="text-white font-semibold">Devanagari rendering</p>
+            <p class="ac"><b>AC:</b> Devanagari glyphs render correctly; font subset bundled</p>
+            <p class="ev"><b>Evidence:</b> 02 §language landscape</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t03"/><div>
+            <p class="text-white font-semibold">Bikram Sambat calendar support</p>
+            <p class="ac"><b>AC:</b> relevant UI dates show BS; conversion unit-tested</p>
+            <p class="ev"><b>Evidence:</b> 02 §calendar reality</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t04"/><div>
+            <p class="text-white font-semibold">Translation sweep</p>
+            <p class="ac"><b>AC:</b> all user-facing strings extracted; NP translations reviewed by a native speaker</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §1 supportive language applies in both languages</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp14">
+      <summary>
+        <span class="chip chip-l">WP-1.4</span>
+        <strong class="text-white">Spaced repetition &amp; streaks</strong>
+        <span class="badge badge-medium">RC-09</span>
+        <span class="text-white/40 text-sm">Retention without pressure</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t01"/><div>
+            <p class="text-white font-semibold">Review scheduler</p>
+            <p class="ac"><b>AC:</b> per-activity review queue (SM-2 style) stored locally-first and synced; works offline</p>
+            <p class="ev"><b>Evidence:</b> 03 §learning science; 06 playbook RC-09</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t02"/><div>
+            <p class="text-white font-semibold">Streaks + opt-in reminders</p>
+            <p class="ac"><b>AC:</b> streak UI with positive framing; web-push reminder only with permission</p>
+            <p class="ev"><b>Evidence:</b> 04-ai-engagement-accessibility.html §engagement</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t03"/><div>
+            <p class="text-white font-semibold">Honest streak metrics</p>
+            <p class="ac"><b>AC:</b> streaks derived from real completions only; no synthetic activity</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §1 no fabricated data</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp15">
+      <summary>
+        <span class="chip chip-m">WP-1.5</span>
+        <strong class="text-white">Moderator onboarding</strong>
+        <span class="badge badge-high">RC-03</span>
+        <span class="text-white/40 text-sm">Teachers effective from day one</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t01"/><div>
+            <p class="text-white font-semibold">Role onboarding flow</p>
+            <p class="ac"><b>AC:</b> moderator first-login guide + class-creation wizard</p>
+            <p class="ev"><b>Evidence:</b> 01-global-market-and-users.html; RC-03</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t02"/><div>
+            <p class="text-white font-semibold">Class management polish</p>
+            <p class="ac"><b>AC:</b> invite students by code; roster CSV export/import</p>
+            <p class="ev"><b>Evidence:</b> 01 §teacher pain points</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t03"/><div>
+            <p class="text-white font-semibold">Student progress view</p>
+            <p class="ac"><b>AC:</b> per-student progress built on WP-1.1 engine; supportive language throughout</p>
+            <p class="ev"><b>Evidence:</b> 01; AGENTS.md §1</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+  </section>
+<!-- PHASE 2 -->
+  <section class="phase phase-p2" data-phase="P2">
+    <div class="flex items-center gap-3 mb-3 flex-wrap">
+      <h2 class="text-2xl font-extrabold text-white tracking-tight">Phase 2 · Teacher &amp; Parent</h2>
+      <span class="badge badge-high">weeks 15–24</span>
+    </div>
+    <p class="text-white/65 leading-relaxed mb-6">Connecting the adults around the learner: a parent portal (RC-04), a structured support funnel (RC-06), an honest gradebook (RC-08) and a reconnect digest that makes offline sync visible instead of silent.</p>
+
+    <details class="wp" id="wp21">
+      <summary>
+        <span class="chip chip-l">WP-2.1</span>
+        <strong class="text-white">Parent portal</strong>
+        <span class="badge badge-high">RC-04</span>
+        <span class="text-white/40 text-sm">Progress visibility for guardians</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t01"/><div>
+            <p class="text-white font-semibold">Parent invite/link flow</p>
+            <p class="ac"><b>AC:</b> guardian links to a learner via school verification; consent captured and recorded</p>
+            <p class="ev"><b>Evidence:</b> 05 §RC-04; 02 §parent phone ownership</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t02"/><div>
+            <p class="text-white font-semibold">Parent dashboard</p>
+            <p class="ac"><b>AC:</b> read-only progress digest; no sensitive raw data exposed (no OTPs, no contacts)</p>
+            <p class="ev"><b>Evidence:</b> 05 §privacy boundaries; RC-04</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t03"/><div>
+            <p class="text-white font-semibold">Opt-in digest notifications</p>
+            <p class="ac"><b>AC:</b> email/SMS digest template reviewed for supportive tone; opt-in only</p>
+            <p class="ev"><b>Evidence:</b> 02 §connectivity mix; 06 playbook</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp22">
+      <summary>
+        <span class="chip chip-m">WP-2.2</span>
+        <strong class="text-white">Who-to-call support workflow</strong>
+        <span class="badge badge-high">RC-06</span>
+        <span class="text-white/40 text-sm">From "it's broken" to a named person</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp22t01"/><div>
+            <p class="text-white font-semibold">Structured support funnel</p>
+            <p class="ac"><b>AC:</b> issue wizard → guidance article → community → admin escalation, in NP and EN</p>
+            <p class="ev"><b>Evidence:</b> 01 §support complaints; RC-06</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp22t02"/><div>
+            <p class="text-white font-semibold">Moderator resolution inbox</p>
+            <p class="ac"><b>AC:</b> escalated issues land in an admin/moderator inbox; every action audit-logged</p>
+            <p class="ev"><b>Evidence:</b> 01; AGENTS.md §4 audit trail</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp23">
+      <summary>
+        <span class="chip chip-m">WP-2.3</span>
+        <strong class="text-white">Gradebook honesty</strong>
+        <span class="badge badge-medium">RC-08</span>
+        <span class="text-white/40 text-sm">Real grades, or honestly none</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp23t01"/><div>
+            <p class="text-white font-semibold">Honest gradebook</p>
+            <p class="ac"><b>AC:</b> no invented grades; "not yet assessed" states; CSV export reflects only real data</p>
+            <p class="ev"><b>Evidence:</b> 05 §assessment integrity; AGENTS.md §1</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp23t02"/><div>
+            <p class="text-white font-semibold">Teacher annotations</p>
+            <p class="ac"><b>AC:</b> per-learner notes stored; supportive template chips (e.g. "This area could use more practice")</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §1 supportive language</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp24">
+      <summary>
+        <span class="chip chip-m">WP-2.4</span>
+        <strong class="text-white">Reconnect digest</strong>
+        <span class="badge badge-medium">offline</span>
+        <span class="text-white/40 text-sm">Make sync visible, never silent</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp24t01"/><div>
+            <p class="text-white font-semibold">Offline activity digest</p>
+            <p class="ac"><b>AC:</b> after reconnect, learner sees what synced; queued items surface with a confirmation</p>
+            <p class="ev"><b>Evidence:</b> 03 §sync UX; ENHANCEMENT.md reconnect digest</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp24t02"/><div>
+            <p class="text-white font-semibold">Sync status indicator</p>
+            <p class="ac"><b>AC:</b> persistent offline/syncing indicator with live queue count</p>
+            <p class="ev"><b>Evidence:</b> 03 §offline-first platforms</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- PHASE 3 -->
+  <section class="phase phase-p3" data-phase="P3">
+    <div class="flex items-center gap-3 mb-3 flex-wrap">
+      <h2 class="text-2xl font-extrabold text-white tracking-tight">Phase 3 · Content &amp; Ecosystem</h2>
+      <span class="badge badge-medium">months 6–9</span>
+    </div>
+    <p class="text-white/65 leading-relaxed mb-6">Content depth and ecosystem reach: OER integration (RC-07), full SEE coverage, the QR pilot (RC-10), Nepal Sign Language and accessibility content (RC-12), and formal partnership lanes (RC-11).</p>
+
+    <details class="wp" id="wp31">
+      <summary>
+        <span class="chip chip-l">WP-3.1</span>
+        <strong class="text-white">OER metadata &amp; content packs</strong>
+        <span class="badge badge-medium">RC-07</span>
+        <span class="text-white/40 text-sm">Open resources, correct licensing</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp31t01"/><div>
+            <p class="text-white font-semibold">OER metadata schema</p>
+            <p class="ac"><b>AC:</b> content model carries license + attribution fields; UI displays them</p>
+            <p class="ev"><b>Evidence:</b> 05 §OER chapter; RC-07</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp31t02"/><div>
+            <p class="text-white font-semibold">Nepal OER import pipeline</p>
+            <p class="ac"><b>AC:</b> batch import of curated OER (CK-12-style packs) with license checks; downloadable for offline use</p>
+            <p class="ev"><b>Evidence:</b> 03 §offline-first platforms; 05 §OER</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp32">
+      <summary>
+        <span class="chip chip-l">WP-3.2</span>
+        <strong class="text-white">SEE 9–12 interactive content</strong>
+        <span class="badge badge-high">content</span>
+        <span class="text-white/40 text-sm">Full exam-relevant curriculum</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp32t01"/><div>
+            <p class="text-white font-semibold">Full SEE unit coverage</p>
+            <p class="ac"><b>AC:</b> all major SEE subjects covered with practice-first units in NP + EN</p>
+            <p class="ev"><b>Evidence:</b> 02-nepal-reality.html SEE pressure; 06 playbook</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp32t02"/><div>
+            <p class="text-white font-semibold">Interactive practice-first formats</p>
+            <p class="ac"><b>AC:</b> each unit ships quiz banks + explanations; supports offline completion</p>
+            <p class="ev"><b>Evidence:</b> 06 playbook practice-first principle</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp33">
+      <summary>
+        <span class="chip chip-m">WP-3.3</span>
+        <strong class="text-white">QR pilot</strong>
+        <span class="badge badge-high">RC-10</span>
+        <span class="text-white/40 text-sm">Paper posters into digital classrooms</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp33t01"/><div>
+            <p class="text-white font-semibold">Poster QR program</p>
+            <p class="ac"><b>AC:</b> partner schools get posters; scanning warms the local cache (offline demo kit)</p>
+            <p class="ev"><b>Evidence:</b> 03 §QR-first offline pattern; RC-10</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp33t02"/><div>
+            <p class="text-white font-semibold">Pilot measurement</p>
+            <p class="ac"><b>AC:</b> pilot records scans, installs and first-session drop-off; honest report published</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §1 no fabricated analytics</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp34">
+      <summary>
+        <span class="chip chip-m">WP-3.4</span>
+        <strong class="text-white">Nepal Sign Language &amp; accessibility content</strong>
+        <span class="badge badge-medium">RC-12</span>
+        <span class="text-white/40 text-sm">Every learner belongs</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp34t01"/><div>
+            <p class="text-white font-semibold">NSL video captions</p>
+            <p class="ac"><b>AC:</b> core units captioned; NSL video content sourced with proper consent</p>
+            <p class="ev"><b>Evidence:</b> 02 §disability inclusion; RC-12</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp34t02"/><div>
+            <p class="text-white font-semibold">High-contrast &amp; font-size packs</p>
+            <p class="ac"><b>AC:</b> user-adjustable font size and high-contrast theme; persisted locally</p>
+            <p class="ev"><b>Evidence:</b> 04 §accessibility chapter</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp35">
+      <summary>
+        <span class="chip chip-s">WP-3.5</span>
+        <strong class="text-white">Partnership lanes</strong>
+        <span class="badge badge-medium">RC-11</span>
+        <span class="text-white/40 text-sm">Formal, safe collaboration</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp35t01"/><div>
+            <p class="text-white font-semibold">Data-sharing agreement templates</p>
+            <p class="ac"><b>AC:</b> school/MoE MoU template covering child-data protections, reviewed</p>
+            <p class="ev"><b>Evidence:</b> 05 §data governance; RC-11</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp35t02"/><div>
+            <p class="text-white font-semibold">Shared-library model</p>
+            <p class="ac"><b>AC:</b> content attribution and remix rules documented; contributors credited</p>
+            <p class="ev"><b>Evidence:</b> 05 §OER licensing</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+  </section><!-- PHASE 4 -->
+  <section class="phase phase-p4" data-phase="P4">
+    <div class="flex items-center gap-3 mb-3 flex-wrap">
+      <h2 class="text-2xl font-extrabold text-white tracking-tight">Phase 4 · Scale &amp; Trust at Depth</h2>
+      <span class="badge badge-ok">months 9–12</span>
+    </div>
+    <p class="text-white/65 leading-relaxed mb-6">Retire the architectural debt the review surfaced (C2, C3, C4), prove the performance budgets hold under load, add honest monitoring, and make the project easy to run and contribute to.</p>
+
+    <details class="wp" id="wp41">
+      <summary>
+        <span class="chip chip-m">WP-4.1</span>
+        <strong class="text-white">Backend refactors</strong>
+        <span class="badge badge-high">C2 · C3 · C4</span>
+        <span class="text-white/40 text-sm">Retire architectural debt</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t01"/><div>
+            <p class="text-white font-semibold">Unify completion recording (C2)</p>
+            <p class="ac"><b>AC:</b> single server-side path records completions; client-side-only completion removed</p>
+            <p class="ev"><b>Evidence:</b> architecture-review-2-20260818.html C2</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t02"/><div>
+            <p class="text-white font-semibold">Refactor admin handler seam (C3)</p>
+            <p class="ac"><b>AC:</b> admin-only logic extracted behind a service seam; unit tests cover role checks</p>
+            <p class="ev"><b>Evidence:</b> architecture review C3; AGENTS.md §4 RBAC</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t03"/><div>
+            <p class="text-white font-semibold">Real foreign keys (C4)</p>
+            <p class="ac"><b>AC:</b> schema migration adds real FKs with cascade rules; migration tested against a copy of log.db</p>
+            <p class="ev"><b>Evidence:</b> architecture review C4</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp42">
+      <summary>
+        <span class="chip chip-m">WP-4.2</span>
+        <strong class="text-white">Scale &amp; performance</strong>
+        <span class="badge badge-medium">RESPECT</span>
+        <span class="text-white/40 text-sm">Prove the budgets under load</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp42t01"/><div>
+            <p class="text-white font-semibold">DB pooling + indexes</p>
+            <p class="ac"><b>AC:</b> connection pool settings and hot-path indexes in place; query plan review in docs</p>
+            <p class="ev"><b>Evidence:</b> 03 §performance chapter</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp42t02"/><div>
+            <p class="text-white font-semibold">RESPECT budget enforcement</p>
+            <p class="ac"><b>AC:</b> page weight &lt; 500KB and TTI &lt; 5s on 3G verified per release; budgets in CI</p>
+            <p class="ev"><b>Evidence:</b> 03 §RESPECT principles</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp43">
+      <summary>
+        <span class="chip chip-s">WP-4.3</span>
+        <strong class="text-white">Monitoring &amp; analytics honesty</strong>
+        <span class="badge badge-ok">trust</span>
+        <span class="text-white/40 text-sm">Operations without surveillance</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp43t01"/><div>
+            <p class="text-white font-semibold">Server metrics + error alerting</p>
+            <p class="ac"><b>AC:</b> request/error metrics exposed; alerting on 5xx spikes; no learner PII in logs</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §4 never log plaintext OTPs/passwords</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp43t02"/><div>
+            <p class="text-white font-semibold">Consent-first product analytics</p>
+            <p class="ac"><b>AC:</b> analytics aggregate-only, opt-in, and documented in the privacy pack</p>
+            <p class="ev"><b>Evidence:</b> 05 §privacy; WP-0.1</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="wp" id="wp44">
+      <summary>
+        <span class="chip chip-s">WP-4.4</span>
+        <strong class="text-white">Release &amp; docs</strong>
+        <span class="badge badge-ok">ship</span>
+        <span class="text-white/40 text-sm">Easy to run, easy to contribute</span>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="wp-body">
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp44t01"/><div>
+            <p class="text-white font-semibold">Versioned releases + changelog</p>
+            <p class="ac"><b>AC:</b> semver releases with changelog entries tied to WP ids</p>
+            <p class="ev"><b>Evidence:</b> git-workflow conventions in AGENTS.md</p>
+          </div></label>
+        </div>
+        <div class="task">
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp44t02"/><div>
+            <p class="text-white font-semibold">Docs hub + contribution guide</p>
+            <p class="ac"><b>AC:</b> single docs index linking ENHANCEMENT.md, BUGS.md, architecture review, research hub and this plan</p>
+            <p class="ev"><b>Evidence:</b> docs/ tree</p>
+          </div></label>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- Roadmap -->
+  <section class="mb-14">
+    <h2 class="text-3xl font-bold text-white mb-6 tracking-tight">Delivery roadmap</h2>
+    <div class="mermaid">
+gantt
+    title LOG Delivery Roadmap (Aug 2026 – Aug 2027)
+    dateFormat YYYY-MM-DD
+    axisFormat %b
+    section Phase 0 · Foundation
+    WP-0.1 Privacy pack (shipped, R3) :done, p0a, 2026-08-24, 2026-09-06
+    WP-0.2 Honesty &amp; hygiene (shipped, R3) :done, p0b, 2026-08-31, 2026-09-13
+    WP-0.3 A11y &amp; bundle (shipped, R3) :done, p0c, 2026-09-07, 2026-09-20
+    WP-0.4 Engineering process  :p0d, 2026-08-24, 2026-09-20
+    section Phase 1 · Learning Engine
+    WP-1.1 Status engine        :p1a, 2026-09-21, 2026-10-18
+    WP-1.2 Practice engine      :p1b, 2026-10-05, 2026-11-22
+    WP-1.3 Bilingual shell      :p1c, 2026-10-12, 2026-11-29
+    WP-1.4 Spaced repetition    :p1d, 2026-11-16, 2026-12-13
+    WP-1.5 Moderator onboarding :p1e, 2026-11-09, 2026-12-13
+    section Phase 2 · Teacher &amp; Parent
+    WP-2.1 Parent portal        :p2a, 2026-12-07, 2027-01-31
+    WP-2.2 Who-to-call workflow :p2b, 2027-01-04, 2027-02-07
+    WP-2.3 Gradebook honesty    :p2c, 2026-12-21, 2027-01-31
+    WP-2.4 Reconnect digest     :p2d, 2027-01-18, 2027-02-07
+    section Phase 3 · Content &amp; Ecosystem
+    WP-3.1 OER metadata         :p3a, 2027-02-08, 2027-03-14
+    WP-3.2 SEE content          :p3b, 2027-03-01, 2027-05-02
+    WP-3.3 QR pilot             :p3c, 2027-03-22, 2027-04-25
+    WP-3.4 NSL &amp; accessibility  :p3d, 2027-04-12, 2027-05-23
+    WP-3.5 Partnership lanes    :p3e, 2027-05-03, 2027-05-30
+    section Phase 4 · Scale &amp; Trust
+    WP-4.1 Backend refactors    :p4a, 2027-05-31, 2027-07-04
+    WP-4.2 Scale &amp; performance  :p4b, 2027-06-14, 2027-07-25
+    WP-4.3 Monitoring &amp; honesty :p4c, 2027-07-05, 2027-08-01
+    WP-4.4 Release &amp; docs       :p4d, 2027-07-19, 2027-08-15
+    </div>
+  </section>
+
+  <!-- Risk register -->
+  <section class="mb-14">
+    <h2 class="text-3xl font-bold text-white mb-6 tracking-tight">Risk register</h2>
+    <div class="overflow-x-auto"><table>
+      <tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation (lands in)</th></tr>
+      <tr><td class="text-white">Connectivity is worse than expected in target districts</td><td>High</td><td>Medium</td><td>Offline-first discipline everywhere; QR + cache-warm pilot (WP-3.3)</td></tr>
+      <tr><td class="text-white">Child-data scrutiny delays school rollout</td><td>Medium</td><td>High</td><td>Privacy pack first, consent captured at registration (WP-0.1)</td></tr>
+      <tr><td class="text-white">Content copyright or licensing disputes</td><td>Medium</td><td>Medium</td><td>OER metadata + license checks before import (WP-3.1)</td></tr>
+      <tr><td class="text-white">Engagement drops after novelty wears off</td><td>Medium</td><td>Medium</td><td>Practice-first content, spaced repetition, streaks (WP-1.2, WP-1.4)</td></tr>
+      <tr><td class="text-white">Scope creep on the bilingual shell</td><td>Medium</td><td>Low</td><td>String sweep gated to Phase 1 scope; review by native speaker (WP-1.3)</td></tr>
+      <tr><td class="text-white">Single maintainer bottleneck</td><td>Medium</td><td>Medium</td><td>CI, Makefile, docs hub, contribution guide (WP-0.4, WP-4.4)</td></tr>
+      <tr><td class="text-white">IT &amp; Cybersecurity Bill 2082 enacts a 35-day purpose-based destruction clock (Clause 61)</td><td>Medium</td><td>High</td><td>Watch item: retention moves from inactivity-based (2y) to event-based; revisit policy 2026-08-v2 before rollout (WP-0.1 privacy pack)</td></tr>
+    </table></div>
+  </section>
+
+  <!-- KPIs -->
+  <section class="mb-14">
+    <h2 class="text-3xl font-bold text-white mb-6 tracking-tight">KPIs per phase</h2>
+    <div class="overflow-x-auto"><table>
+      <tr><th>Phase</th><th>KPI</th><th>Target</th><th>Measured by</th></tr>
+      <tr><td class="text-white">0</td><td class="text-white">Consent coverage of active learners</td><td class="text-white">100%</td><td class="text-white">Admin audit view (WP-0.1)</td></tr>
+      <tr><td class="text-white">0</td><td class="text-white">Queue-integrity test pass rate</td><td class="text-white">100% green in CI</td><td class="text-white">Jest suite (WP-0.4)</td></tr>
+      <tr><td class="text-white">1</td><td class="text-white">Learners with correct per-activity status</td><td class="text-white">100% of active learners</td><td class="text-white">WP-1.1 status engine</td></tr>
+      <tr><td class="text-white">1</td><td class="text-white">SEE pilot units shipped</td><td class="text-white">3 units</td><td class="text-white">WP-1.2 release list</td></tr>
+      <tr><td class="text-white">2</td><td class="text-white">Parents linked to learners</td><td class="text-white">30% of active learners</td><td class="text-white">WP-2.1 link flow</td></tr>
+      <tr><td class="text-white">2</td><td class="text-white">Escalations resolved in 48h</td><td class="text-white">90%</td><td class="text-white">WP-2.2 inbox</td></tr>
+      <tr><td class="text-white">3</td><td class="text-white">OER packs imported with valid licenses</td><td class="text-white">10 packs</td><td class="text-white">WP-3.1 pipeline</td></tr>
+      <tr><td class="text-white">3</td><td class="text-white">QR pilot schools onboarded</td><td class="text-white">5 schools</td><td class="text-white">WP-3.3 pilot report</td></tr>
+      <tr><td class="text-white">4</td><td class="text-white">Page weight / TTI on 3G</td><td class="text-white">&lt; 500KB / &lt; 5s</td><td class="text-white">CI budget check (WP-4.2)</td></tr>
+      <tr><td class="text-white">4</td><td class="text-white">Schema FKs + completion unification live</td><td class="text-white">100%</td><td class="text-white">WP-4.1 migration report</td></tr>
+    </table></div>
+  </section>
+
+  <!-- Verification matrix -->
+  <section class="mb-14">
+    <h2 class="text-3xl font-bold text-white mb-6 tracking-tight">Verification matrix</h2>
+    <p class="text-white/60 text-sm mb-4">How each phase proves itself before the next one starts. A phase is done when its gates pass — not when the code compiles.</p>
+    <div class="overflow-x-auto"><table>
+      <tr><th>Phase</th><th>Gate</th><th>Verify how</th></tr>
+      <tr><td class="text-white">0</td><td class="text-white">Trust surface hardened</td><td class="text-white">Consent recorded for every learner and enforced server-side; export/delete demo; retention purge runs; no-fallback sweep green; Jest suite green</td></tr>
+      <tr><td class="text-white">1</td><td class="text-white">Learning loop real</td><td class="text-white">Status engine queried per learner; practice explanations shown in NP+EN; streaks derive from real completions</td></tr>
+      <tr><td class="text-white">2</td><td class="text-white">Adults in the loop</td><td class="text-white">Parent links live; escalation funnel demo; gradebook shows only real data</td></tr>
+      <tr><td class="text-white">3</td><td class="text-white">Content &amp; reach</td><td class="text-white">License-checked OER live; SEE units playable offline; QR scan → warm cache demo; NSL captions reviewed</td></tr>
+      <tr><td class="text-white">4</td><td class="text-white">Scale &amp; trust</td><td class="text-white">Load test under budget; metrics dashboards honest; migration applied on a copy of log.db; release tagged</td></tr>
+    </table></div>
+  </section>
+
+  <!-- Backlog cross-reference -->
+  <section class="mb-14">
+    <h2 class="text-3xl font-bold text-white mb-6 tracking-tight">Backlog cross-reference</h2>
+    <p class="text-white/60 text-sm mb-4">Every open item from the architecture review and the research recommendations maps to exactly one work package. No orphan backlog.</p>
+    <div class="overflow-x-auto"><table>
+      <tr><th>Source</th><th>Item</th><th>Lands in</th></tr>
+      <tr><td class="text-white">Architecture review</td><td class="text-white">C1 · audit-log pagination</td><td class="text-white">WP-0.2</td></tr>
+      <tr><td class="text-white">Architecture review</td><td class="text-white">C2 · unify completion recording</td><td class="text-white">WP-4.1</td></tr>
+      <tr><td class="text-white">Architecture review</td><td class="text-white">C3 · admin.go seam</td><td class="text-white">WP-4.1</td></tr>
+      <tr><td class="text-white">Architecture review</td><td class="text-white">C4 · real foreign keys</td><td class="text-white">WP-4.1</td></tr>
+      <tr><td class="text-white">Architecture review</td><td class="text-white">C5 · Course.Enrolled state</td><td class="text-white">WP-0.2</td></tr>
+      <tr><td class="text-white">Architecture review</td><td class="text-white">C6 · accessibility tokens</td><td class="text-white">WP-0.3</td></tr>
+      <tr><td class="text-white">Research (RC-01)</td><td class="text-white">Per-learner activity status</td><td class="text-white">WP-1.1</td></tr>
+      <tr><td class="text-white">Research (RC-02)</td><td class="text-white">Practice engine + SEE-first content</td><td class="text-white">WP-1.2</td></tr>
+      <tr><td class="text-white">Research (RC-03)</td><td class="text-white">Moderator onboarding</td><td class="text-white">WP-1.5</td></tr>
+      <tr><td class="text-white">Research (RC-04)</td><td class="text-white">Parent portal</td><td class="text-white">WP-2.1</td></tr>
+      <tr><td class="text-white">Research (RC-05)</td><td class="text-white">Privacy pack</td><td class="text-white">WP-0.1</td></tr>
+      <tr><td class="text-white">Research (RC-06)</td><td class="text-white">Who-to-call support</td><td class="text-white">WP-2.2</td></tr>
+      <tr><td class="text-white">Research (RC-07)</td><td class="text-white">OER metadata + packs</td><td class="text-white">WP-3.1</td></tr>
+      <tr><td class="text-white">Research (RC-08)</td><td class="text-white">Gradebook honesty</td><td class="text-white">WP-2.3</td></tr>
+      <tr><td class="text-white">Research (RC-09)</td><td class="text-white">Spaced repetition</td><td class="text-white">WP-1.4</td></tr>
+      <tr><td class="text-white">Research (RC-10)</td><td class="text-white">QR pilot</td><td class="text-white">WP-3.3</td></tr>
+      <tr><td class="text-white">Research (RC-11)</td><td class="text-white">Partnership lanes</td><td class="text-white">WP-3.5</td></tr>
+      <tr><td class="text-white">Research (RC-12)</td><td class="text-white">NSL + accessibility content</td><td class="text-white">WP-3.4</td></tr>
+      <tr><td class="text-white">ENHANCEMENT.md</td><td class="text-white">Reconnect digest</td><td class="text-white">WP-2.4</td></tr>
+      <tr><td class="text-white">ENHANCEMENT.md</td><td class="text-white">Engineering process (CI, lint)</td><td class="text-white">WP-0.4</td></tr>
+      <tr><td class="text-white">ENHANCEMENT.md</td><td class="text-white">Scale + monitoring</td><td class="text-white">WP-4.2 · WP-4.3</td></tr>
+      <tr><td class="text-white">ENHANCEMENT.md</td><td class="text-white">Release + docs</td><td class="text-white">WP-4.4</td></tr>
+    </table></div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/10 pt-8 mt-4">
+    <div class="flex flex-wrap gap-3 mb-4">
+      <a class="badge badge-ok" href="index.html">← Back to research hub</a>
+      <span class="badge badge-low">Sources: ENHANCEMENT.md · BUGS.md · architecture-review-2-20260818.html · reports 01–06</span>
+    </div>
+    <p class="text-white/40 text-sm">Every task carries an acceptance criterion and an evidence reference back to a source file or research report. Progress is stored locally in your browser only — no analytics, no tracking. Nothing here is committed or pushed until you ask.</p>
+  </footer>
+
+</div>
+
+<script>
+  const KEY = 'log-plan-progress-v1';
+  let done = new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+  const boxes = Array.from(document.querySelectorAll('.task-check'));
+
+  function render() {
+    const total = boxes.length;
+    const n = boxes.filter(b => b.checked).length;
+    const pct = total === 0 ? 0 : Math.round((n / total) * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = n + ' / ' + total + ' tasks done';
+    document.getElementById('progress-pct').textContent = pct + '%';
+  }
+
+  boxes.forEach(b => {
+    if (done.has(b.dataset.task)) b.checked = true;
+    b.addEventListener('change', () => {
+      if (b.checked) { done.add(b.dataset.task); b.closest('.task').classList.add('checked'); }
+      else { done.delete(b.dataset.task); b.closest('.task').classList.remove('checked'); }
+      localStorage.setItem(KEY, JSON.stringify(Array.from(done)));
+      render();
+    });
+    if (b.checked) b.closest('.task').classList.add('checked');
+  });
+  render();
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.filter;
+      document.querySelectorAll('section.phase').forEach(sec => {
+        sec.style.display = (f === 'all' || sec.dataset.phase === f) ? '' : 'none';
+      });
+    });
+  });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="06-log-playbook.html">← 06 · Playbook</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="11-accessibility-audit.html">11 · A11y &amp; Bundle →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

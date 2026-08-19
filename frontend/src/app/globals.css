@@ -16,6 +16,34 @@
     --brand-darker: 0 0% 4%; /* OLED Black */
     --brand-text: 210 20% 98%; /* White text by default */
     --brand-neon: 190 100% 50%; /* Bright glowing teal */
+
+    /* Contrast-safe text tokens (WP-0.3 C6). Computed against --brand-darker
+       (relative luminance 0.003) — see docs/html/11-accessibility-audit.html.
+       muted: >= 7:1 (AA AAA for normal text) — for all secondary copy.
+       faint: decorative/large-only; never used for essential copy. */
+    --brand-muted: 210 16% 70%;
+    --brand-faint: 210 16% 55%;
+  }
+
+  /* Visible keyboard focus ring (WP-0.3 WCAG 2.4.11/2.4.7) */
+  :where(a, button, input, select, textarea, summary, [role="button"], [role="switch"], [role="checkbox"], [role="radio"], [tabindex]):focus-visible {
+    outline: 3px solid hsl(var(--brand-neon));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* 44px minimum touch/click targets (WP-0.3 WCAG 2.5.8; exceptions documented
+     in docs/html/11-accessibility-audit.html — inline links and user-agent
+     controls stay natural size) */
+  button:not([aria-hidden="true"]),
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+  button:not([aria-hidden="true"]),
+  [role="button"] {
+    min-width: 44px;
   }
 
   body {
@@ -31,6 +59,15 @@
   ::view-transition-new(root) {
     animation-duration: 400ms;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* WCAG 2.2 2.4.11 Focus Not Obscured (research round): the sticky h-16
+     header and the fixed mobile bottom nav (z-50) can hide a focused element
+     scrolled to by keyboard. scroll-padding reserves room on both edges so
+     focus targets land fully visible. */
+  html {
+    scroll-padding-top: 7rem;
+    scroll-padding-bottom: 7rem;
   }
 }
 
@@ -89,4 +126,22 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Reduced-motion (WP-0.3 WCAG 2.3.3): neutralize CSS animation/transition for
+   users who ask for less motion. framer-motion is handled by MotionConfig
+   reducedMotion="user"; GSAP enters are guarded in src/lib/motion.ts. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
 }

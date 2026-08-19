@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { fetchWithCache } from '@/lib/api';
 import { AuditLogEntry } from '@/lib/types';
 import { Download, ScrollText } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 interface AuditLogTableProps {
   token: string;
@@ -17,12 +16,17 @@ interface AuditLogTableProps {
 export default function AuditLogTable({ token, onExport, exporting }: AuditLogTableProps) {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     fetchWithCache('/admin/audit-log', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((d) => setLogs(d.audit_logs || []))
+      .then((d) => {
+        setLogs(d.audit_logs || []);
+        setLoadError(false);
+      })
       .catch(() => {
-        toast.error('Failed to load audit log');
+        // F14: a failed load is not an empty state — flag it distinctly.
+        setLoadError(true);
         setLogs([]);
       })
       .finally(() => setLoading(false));
@@ -46,11 +50,16 @@ export default function AuditLogTable({ token, onExport, exporting }: AuditLogTa
         <div className="flex items-center justify-center py-12">
           <div className="w-10 h-10 border-4 border-white/10 border-t-brand-neon rounded-full animate-spin"></div>
         </div>
+      ) : loadError ? (
+        <div className="py-8 text-center">
+          <p className="text-red-300 text-sm mb-2">Could not load the audit log.</p>
+          <p className="text-brand-muted text-xs">Check your connection — cached entries, if any, are shown below.</p>
+        </div>
       ) : (
         <div className="overflow-x-auto max-h-72 overflow-y-auto">
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-black/80 backdrop-blur">
-              <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+              <tr className="border-b border-white/10 text-brand-muted uppercase tracking-wider text-[10px] font-bold">
                 <th className="pb-3 pr-3">Time</th>
                 <th className="pb-3 pr-3">Actor</th>
                 <th className="pb-3 pr-3">Action</th>
@@ -59,10 +68,10 @@ export default function AuditLogTable({ token, onExport, exporting }: AuditLogTa
             </thead>
             <tbody>
               {logs.length === 0 ? (
-                <tr><td colSpan={4} className="py-8 text-center text-white/40">No audit entries yet.</td></tr>
+                <tr><td colSpan={4} className="py-8 text-center text-brand-muted">No audit entries yet.</td></tr>
               ) : logs.map(e => (
                 <tr key={e.id} className="border-b border-white/5 last:border-0">
-                  <td className="py-3 pr-3 text-white/40 whitespace-nowrap">{new Date(e.created_at).toLocaleString()}</td>
+                  <td className="py-3 pr-3 text-brand-muted whitespace-nowrap">{new Date(e.created_at).toLocaleString()}</td>
                   <td className="py-3 pr-3 text-white/70">{e.user_id.slice(0, 12)}…</td>
                   <td className="py-3 pr-3"><span className="px-2 py-0.5 rounded-full bg-brand-neon/10 text-brand-neon text-[10px] font-bold">{e.action}</span></td>
                   <td className="py-3 text-white/60">{e.detail}</td>

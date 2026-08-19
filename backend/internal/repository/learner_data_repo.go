@@ -33,11 +33,3 @@ func (r *learnerDataRepo) FindDailyActivities(ctx context.Context, learnerID str
 	err := r.db.WithContext(ctx).Where("learner_id = ?", learnerID).Order("date asc").Find(&acts).Error
 	return acts, err
 }
-
-func (r *learnerDataRepo) SaveObservation(ctx context.Context, obs *domain.Observation) error {
-	return r.db.WithContext(ctx).Create(obs).Error
-}
-
-func (r *learnerDataRepo) SaveGuidance(ctx context.Context, gui *domain.Guidance) error {
-	return r.db.WithContext(ctx).Create(gui).Error
-}

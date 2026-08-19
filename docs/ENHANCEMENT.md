@@ -45,6 +45,47 @@ Only the roadmap items (SMS gateway, teacher workflow, Nepali i18n, reconnect di
 
 ---
 
+## ⚡ Phase 2 Revalidation (2026-08-19)
+
+Second hardening pass — auth/rate-limit seam, OTP lifecycle, JWT claims, export sanitization, read-scoping, and the offline-sync UX. Full evidence + before/after diagrams in `docs/architecture-review-2-20260818.html`. Statuses below are live verdicts.
+
+| # | Finding | Verdict | Evidence / fix location |
+|---|---|---|---|
+| B1 | Shared auth rate-limit bucket across all `/auth/*` routes | ✅ FIXED | per-route limiters: `RateLimitLogin=10`, `RateLimitRequestOTP=5`, `RateLimitVerifyOTP=20`, `RateLimitPassword=10` + `NewLimiter`/`RateLimitMiddlewareWith` (`backend/internal/handler/middleware.go`, `main.go`) |
+| B2 | RequestOTP deleted the live OTP; no cooldown | ✅ FIXED | `ErrOTPCooldown` sentinel → 429; only expired/near-expiry records deleted (`auth_service_impl.go`, `auth_handler.go`); test `TestRequestOTPCooldownReturns429` |
+| B3 | JWT accepted without `exp` / `jti` | ✅ FIXED | `jwt.WithExpirationRequired()` + non-empty jti (401 "Invalid token claims") (`middleware.go`); LogoutHandler exp float64 guard + `auth.logout` audit records `jti=` |
+| B4 | CSV export formula injection | ✅ FIXED | `sanitizeCSVCell` (`'` prefix on `= + - @` and tab/CR) + UTF-8 BOM (`export_handler.go`); test `TestStudentsCSVExportSanitizesFormulaCells` |
+| B5 | Teacher reads not scoped to own classes | ✅ FIXED | reads scoped by caller `teacher_id` (`learner_service.go`); unenroll non-member → 404 `ErrNotEnrolled` (`class_handler.go`); tests `TestAssignmentReadsScopedToTeacher`, `TestUnenrollNonMemberReturns404` |
+| B6 | Google token error leaked provider detail | ✅ FIXED | generic `"Invalid Google token"`; detail via `slog.Warn` server-side only |
+| B7 | OTP restore kept the old role | ✅ FIXED | role reset to `RoleStudent` on soft-delete restore (`auth_service_impl.go`) |
+| B8 | CreateActivity error shape + hygiene | ✅ FIXED | `RespondError` conversion, import cleanup (`admin.go`); gofmt (`moderator_repo.go`) |
+| B9 | db.go over-claimed FK enforcement | ✅ FIXED | comment now honest: `_foreign_keys=on` honored but AutoMigrate creates no FK constraints — service layer enforces |
+| B10 | Roster tests asserted the pre-fix fabricated roster | ✅ FIXED | `c.Set("userID","mod-1")` stubs; needs-attention scoped to teacher classes; seed students enroll into `cls-1` (`handlers_test.go`, `roster_test.go`) |
+| F1 | Sync queue only flushed on `online` event | ✅ FIXED | flush on window `load`, login/register/Google auth, `.logsync` import, SyncIsland tap, CommandPalette force (`api.ts`, `login/page.tsx`, `dashboard/page.tsx`, `SyncIsland.tsx`, `CommandPalette.tsx`) |
+| F2 | Auth requests queued to IndexedDB in plaintext | ✅ FIXED | `queueRequest` rejects `/auth/*`; legacy queued auth entries dropped at flush (`api.ts`) |
+| F4 | Mutations never invalidated the GET cache | ✅ FIXED | `invalidateRelatedCache` + exported `clearApiCache` for class/enroll/announcement/assignment/user/role mutations (`api.ts`) |
+| F5 | Logout-all left the local cache | ✅ FIXED | `settings/page.tsx` awaits `clearApiCache()` |
+| F6 | 401s left the user half-logged-in | ✅ FIXED | `clearCredentialsAndRedirect()` on 401 + expired token (`api.ts`) |
+| F7 | No submitting state on create/enroll/publish | ✅ FIXED | disabled buttons + `Loader2` in `AssignmentManager`, `ClassManager`, `AnnouncementComposer` |
+| F8 | Queued offline writes claimed committed success | ✅ FIXED | queued-aware toasts ("saved offline · will sync") across all write forms + dashboard submit |
+| F9 | Command palette dead route + fake sync | ✅ FIXED | `/learning-journey` → `/learning`; Force Data Sync flushes with toasts (`CommandPalette.tsx`) |
+| F10 | AssignmentManager stale-response race | ✅ FIXED | `requestSeq` ref discards out-of-order responses |
+| F11/F14 | Lesson page fabricated demo + fake completion | ✅ FIXED | demo/confetti removed; honest load-error vs empty states (`learning/[id]/page.tsx`) |
+| F12 | Unused deps | ✅ FIXED | removed `lottie-react`, `clsx`, `tailwind-merge`, `canvas-confetti` (+types); `jest.setup.ts` confetti mock deleted |
+| F13 | A11y labels | 🔶 PARTIAL | aria-labels on ClassManager/AnnouncementComposer/AssignmentManager/SyncIsland; contrast (teal/amber ≈ 2:1) deferred to token-level backlog (C6) |
+| F14 | Error states masquerading as empty (ClassManager, AuditLogTable) | ✅ FIXED | distinct error banners + "unavailable" table text; jest suites updated |
+| F15 | Dead buttons (RosterOverview Message, admin Create Activity/Manage Classes) | ✅ FIXED | removed or wired to real scroll targets |
+| F16 | CSV download revoke raced the download | ✅ FIXED | anchor append + deferred `revokeObjectURL` (`admin/page.tsx`) |
+| F17 | Observation page coupled two independent fetches | ✅ FIXED | `Promise.all` removed; `activity_data` array-guarded |
+| M8 | Zero-value dates rendered as "1/1/1" | ✅ FIXED | `formatDueDate` guards `NaN` + year < 2000 → "No deadline" (`AssignmentManager`, dashboard) |
+| — | Courses page fabricated enrollment count | ✅ FIXED | `enrolled` removed from UI (`courses/page.tsx`); backend seed field → backlog C5 |
+
+**New tests:** `TestRequestOTPCooldownReturns429`, `TestAssignmentReadsScopedToTeacher`, `TestUnenrollNonMemberReturns404`, `TestStudentsCSVExportSanitizesFormulaCells`, `TestSyncBulkImprovingReplayKeepsBestScore` (backend); AuditLogTable/ClassManager error-vs-empty suites updated (frontend 48 total).
+
+**Backlog (see HTML doc §candidates):** audit-log pagination · unify completion_repo/sync_repo completion logic · admin.go service seam · real FK constraints · backend `Course.Enrolled` seed · brand contrast tokens · recharts dynamic import.
+
+---
+
 ## 0. What's Already Strong (Keep as the Pattern)
 
 - **Security posture:** Comprehensive HTTP security headers, 4 MB request body cap (`backend/main.go:37-78`), custom recovery middleware that never leaks stack traces, graceful shutdown, HMAC-signing-method enforcement, `jti` revocation blocklist, bcrypt-14 OTP hashing, per-IP rate limiter with background entry sweeper (`backend/api/auth.go`).

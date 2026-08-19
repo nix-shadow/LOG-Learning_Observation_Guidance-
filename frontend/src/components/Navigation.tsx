@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BookOpen, Home, LineChart, Compass, LogIn, LogOut, ShieldAlert, Library, Users, Settings as SettingsIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Navigation() {
@@ -97,7 +97,7 @@ export default function Navigation() {
                     isActive ? 'text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-white/50 hover:text-white/90'
                   }`}
                 >
-                  <Icon className={`w-6 h-6 mb-1 ${isActive ? 'text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-white/40'}`} />
+                  <Icon className={`w-6 h-6 mb-1 ${isActive ? 'text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-brand-faint'}`} />
                   <span className="truncate w-full text-center">{item.name}</span>
                 </Link>
               );

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>04 — AI, Gamification &amp; Accessibility | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 04</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">AI, Gamification &amp; Accessibility</h1>
+    <p class="text-white/60 text-lg mb-6">Three agents: AI in LMS (Khanmigo and the RCT evidence), gamification that survives scientific scrutiny (Duolingo's own A/B data), and accessibility/multilingual requirements — WCAG 2.2, Nepali typography, screen readers.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">Khanmigo: +0.15 SD (WestEd RCT)</span>
+      <span class="badge badge-ok">731% AI-tool growth</span>
+      <span class="badge badge-medium">Gamification: mechanism &gt; badges</span>
+      <span class="badge badge-high">WCAG 2.2 AA is the floor</span>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="flex flex-wrap gap-2 mb-8">
+    <button class="tab-btn active badge" data-tab="ai">AI Trends &amp; Evidence</button>
+    <button class="tab-btn badge" data-tab="gami">Gamification Science</button>
+    <button class="tab-btn badge" data-tab="a11y">Accessibility &amp; Multilingual</button>
+    <button class="tab-btn badge" data-tab="rules">Design Rules → LOG</button>
+  </div>
+
+  <!-- ============ AI TAB ============ -->
+  <section id="tab-ai" class="tab-panel active">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">731%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">AI-tool growth in LMS</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">+0.15 SD</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Khanmigo (WestEd RCT)</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">4.4M</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Teacher AI-assistant signups</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">0</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">LLM content in LOG (by design)</p></div>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">THE ANCHOR RCT</span>
+          <h3 class="text-xl font-bold">Khanmigo AI tutor: +0.15 SD in a WestEd randomized trial</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• WestEd RCT (2025): Khanmigo students gained <strong class="text-white">+0.15 SD math achievement</strong> over control in a school-year trial — modest but real, in the same range as personalized-learning benchmarks (+0.18 SD).</li>
+          <li>• Key implementation findings: effects concentrate among students who actually use the AI regularly; teacher training on the tool matters; usage is the precondition.</li>
+          <li>• Khan Academy UP RCT (NBER w34683): the constraint is organizational, not the AI — a lab-in-charge raised usage 7.2 → 47.4 min/week and math +0.47 SD.</li>
+          <li>→ LOG implication: AI value = guidance + feedback derived from real learner data. No LLM content generation (AGENTS.md §1) — but rule-based, data-derived "next practice" suggestions are the same mechanism, offline-capable, and honest.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">MARKET SHIFT</span>
+          <h3 class="text-xl font-bold">2025–26: AI is table-stakes, but trust is the differentiator</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• AI-assisted authoring, AI coaching, and AI insights are now named in most 2026 LMS buying decisions (Docebo, TalentLMS TalentCraft, Absorb).</li>
+          <li>• Teacher AI assistants: 4.4M+ signups across major tools; AI lesson-planning is the top teacher use case (Tech&Learning / teacher-survey data).</li>
+          <li>• But the Reddit/G2 voice is skeptical: "What was the AI trained on…?" — data-retention clauses, training-data capture and hallucinated feedback are the top trust killers.</li>
+          <li>• UNESCO GEM 2023: only 7% of edtech companies had run RCTs on their tools — "AI-powered" claims mostly lack evidence.</li>
+          <li>• <strong class="text-white">The honest-AI position:</strong> LOG's guidance is deterministic, derived from actual backend data (AGENTS.md §1) — that is a trust feature in a market full of hallucination risk.</li>
+        </ul>
+      </div>
+
+      <div class="mermaid mb-10">
+flowchart TB
+  subgraph LLM path - rejected for LOG
+    A1[LLM generates content] --> A2[hallucination risk]
+    A2 --> A3["conflicts: no external LLM APIs (AGENTS.md)"]
+  end
+  subgraph Data-derived path - LOG
+    B1[Real learner activity data] --> B2[Rule-based guidance engine]
+    B2 --> B3["Next practice suggestion"]
+    B2 --> B4[Supportive feedback text]
+    B2 --> B5[Teacher alert lists]
+  end
+  B1 --> C1[works offline]
+  B2 --> C2[auditable + honest zeros]
+  B2 --> C3[no training-data capture]
+    </div>
+
+    </div>
+  </section>
+
+  <!-- ============ GAMIFICATION TAB ============ -->
+  <section id="tab-gami" class="tab-panel">
+
+    <p class="text-white/70 mb-6">The science is clear: <strong class="text-white">game mechanics work only when they change learning behaviour, not when they're decoration.</strong> Duolingo's own data is the best-public case study — it A/B tests everything.</p>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="ok rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-ok">WHAT WORKS</span>
+          <h3 class="text-xl font-bold">Mechanism-level gamification evidence</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">Streaks</strong> are the most replicated retention mechanic in consumer learning (Duolingo's streak data, Habitica community studies): they convert "habit" into identity — but only when forgiving (streak freezes reduce abandonment).</li>
+          <li>• <strong class="text-white">Immediate feedback + progress visibility</strong> (d=0.73 feedback effect): the "gamification" that survives RCT scrutiny is mostly fast, visible progress — which is really learning science wearing a game costume.</li>
+          <li>• <strong class="text-white">Practice-spaced "chest" style rewards</strong> (SM-2 + reward) beat massed sessions in app-retention A/Bs; reward after completing scheduled review, not for time-on-app.</li>
+          <li>• <strong class="text-white">Social comparison works for high performers, backfires for low</strong>: leaderboards lift the top third, demotivate the bottom — use "personal best" framing instead (growth-mindset language matches LOG's supportive tone).</li>
+          <li>• Chimple Haryana RCT: game-based app with teacher assignment produced +0.25 SD math — the games worked because they were assigned and monitored, not because of badges.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">WHAT FAILS</span>
+          <h3 class="text-xl font-bold">Badge-wall gamification — the decoration trap</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Points/badges/leaderboards alone show null or negative effects in most rigorous studies (LMS gamification meta-analyses): rewards for completion ≠ rewards for learning.</li>
+          <li>• Extrinsic rewards can <em>crowd out</em> intrinsic motivation when tied to grades rather than effort (self-determination theory evidence).</li>
+          <li>• Animation/confetti spam is remembered as "childish" by teens — the anti-pattern the LOG codebase already rejected (demo confetti deleted in F11 fix).</li>
+          <li>• Shupavu291 caution: gamified SMS quizzes still lost &gt;75% of joiners without teacher structure — gamification is not retention insurance.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">PRACTICE</span>
+          <h3 class="text-xl font-bold">What this means for a school LMS in Nepal</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• School context adds structure: streaks + teacher assignment + parent visibility = the retention triangle (Chimple + CSF evidence).</li>
+          <li>• SEE prep is inherently motivating (the iron gate) — the game is "closer to ready", not "higher on a board".</li>
+          <li>• Data-light design: gamification state must survive offline (IndexedDB) and sync — a streak that lies offline is worse than no streak.</li>
+          <li>• Honest zeros: "0-day streak" shown honestly beats fabricated momentum (AGENTS.md §1.3).</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ A11Y TAB ============ -->
+  <section id="tab-a11y" class="tab-panel">
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">LEGAL + ETHICAL FLOOR</span>
+          <h3 class="text-xl font-bold">WCAG 2.2 AA — with the contrast backlog in mind</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• WCAG 2.2 (Oct 2023) is the current bar; Level AA is the minimum for education platforms — including 4.5:1 text contrast, 3:1 UI components, focus visibility, and 24px/44px target sizes.</li>
+          <li>• LOG backlog item C6 flags the brand-teal/amber contrast problem (≈2:1) — the research confirms it's a real WCAG 1.4.3 failure, not a preference.</li>
+          <li>• r/Professors evidence: ADA-accommodated students "find it difficult to navigate" Canvas; proctoring is "ableist" for timed exams — accessibility is also a market differentiator.</li>
+          <li>• Screen-reader support: semantic landmarks, aria-labels (LOG already added many in F13), live-region announcements for sync/queued states.</li>
+          <li>• Nepal context: low-vision users, aging teachers, shared low-end devices — large-text mode and high-contrast mode are cheap and high-value.</li>
+        </ul>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">LANGUAGE</span>
+          <h3 class="text-xl font-bold">Nepali typography &amp; multilingual UI — done right or not at all</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">Fonts:</strong> Nepali (Devanagari) needs fonts with full conjunct rendering and correct line-height; system Devanagari fonts vary badly across low-end Android. Preload a good open font (e.g., Noto Sans Devanagari subset) — small, offline-safe.</li>
+          <li>• <strong class="text-white">Language switching:</strong> full Nepali/English UI parity; never a half-translated screen. Machine-translated guidance = the SEE-translation complaint ("lose half the question in translation") repeated at UI scale.</li>
+          <li>• <strong class="text-white">124+ languages:</strong> mother-tongue support matters (CDC has 15 mother-tongue categories); start Nepali + English with the architecture ready for more.</li>
+          <li>• <strong class="text-white">Bidi/numbers:</strong> Nepali numerals (०१२…) vs Devanagari-context number handling; dates in BS (Bikram Sambat) calendar as an option — school systems run on BS.</li>
+          <li>• <strong class="text-white">Voice/audio:</strong> for low-literacy parents, audio announcements in Nepali (recorded, not TTS-garbled) are a documented need (parent-communication studies).</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">INCLUSION</span>
+          <h3 class="text-xl font-bold">Nepal-specific accessibility needs</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Nepali Sign Language resources exist for grades 1–6 (OLE Nepal Sanketik E-Paath); deaf schools in Surkhet rolling out NSL activities (EAEN project) — video-first content works.</li>
+          <li>• Braille: CEHRD prints braille textbooks for grants, but there is no digital standard — LOG should not promise more than it can deliver (honesty principle).</li>
+          <li>• Low-bandwidth accessibility: text-only mode and reduced-motion mode are both accessibility AND data-savings features — one implementation, two wins.</li>
+          <li>• OLE Nepal i-OCR exists for converting Nepali docs to accessible text — integration candidate.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ RULES TAB ============ -->
+  <section id="tab-rules" class="tab-panel">
+
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">Design Rules distilled for LOG</h2>
+    <div class="grid md:grid-cols-2 gap-5 mb-10">
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 01</span>
+        <h4 class="font-bold mb-2">Guidance from data, not from an LLM</h4>
+        <p class="text-white/60 text-sm">The +0.15 SD AI-tutor effect comes from real feedback loops. LOG's rule-based guidance on real backend data achieves the same mechanism offline, with zero hallucination and zero training-data capture.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 02</span>
+        <h4 class="font-bold mb-2">Streaks, spaced reviews, personal bests</h4>
+        <p class="text-white/60 text-sm">Adopt the mechanisms with evidence: forgiving streaks, spaced-review rewards, "personal best" framing. Skip leaderboards (demotivate low performers) and badge walls.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 03</span>
+        <h4 class="font-bold mb-2">Gamification state must sync honestly</h4>
+        <p class="text-white/60 text-sm">Offline streaks must queue and reconcile like everything else (sync-queue). A streak shown optimistically that disappears on sync is a trust violation.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 04</span>
+        <h4 class="font-bold mb-2">Fix the contrast backlog (C6)</h4>
+        <p class="text-white/60 text-sm">Brand teal/amber at ~2:1 fails WCAG 1.4.3. Token-level palette work is a legal floor in education contexts, and low-vision users include Nepal's aging teacher workforce.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 05</span>
+        <h4 class="font-bold mb-2">Nepali-first UI, never half-translated</h4>
+        <p class="text-white/60 text-sm">Full Nepali/English parity; preloaded Devanagari font subset; BS calendar option; audio in recorded Nepali for low-literacy parents.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 06</span>
+        <h4 class="font-bold mb-2">Reduced-motion + text-mode = data savings</h4>
+        <p class="text-white/60 text-sm">One implementation serves accessibility and the 25MB/session budget. Respect prefers-reduced-motion (framer-motion already supports it).</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 07</span>
+        <h4 class="font-bold mb-2">Focus visibility &amp; 44px targets</h4>
+        <p class="text-white/60 text-sm">WCAG 2.2 2.4.11/2.5.8: keyboard-visible focus and target-size minimums — also correct for shared-tablet classroom use with young learners.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 08</span>
+        <h4 class="font-bold mb-2">Audio-first parent communication</h4>
+        <p class="text-white/60 text-sm">Recorded Nepali audio announcements solve both literacy and connectivity constraints for parents (documented weak link, 34.1% variance).</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 09</span>
+        <h4 class="font-bold mb-2">NSL/video-first for deaf students</h4>
+        <p class="text-white/60 text-sm">OLE Nepal's NSL E-Paath proves demand; LOG should integrate NSL-tagged content rather than rebuild it.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 10</span>
+        <h4 class="font-bold mb-2">No timed-exam ableism</h4>
+        <p class="text-white/60 text-sm">Practice quizzes shouldn't punish speed; offer untimed modes and extra-time settings by learner need (documented proctoring failure mode).</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 11</span>
+        <h4 class="font-bold mb-2">Audit-friendly AI claims</h4>
+        <p class="text-white/60 text-sm">If LOG ever ships "AI features", they must be named exactly for what they are (rule-based guidance), with no training-data capture and no hallucination risk — the trust differentiator vs. the 731%-growth hype wave.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 12</span>
+        <h4 class="font-bold mb-2">Celebrate effort, not just results</h4>
+        <p class="text-white/60 text-sm">Supportive-language guidance ("This area could use more practice") + effort-based rewards matches feedback science (d=0.73) and avoids grade-linked extrinsic-motivation crowding.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 04 · AI, Gamification &amp; Accessibility · 2026-08-19 · Sources: WestEd Khanmigo RCT 2025, NBER w34683, UNESCO GEM 2023, Duolingo A/B + retention analyses, self-determination theory, Chimple Haryana RCT, WCAG 2.2, OLE Nepal NSL/E-Paath, Nepali typography research · <a href="index.html" class="text-white/60 hover:text-white">← Back to hub</a></p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="03-offline-and-evidence.html">← 03 · Offline & Evidence</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="05-assessment-privacy-oer.html">05 · Privacy & OER →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

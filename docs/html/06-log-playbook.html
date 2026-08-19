@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>06 — Playbook: Making LOG the Best LMS | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 06 · READ FIRST</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Playbook — Making LOG the Best LMS</h1>
+    <p class="text-white/60 text-lg mb-6">The synthesis of all 16 research agents: <strong class="text-white">12 problem/solution report cards</strong>, each mapping a documented failure mode or opportunity (with its evidence) onto a concrete LOG feature. Ranked by impact, tagged by effort, cross-referenced to existing code and backlog items.</p>
+    <div class="flex flex-wrap gap-3 mb-6">
+      <span class="badge badge-ok">12 report cards</span>
+      <span class="badge badge-high">5 build now</span>
+      <span class="badge badge-medium">4 next quarter</span>
+      <span class="badge badge-low">3 watch / partner</span>
+    </div>
+    <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">P0</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Build now (5)</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">P1</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Next quarter (4)</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">P2</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Watch / partner (3)</p></div>
+      <div class="ok rounded-2xl p-4"><p class="text-3xl font-extrabold text-green-300">100%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Evidence-backed</p></div>
+    </div>
+  </header>
+
+  <!-- The case -->
+  <section class="mb-14">
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">The case in one paragraph</h2>
+    <p class="text-white/70 leading-relaxed mb-6">
+      Global LMS users rate their platforms <strong>43–66/100</strong> and say "each suck in their own way"; Nepal's government portal is
+      online-only with role leaks; teachers rate their own LMS competency <strong>1.39/5</strong>; only ~20% of schools have baseline internet;
+      and the national exam culture demands practice, not surveillance. Meanwhile the evidence base shows exactly what works:
+      <strong>offline-first content + retrieval practice + adaptive level-matching + teacher visibility + parent communication</strong>
+      (M-Shule +0.46 SD at $22.70/SD; Funda Wande +0.5 SD; Mindspark +0.37σ; phone tutoring 0.89 SD/$100). LOG already has the
+      architecture the giants lack — <strong>offline-first PWA with honest sync, real RBAC, honest zeros</strong>. This playbook closes
+      the remaining gaps with evidence-ranked moves.
+    </p>
+  </section>
+
+  <!-- Report cards -->
+  <h2 class="text-3xl font-bold mb-8 tracking-tight">Report Cards <span class="badge badge-ok ml-2">12</span></h2>
+
+  <div class="space-y-8 mb-16">
+
+    <!-- P0-01 -->
+    <div class="seam priority-1 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-critical">P0 · BUILD NOW</span>
+        <h3 class="text-xl font-bold">RC-01 — Per-learner activity status with a real guidance engine</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Guidance must be derived from actual data (AGENTS.md §1) — but learners have no time-series of attendance + practice + scores, so guidance is thin. EWS frameworks prove attendance/practice/performance predict outcomes; Chimple shows outcomes hinge on teacher visibility; LOG's roadmap already lists per-learner activity status.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Complete the per-learner status: attendance, completion, best-score, error patterns → rule-based next-action ("This area could use more practice — try set B"). Teacher dashboard: "who needs what, this week." Honest zeros everywhere.</p>
+        </div>
+      </div>
+      <div class="mermaid">
+flowchart LR
+  A[activity_data] --> D[learner status engine]
+  B[chart-data] --> D
+  C[completions] --> D
+  D --> E[student: next practice]
+  D --> F[moderator: needs-attention list]
+  D --> G[parent: progress view]
+      </div>
+      <p class="text-white/50 text-sm mt-3">Effort: M · touches <code>backend/service</code> + dashboard + moderator roster · Aligns: EWS, Chimple, Mindspark evidence</p>
+    </div>
+
+    <!-- P0-02 -->
+    <div class="seam priority-1 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-critical">P0 · BUILD NOW</span>
+        <h3 class="text-xl font-bold">RC-02 — Practice engine with retrieval + immediate feedback (SEE-first content)</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">SEE is the iron gate (512,471 candidates, 65.98% pass, 145,507 non-graded); tuition is near-universal; cheating is organized via WhatsApp; the interactive content gap for grades 9–12 is empty. Retrieval practice is the strongest learning mechanism (g=0.50); immediate feedback d=0.73.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Curriculum-aligned practice sets (SEE first) with varied random question banks, instant corrective feedback, mastery thresholds with re-quiz loops, offline-first (sync-queue already exists). Anti-cheating by variation, not surveillance.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: L (content + engine) · Aligns: M-Shule +0.46 SD, Mindspark +0.37σ, E-Paath gap 9–12</p>
+    </div>
+
+    <!-- P0-03 -->
+    <div class="seam priority-1 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-critical">P0 · BUILD NOW</span>
+        <h3 class="text-xl font-bold">RC-03 — Moderator first-run onboarding (5-minute, in Nepali, assumes zero LMS)</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Teachers rate LMS competency 1.39/5; "training programs are not mandatory"; first impressions permanently bias ratings (38.7 vs 67.5); onboarding is the #1 praise driver in 2,000+ reviews (273 mentions); 85% of edtech implementations fail on conditions.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Guided 5-minute flow: create class → add students (CSV) → assign first activity → see student view. Bilingual, supportive language, video-in-Nepali option, offline-safe (PWA). A "teacher handbook" pack downloadable for zero-connectivity schools.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: M · Aligns: G2 onboarding evidence, ETRI training gap, Sikai Chautari failure</p>
+    </div>
+
+    <!-- P0-04 -->
+    <div class="seam priority-1 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-critical">P0 · BUILD NOW</span>
+        <h3 class="text-xl font-bold">RC-04 — Parent portal: attendance + progress + results (beats the paper diary)</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">"Systemic communication" is the top failure (34.1% of variance); study recommends a "digital parent portal (attendance, progress, exam results)"; parents judge by GPAs and textbooks; the incumbent channel is the paper diary.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Guardian view (new role or scoped share link): attendance, practice streaks, honest progress bands, school announcements. Recorded Nepali audio option for low-literacy parents. Offline: updates cached, synced when possible.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: L · Aligns: F1000Research recommendation, paper-diary replacement, WhatsApp-comms reality</p>
+    </div>
+
+    <!-- P0-05 -->
+    <div class="seam priority-1 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-critical">P0 · BUILD NOW</span>
+        <h3 class="text-xl font-bold">RC-05 — Privacy pack: guardian consent, deletion API, retention policy, Nepali+English notice</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Privacy Act 2075 + IT &amp; Cybersecurity Bill 2082 §61–62 tighten the regime; the $6.25M Respondus biometric settlement is the industry's cautionary tale; r/Professors rejects LLM data retention; LOG holds children's data as processor for schools.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Guardian consent record on enrollment; per-child export + deletion endpoints; stated retention windows; breach-notification flow wired to the existing audit log; privacy notice in Nepali + English; encrypt sync-queue at rest (shared devices).</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: M · Aligns: AGENTS.md §1 (no secrets), §4 (RBAC), audit-log foundation</p>
+    </div>
+
+    <!-- P1-06 -->
+    <div class="leak priority-2 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">P1 · NEXT QUARTER</span>
+        <h3 class="text-xl font-bold">RC-06 — Teacher's "who to call" workflow (operationalizes the best-cost intervention)</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Phone tutoring: 0.89 SD per US$100 (Botswana RCT) and 3.4 LAYS/$100 (Philippines); the multi-country RCT <strong>includes Nepal</strong>; but teachers have no structured call list.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">From real progress data, generate a weekly "learners who could use a call" list with what to practice together — supportive framing, 15–20 min call script. Works over voice or WhatsApp voice notes; zero extra data cost.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: S-M · Aligns: RC-01 engine, WhatsApp reality, Nepal-included RCT</p>
+    </div>
+
+    <!-- P1-07 -->
+    <div class="leak priority-2 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">P1 · NEXT QUARTER</span>
+        <h3 class="text-xl font-bold">RC-07 — Content packs: E-Pustakalaya/E-Paath integration + curriculum-tagged metadata layer</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">9,361 books, 540+ modules, 1,700+ offline servers already exist (CC BY-NC-SA, API on OLE's roadmap); the gaps: no unified metadata, no 9–12 interactive, government PDFs online-only with no CC mark; E-Paath interactive ends at grade 8.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Metadata layer (grade/subject/language/LOM tags) over E-Pustakalaya/E-Paath via API partnership; content-pack download for offline (extend .logsync pattern); licensing memo per source; own the 9–12 interactive gap with practice sets (RC-02).</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: L · Aligns: DIKSHA .ecar pattern, Kiwix ZIM, AGENTS.md no-hallucination provenance</p>
+    </div>
+
+    <!-- P1-08 -->
+    <div class="leak priority-2 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">P1 · NEXT QUARTER</span>
+        <h3 class="text-xl font-bold">RC-08 — Gradebook honesty: weight math visible, one-entry, report-card generation</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">The #1 gradebook failure: silent misconfiguration (5-point quiz weighted like a 200-point final); "if it's not in Skyward, it's not real" — 2x work; CAS paperwork crowds out remediation; report cards are teacher time.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Show weight math on every grade (no silent defaults); single-entry — teacher enters once, everything derives; auto-generate CAS/report-card records from real data (supportive mastery bands, not GPA flaunting); CSV export with the existing sanitizer.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: L · Aligns: r/Teachers evidence, Mangal Research CAS study, export_handler</p>
+    </div>
+
+    <!-- P1-09 -->
+    <div class="leak priority-2 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-high">P1 · NEXT QUARTER</span>
+        <h3 class="text-xl font-bold">RC-09 — Spaced-repetition scheduler + forgiving streaks</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Distributed practice beats massed; streaks are the most replicated retention mechanic — when forgiving; gamification fails as decoration; engagement collapses without structure (&lt;25% return).</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">SM-2-style scheduler over practice sets; streak freezes + "personal best" framing (no leaderboards); rewards tied to scheduled-review completion; honest offline state that queues and reconciles via sync-queue.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: M · Aligns: learning science, Duolingo A/B, LOG honest-state principle</p>
+    </div>
+
+    <!-- P2-10 -->
+    <div class="deep priority-3 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">P2 · WATCH / PARTNER</span>
+        <h3 class="text-xl font-bold">RC-10 — QR codes on print materials (DIKSHA pattern)</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Nepal is textbook-centric (parents gauge progress by textbooks); DIKSHA proved the print→digital bridge at 600M+ textbooks, 12B+ QR codes, fully offline.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Partner with a school/municipality: QR stickers on grade-10 materials → offline practice set. Pilot cheap, scales via schools printing their own. Requires content ready (RC-02).</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: S (pilot) · depends on RC-02 · Aligns: DIKSHA, textbook reality</p>
+    </div>
+
+    <!-- P2-11 -->
+    <div class="deep priority-3 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">P2 · WATCH / PARTNER</span>
+        <h3 class="text-xl font-bold">RC-11 — Community hubs &amp; radio/TV complements</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Ideas Box: +23% learning with offline servers + solar; Nepal's Radio Pathshala reaches 77 districts via community radio; Nepal has an IVR RCT (World Bank 2022) in LOG's exact context.</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Partnership lane: serve content to Ideas-Box-style hubs and Radio Pathshala; expose practice content as IVR/SMS-compatible (M-Shule proves $2–5/learner/month economics) for feature-phone tail.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: partner-led · Aligns: 0-connectivity reality, Nepal IVR RCT</p>
+    </div>
+
+    <!-- P2-12 -->
+    <div class="deep priority-3 rounded-3xl p-7">
+      <div class="flex flex-wrap items-center gap-3 mb-3">
+        <span class="badge badge-medium">P2 · WATCH / PARTNER</span>
+        <h3 class="text-xl font-bold">RC-12 — NSL / accessibility content integration</h3>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Problem · evidence</p>
+          <p class="text-white/70 text-sm">Nepali Sign Language resources exist (OLE Nepal G1–6; EAEN project in Surkhet); WCAG 2.2 AA is the floor; disabled students find mainstream LMS navigation hostile (r/Professors).</p>
+        </div>
+        <div>
+          <p class="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-2">Solution</p>
+          <p class="text-white/70 text-sm">Integrate NSL-tagged content; reduced-motion + text-mode (also data savings); untimed practice modes; 44px targets and focus visibility. No overpromising on braille until a standard exists.</p>
+        </div>
+      </div>
+      <p class="text-white/50 text-sm">Effort: S-M · Aligns: WCAG 2.2, OLE NSL, honest-capability principle</p>
+    </div>
+
+  </div>
+
+  <!-- Roadmap -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-6 tracking-tight">Suggested roadmap</h2>
+    <div class="mermaid">
+gantt
+    title LOG evidence-driven roadmap
+    dateFormat  YYYY-MM-DD
+    section Phase 1 (Build Now)
+    RC-01 Learner status engine    :a1, 2026-09-01, 6w
+    RC-02 Practice engine + SEE sets :a2, 2026-09-01, 10w
+    RC-03 Moderator onboarding      :a3, 2026-09-15, 4w
+    RC-05 Privacy pack              :a4, 2026-09-01, 4w
+    section Phase 2 (Next Quarter)
+    RC-04 Parent portal             :b1, 2026-11-01, 8w
+    RC-06 Who-to-call workflow      :b2, 2026-11-01, 3w
+    RC-09 Spaced repetition         :b3, 2026-11-15, 5w
+    section Phase 3 (Watch/Partner)
+    RC-07 OER metadata + packs      :c1, 2027-01-01, 10w
+    RC-08 Gradebook honesty         :c2, 2027-01-15, 8w
+    RC-10 QR pilot                  :c3, 2027-03-01, 4w
+    </div>
+  </section>
+
+  <!-- Cross-reference -->
+  <section class="mb-16">
+    <h2 class="text-3xl font-bold mb-6 tracking-tight">Cross-reference with existing code &amp; backlog</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Existing asset</th>
+            <th class="pb-3 pr-4">Already there</th>
+            <th class="pb-3">Used by</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">src/lib/api.ts — fetchWithCache / sync-queue</td><td class="py-3 pr-4">Offline GET cache 24h TTL; queued mutations; flush on load/login/import</td><td class="py-3">RC-01, RC-02, RC-04, RC-09</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">src/lib/syncExport.ts — .logsync</td><td class="py-3 pr-4">Sneakernet export/import + bulk sync</td><td class="py-3">RC-07 content packs</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">backend RosterOverview / needs-attention</td><td class="py-3 pr-4">Caller-scoped teacher reads; honest zero states</td><td class="py-3">RC-01, RC-06</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">MicroModuleViewer</td><td class="py-3 pr-4">Real server-acknowledged completion flow</td><td class="py-3">RC-02 (completion → practice loop)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">Audit log</td><td class="py-3 pr-4">auth.* + admin actions logged</td><td class="py-3">RC-05 breach flow</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">export_handler CSV sanitizer</td><td class="py-3 pr-4">Formula injection fixed; UTF-8 BOM</td><td class="py-3">RC-08 report-card export</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">Backlog C6 contrast</td><td class="py-3 pr-4">Token-level palette work pending</td><td class="py-3">RC-12 (WCAG floor)</td></tr>
+          <tr class="border-b border-white/5"><td class="py-3 pr-4 font-mono text-white/60">Backlog C5 Course.Enrolled</td><td class="py-3 pr-4">Remove or compute — fiction must not resurface</td><td class="py-3">honesty principle</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Final word -->
+  <section class="ok rounded-3xl p-7 mb-16">
+    <h2 class="text-2xl font-bold mb-3">The LOG thesis, after 16 agents</h2>
+    <p class="text-white/70 leading-relaxed">
+      The global LMS market is a sea of clunky giants that users tolerate, not love. Nepal's education system is exam-driven,
+      connectivity-poor, and underserved by every existing tool — including the government's own. The evidence says the winning
+      formula is <strong>offline-first + retrieval practice + adaptive level-matching + teacher visibility + parent communication +
+      honest data</strong>. LOG already owns the architecture half. The playbook's P0 cards close the product half. Nothing here
+      requires violating a single core principle: no hallucinations, no fabricated fallbacks, no LLM content, no biometrics,
+      supportive language throughout.
+    </p>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 06 · Playbook — Making LOG the Best LMS · 2026-08-19 · Synthesis of reports 01–05 · Companions: <span class="text-white/60">docs/ENHANCEMENT.md · docs/architecture-review-2-20260818.html · docs/PRODUCT_RESEARCH.md · docs/LMS_EDTECH_COMPARISON.md</span></p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="05-assessment-privacy-oer.html">← 05 · Privacy & OER</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="07-phased-implementation-plan.html">07 · Implementation Plan →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

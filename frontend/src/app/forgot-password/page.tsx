@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { fetchWithCache } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 

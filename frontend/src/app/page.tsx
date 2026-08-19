@@ -5,11 +5,13 @@ import { ArrowRight, BookOpen, LineChart, Target, Compass, Zap } from 'lucide-re
 import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { prefersReducedMotion } from '@/lib/motion';
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (prefersReducedMotion()) return;
     if (containerRef.current) {
       gsap.fromTo(
         gsap.utils.toArray('.gsap-stagger'),

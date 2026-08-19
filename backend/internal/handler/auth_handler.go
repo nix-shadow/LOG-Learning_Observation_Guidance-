@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -10,11 +11,18 @@ import (
 )
 
 type AuthHandler struct {
-	authService service.AuthService
+	authService   service.AuthService
+	schoolService service.SchoolService
 }
 
-func NewAuthHandler(authService service.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService service.AuthService, schoolService service.SchoolService) *AuthHandler {
+	return &AuthHandler{authService: authService, schoolService: schoolService}
+}
+
+func (h *AuthHandler) audit(c *gin.Context, action, detail string) {
+	userID, _ := c.Get("userID")
+	ip := c.ClientIP()
+	h.schoolService.WriteAuditLog(c.Request.Context(), userID.(string), action, detail, ip)
 }
 
 func (h *AuthHandler) RequestOTP(c *gin.Context) {
@@ -27,6 +35,12 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	}
 
 	if err := h.authService.RequestOTP(c.Request.Context(), req.Phone); err != nil {
+		// The cooldown window is a client-correctable state, not a server
+		// failure — a 500 made the UI misleading and the check twice-requestable.
+		if errors.Is(err, service.ErrOTPCooldown) {
+			RespondError(c, http.StatusTooManyRequests, "Too Many Requests", err.Error())
+			return
+		}
 		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to generate OTP")
 		return
 	}
@@ -131,13 +145,27 @@ func (h *AuthHandler) LogoutHandler(c *gin.Context) {
 
 	userID, _ := c.Get("userID")
 	exp, _ := c.Get("exp")
+	expFloat, ok := exp.(float64)
+	if !ok {
+		// A server-issued token always carries exp; treat an absent claim as
+		// already-expired rather than panicking on the type assertion.
+		expFloat = 0
+	}
 
-	err := h.authService.Logout(c.Request.Context(), jti.(string), userID.(string), exp.(float64))
+	err := h.authService.Logout(c.Request.Context(), jti.(string), userID.(string), expFloat)
 	if err != nil {
 		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to revoke token")
 		return
 	}
 
+	// Single-token logout is a sensitive operation — the append-only trail
+	// should record it just like logout-all does.
+	h.audit(c, "auth.logout", "jti="+jti.(string))
+	// Clear-Site-Data (WP-0.1 enforcement round): instruct the browser to drop
+	// cached responses for this origin on logout so a shared device cannot
+	// serve stale authenticated pages (or cached `/me/export` bundles) from
+	// the HTTP cache after the session is revoked.
+	c.Writer.Header().Add("Clear-Site-Data", `"cache", "cookies", "storage"`)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 

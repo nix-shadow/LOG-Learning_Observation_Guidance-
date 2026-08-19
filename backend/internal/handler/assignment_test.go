@@ -97,6 +97,102 @@ func TestAssignmentPermissions(t *testing.T) {
 	}
 }
 
+// TestAssignmentReadsScopedToTeacher proves a teacher can only read
+// assignments and submissions for classes they own — the pre-fix handler
+// returned any class's data to any authenticated moderator.
+func TestAssignmentReadsScopedToTeacher(t *testing.T) {
+	h := newSchoolTestHandler(t)
+	owner := newTestUser(t, domain.RoleModerator)
+	intruder := newTestUser(t, domain.RoleModerator)
+	student := newTestUser(t, domain.RoleStudent)
+
+	ctx := context.Background()
+	repo := repository.NewSchoolRepository(database.DB)
+	class := &domain.Class{ID: service.GenerateSecureID("cls"), Name: "Grade 12 A", Grade: "12", Section: "A", TeacherID: owner.ID, CreatedAt: time.Now()}
+	if err := repo.CreateClass(ctx, class); err != nil {
+		t.Fatalf("create class: %v", err)
+	}
+	if err := repo.Enroll(ctx, class.ID, []string{student.ID}); err != nil {
+		t.Fatalf("enroll: %v", err)
+	}
+	assignment := &domain.Assignment{
+		ID:        service.GenerateSecureID("asg"),
+		ClassID:   class.ID,
+		Title:     "Scoped Read",
+		CreatedBy: owner.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := repo.CreateAssignment(ctx, assignment); err != nil {
+		t.Fatalf("create assignment: %v", err)
+	}
+	t.Cleanup(func() {
+		database.DB.Where("class_id = ?", class.ID).Delete(&domain.ClassMember{})
+		database.DB.Where("class_id = ?", class.ID).Delete(&domain.Assignment{})
+		database.DB.Where("id = ?", class.ID).Delete(&domain.Class{})
+		database.DB.Where("assignment_id = ?", assignment.ID).Delete(&domain.Submission{})
+	})
+
+	r := gin.New()
+	actor := owner.ID
+	role := domain.RoleModerator
+	r.Use(func(c *gin.Context) { c.Set("userID", actor); c.Set("role", role); c.Next() })
+	r.GET("/api/v1/moderator/classes/:id/assignments", h.ListAssignmentsForClass)
+	r.GET("/api/v1/moderator/assignments/:assignment_id/submissions", h.SubmissionsForAssignment)
+
+	// Non-owner teacher: both read endpoints must be denied
+	actor, role = intruder.ID, domain.RoleModerator
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/moderator/classes/"+class.ID+"/assignments", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("intruder assignments read: expected 403, got %v: %s", w.Code, w.Body.String())
+	}
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/moderator/assignments/"+assignment.ID+"/submissions", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("intruder submissions read: expected 403, got %v: %s", w.Code, w.Body.String())
+	}
+
+	// Owner teacher: both must succeed and expose the class's own data
+	actor, role = owner.ID, domain.RoleModerator
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/moderator/classes/"+class.ID+"/assignments", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("owner assignments read: expected 200, got %v: %s", w.Code, w.Body.String())
+	}
+	var listResp struct {
+		Assignments []gin.H `json:"assignments"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &listResp); err != nil {
+		t.Fatalf("unmarshal assignments: %v", err)
+	}
+	if len(listResp.Assignments) != 1 || listResp.Assignments[0]["id"] != assignment.ID {
+		t.Fatalf("expected exactly the owner's assignment, got %+v", listResp.Assignments)
+	}
+	if listResp.Assignments[0]["submissions"].(float64) != 0 {
+		t.Fatalf("expected honest submissions=0, got %v", listResp.Assignments[0]["submissions"])
+	}
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/moderator/assignments/"+assignment.ID+"/submissions", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("owner submissions read: expected 200, got %v: %s", w.Code, w.Body.String())
+	}
+
+	// Admin bypass: admin may read any class's data
+	actor, role = newTestUser(t, domain.RoleAdmin).ID, domain.RoleAdmin
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/moderator/classes/"+class.ID+"/assignments", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("admin assignments read: expected 200, got %v: %s", w.Code, w.Body.String())
+	}
+}
+
 // TestSubmissionIdempotent proves resubmitting updates the same row instead of
 // duplicating — critical for offline replay integrity.
 func TestSubmissionIdempotent(t *testing.T) {

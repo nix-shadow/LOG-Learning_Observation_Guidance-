@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Compass, ArrowRight, Lightbulb, RefreshCw, BookOpen } from 'lucide-react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { prefersReducedMotion } from '@/lib/motion';
 
 export default function Guidance() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -21,6 +22,7 @@ export default function Guidance() {
   }, []);
 
   useGSAP(() => {
+    if (prefersReducedMotion()) return;
     if (!loading && data) {
       gsap.fromTo(
         gsap.utils.toArray('.gsap-stagger'),
@@ -65,7 +67,7 @@ export default function Guidance() {
                   {getIconForType(g.type)}
                 </div>
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/40 mb-2 block">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-muted mb-2 block">
                     {g.type.replace('_', ' ')}
                   </span>
                   <p className="text-xl text-white font-medium leading-relaxed tracking-tight">{g.text}</p>
@@ -82,7 +84,7 @@ export default function Guidance() {
         ))}
         {(!data?.guidance || data.guidance.length === 0) && (
            <div className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 flex flex-col items-center justify-center py-20 text-center">
-               <Lightbulb className="w-12 h-12 text-white/20 mb-4" />
+               <Lightbulb className="w-12 h-12 text-brand-faint mb-4" />
                <p className="text-white/60 text-lg">No new guidance available right now. Keep learning!</p>
            </div>
         )}

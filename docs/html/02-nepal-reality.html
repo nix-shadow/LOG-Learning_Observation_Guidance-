@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>02 — Nepal Reality | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 02</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Nepal Reality — System, Connectivity, People</h1>
+    <p class="text-white/60 text-lg mb-6">Four agents: the national education system and exam culture, the connectivity/device reality, what teachers/parents/students say in community spaces, and the edtech competitors already on the ground.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-high">SEE pass 65.98%</span>
+      <span class="badge badge-high">~1 in 5 schools online</span>
+      <span class="badge badge-high">Tuition ~50% of students</span>
+      <span class="badge badge-ok">Offline-first is the only path</span>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="flex flex-wrap gap-2 mb-8">
+    <button class="tab-btn active badge" data-tab="system">Education System</button>
+    <button class="tab-btn badge" data-tab="connectivity">Connectivity &amp; Devices</button>
+    <button class="tab-btn badge" data-tab="people">Teacher / Parent / Student Needs</button>
+    <button class="tab-btn badge" data-tab="competitors">EdTech Competitors</button>
+    <button class="tab-btn badge" data-tab="rules">Design Rules → LOG</button>
+  </div>
+
+  <!-- ============ SYSTEM TAB ============ -->
+  <section id="tab-system" class="tab-panel active">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">7.04M</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Students, grades 1–12</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">62%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">In community schools</p></div>
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">35,447</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Schools (77% community)</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">512,471</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">SEE candidates 2026</p></div>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">THE IRON GATE</span>
+          <h3 class="text-xl font-bold">SEE / NEB exam culture defines everything</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• <strong class="text-white">512,471 students</strong> sat SEE 2026 across 1,966 centres; ~66,000 sat grade-improvement exams; 145,507 in the "non-graded" category.</li>
+          <li>• 2026 pass rate <strong class="text-white">65.98%</strong>; prior years "hovered below 50%" (Kathmandu Post editorials).</li>
+          <li>• Rote memorization is the pedagogy of record: students "master the typical 'Ten Sets Collections' and mug up every answer" (KP 2018); a grade-10 student called SEE "a form of mental torture" and described cheating "as a survival mechanism" (Rising Nepal 2025).</li>
+          <li>• Cheating is organized via WhatsApp: invigilators arrested in Bara/Sunsari feeding answers via WhatsApp groups; 1,236 phones confiscated in SEE 2080; papers leaked within 8–12 minutes of exam start.</li>
+          <li>• Tuition migration: 500+ grade-10 students in Bajhang migrated to Chainpur tuition centres by November — schools cancelled classes for lack of students.</li>
+          <li>→ LOG implication: exam-prep content (model questions, sample papers, practice quizzes) is the highest-demand, highest-urgency content category in Nepal.</li>
+        </ul>
+        <div class="mermaid">
+flowchart LR
+  S[School year] --> T1[Term assessments]
+  T1 --> T2[SEE / Grade 11-12 boards]
+  T2 --> R[65.98% pass]
+  T2 --> N[145,507 non-graded]
+  S --> TUT[Tuition culture ~50% of secondary]
+  TUT --> STRESS[Exam-driven stress]
+  T2 --> CHEAT[WhatsApp-organized cheating]
+  STRESS --> LOG[LOG opportunity: practice + honest progress]
+  CHEAT --> LOG2[LOG opportunity: offline practice exams]
+        </div>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">TEACHER CRISIS</span>
+          <h3 class="text-xl font-bold">Teacher shortage, workload &amp; strike culture</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• ~180,103 teachers serve 4.38M community-school students (24:1) — with a <strong class="text-white">projected shortfall of 100,000 teachers in 3 years</strong>; 3,424 schools have fewer than 20 students; ~40% of community schools lack a full-time principal.</li>
+          <li>• Kalikot math post advertised 19 times in 7 months with no applicants; a Khotang school has 9 students and 2 untrained teachers.</li>
+          <li>• Nationwide teacher strikes (July 2025) instructed teachers to boycott administrative duties including "checking answer sheets, publishing results"; April 2025 teachers refused to mark SEE answer sheets for weeks.</li>
+          <li>• "Checking copies" consumes time that "may assure parents that teachers are looking at children's work, but does next to nothing to improve learning" — leaving "one or two free periods a day" for planning (Nepali Times).</li>
+          <li>• CAS (Continuous Assessment System) paperwork is a documented burden: "heavy workload, large class sizes, lack of formal training, insufficient time for documentation" (Mangal Research Journal 2025).</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">LANGUAGE</span>
+          <h3 class="text-xl font-bold">The English-medium debate &amp; 124+ languages</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• 70% of parents consider EMI important; 52% of parents prefer English-medium vs 47% of students and 40% of teachers (NepJOL survey, 200 participants).</li>
+          <li>• But EMI doesn't raise learning: "enrollment increased fourfold after English medium… it hasn't brought much change in students' learning" (Syangja teacher, KP 2023); MILE/UNICEF: Nepali-medium children achieved <em>better</em> grades in Nepali, English and Science.</li>
+          <li>• 32% of parents and 37% of teachers report EMI harms confidence/participation; 33% of parents and 35% of students cite lack of educational resources in Nepali.</li>
+          <li>• Supreme Court interim order (May 2025) against a school fining students for speaking Nepali on campus.</li>
+          <li>• SEE science questions "lose half the question in translation" between English and Nepali versions.</li>
+          <li>• Nepal: 124+ languages, 125 ethnic groups (NSO 2021); 15 mother-tongue categories have CDC materials.</li>
+          <li>→ LOG implication: bilingual (Nepali/English) UI + content, with translation parity — never machine-garbage.</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">PARENTS</span>
+          <h3 class="text-xl font-bold">Parents judge by grades and textbooks</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• "Most parents – if they are engaged at all – use the textbook to gauge whether their child is making adequate progress" (Nepali Times 2026); parents "await their children's GPAs to flaunt on social media."</li>
+          <li>• Communication is the weakest link in the whole system: in a 390-student study, "systemic communication" was the top problem (34.1% of variance) — teacher↔parent, school↔parent, local government↔school all below 3.25/5.</li>
+          <li>• The study recommends a <strong class="text-white">"digital parent portal (attendance, progress, and exam results)"</strong> with mandatory monthly parent-teacher meetings.</li>
+          <li>• The traditional channel is the paper diary — "communication book or school diary" is still the norm nationwide.</li>
+          <li>→ LOG implication: a parent view with attendance + progress + results is a documented, evidence-backed feature need.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ CONNECTIVITY TAB ============ -->
+  <section id="tab-connectivity" class="tab-panel">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-10">
+      <div class="deep rounded-2xl p-4"><p class="text-3xl font-extrabold text-blue-300">91.2%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">4G population coverage</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">~20%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Of schools online (baseline)</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">NPR 300–500</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Per GB data cost</p></div>
+      <div class="leak rounded-2xl p-4"><p class="text-3xl font-extrabold text-amber-300">~70%</p><p class="text-white/50 text-xs uppercase tracking-widest mt-1">Of devices are low-end Androids</p></div>
+    </div>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">THE GAP</span>
+          <h3 class="text-xl font-bold">Coverage is ahead of school connectivity</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• NTA MIS (Chaitra 2082): 30.8M broadband subscriptions; mobile broadband = 88.7% (27.37M subs); 4G = 26.6M users (91.20% population penetration); internet user density 144%.</li>
+          <li>• But Flash Report 2082/25-26 (CEHRD/IEMIS): <strong class="text-white">broadband internet in schools: 20.1% baseline → 60% target</strong>; electricity 52.6%→79.1%; ICT equipment 46.8%→68.2%. (Economic Survey claims 85.4% by different definitions — flagged.)</li>
+          <li>• World Bank ETRI (330 schools): two-thirds report connectivity, but only 20% have sufficient connected devices, &lt;30% have sufficient bandwidth/stability, only 12% believe government help exists for connectivity failures.</li>
+          <li>• ETRI direct recommendation: <em>"Consider EdTech solutions that do not require constant connectivity (offline)."</em></li>
+          <li>• Village reality: "Buddha School may not get wired internet access for another decade"; schools with internet in the village but not connected to it; 2015 earthquake destroyed 90% of schools in some districts.</li>
+        </ul>
+        <div class="mermaid">
+flowchart TB
+  subgraph People
+    P1[4G population 91.2%]
+    P2[mobile broadband 27.37M subs]
+  end
+  subgraph Schools
+    S1[schools with internet ~20% baseline]
+    S2[only 20% of connected have enough devices]
+    S3[<30% sufficient bandwidth]
+  end
+  subgraph Cost
+    C1[1GB = NPR 300-500]
+    C2[households < NPR 20k/month]
+  end
+  P1 --> LOG[LOG = offline-first, sync-when-possible]
+  S1 --> LOG
+  S3 --> LOG
+  C1 --> LOG
+  C2 --> LOG
+  LOG --> L1[PWA + IndexedDB cache 24h TTL]
+  LOG --> L2[sync-queue + .logsync sneakernet]
+  LOG --> L3[small payloads, wifi-only media]
+        </div>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">DEVICES</span>
+          <h3 class="text-xl font-bold">Device reality: shared, low-end, family-owned</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• ~70% of Nepali devices are low-end Androids; ~45% of users are women, disproportionately lost due to shared devices.</li>
+          <li>• India's CSF data (close proxy): household smartphone ownership rose 36%→74.8% (2018–2022), but <strong class="text-white">only ~6% of children have dedicated access</strong>; ~62% of distributed devices stayed active; <strong class="text-white">teachers as learning agents raised "super-active" users +11%</strong> vs parental agents.</li>
+          <li>• M-Shule context: 25% of Kenyans lack electricity; 77.5% lack internet — SMS LMS still reached ~20,000 households. Nepal's 91% 4G coverage is better, but affordability and shared-device reality remain.</li>
+          <li>• 2021 EMIS: 50% of 28,833 public schools had electricity; 42% had computers; 19% had internet; of ~12,000 with computers, only 37% used them for teaching.</li>
+          <li>• ICT labs gather dust: "The vast majority of ICT labs are merely spaces for storing computers… unable to function due to a lack of skilled teachers" — 10 computers locked in a Bhojpur school for 11 years (Katmandu Journal 2026).</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ PEOPLE TAB ============ -->
+  <section id="tab-people" class="tab-panel">
+
+    <p class="text-white/70 mb-6">Triangulated from news coverage quoting teacher groups (Nepal Teachers' Federation, PABSON, NELTA), peer-reviewed surveys of Nepali teachers/parents/students (NepJOL, World Bank ETRI, F1000Research), and community-facing press. Facebook groups are login-walled; direct thread quotes are flagged where unverifiable.</p>
+
+    <div class="space-y-6 mb-10">
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">TRAINING GAP</span>
+          <h3 class="text-xl font-bold">Digital literacy: the bottleneck is teachers</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• "Less than half of respondents reported receiving training on how to use ICT for teaching… training programs are not mandatory" (World Bank ETRI 2023).</li>
+          <li>• Teachers' poorest competencies: LMS use (mean 1.39/5), screen recording (1.39), virtual boards (1.34), digital libraries (1.34).</li>
+          <li>• Students rate digital tools "intriguing" at 4.09/5 but teacher use at 3.23 — a <strong class="text-white">0.86 gap</strong> (F1000Research 2026; 390 students, 73 schools).</li>
+          <li>• Teachers use ICT mostly for information search (45%) and browsing for schoolwork (52%), rarely for teaching or assessment (ETRI).</li>
+          <li>• Only 26% of principals say technical support is sufficient; 22% say devices are sufficient for instruction.</li>
+          <li>→ LOG implication: onboarding must assume near-zero LMS experience; in-app help + teacher guides in Nepali; supportive language everywhere.</li>
+        </ul>
+      </div>
+
+      <div class="seam rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-critical">GOVERNMENT PORTAL</span>
+          <h3 class="text-xl font-bold">The government's own portal is failing — an open lane</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Sikai Chautari (CEHRD Moodle) used by 13,472 schools vs 24,000 target (Flash Report 2082).</li>
+          <li>• TechPana audit (2026-04-30): <strong class="text-white">no sign-up option</strong> in the app; only 3 subjects of PDF textbooks; online-only ("completely useless for remote students without internet"); teacher materials visible inside student accounts; anyone can message students.</li>
+          <li>• Play Store shows 5–10k downloads vs CEHRD's claim of 64k+ (conflicting figures flagged).</li>
+          <li>• CEHRD now mandates "at least 5 teachers per school" register — a mandate without training support.</li>
+          <li>→ LOG implication: reliability, real sign-up, role separation and offline capability are direct differentiators against the national platform.</li>
+        </ul>
+      </div>
+
+      <div class="leak rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-high">MOTIVATION</span>
+          <h3 class="text-xl font-bold">Tuition culture &amp; rote learning sap motivation</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• ~50% of secondary students and 38% of public school students receive private tuition; parents pay even when they cannot afford it — "they have no other choices."</li>
+          <li>• "My father told, 'I don't know anything. You must get first division in SEE. If you need tuition for that you can take the tuition.'"</li>
+          <li>• School hostels made mandatory for SEE students in some community schools — enrollment-driven, not pedagogy-driven.</li>
+          <li>• Teachers "feel they are puppets at the hands of the parents and school administrators" (Himalayan Times op-ed by a Nepali teacher).</li>
+        </ul>
+      </div>
+
+      <div class="deep rounded-3xl p-7">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span class="badge badge-medium">COMMUNITY</span>
+          <h3 class="text-xl font-bold">What teachers actually ask for</h3>
+        </div>
+        <ul class="text-white/60 text-sm space-y-1 mb-4">
+          <li>• Exam-prep materials and model questions (SEE first) — the highest-urgency content ask.</li>
+          <li>• Lesson-plan and worksheet libraries aligned to the national curriculum.</li>
+          <li>• Report-card and attendance tooling — they are burdened by CAS paperwork and "checking copies."</li>
+          <li>• Bilingual (Nepali/English) resources with translation parity.</li>
+          <li>• Community-driven initiatives that work: WhatsApp teacher groups (also the cheating channel — the tool isn't evil, the structure needs honesty), YouTube channels (NCED Virtual), payroll fix guides shared on Facebook "Teachers Parliament" — teachers self-organize around practical help.</li>
+          <li>• Notable: the NEB re-evaluation scandal — until 2025 evaluators checked only 20% of answer sheets, "marking many students as failed, despite performance worthy of an 'A Plus'" (Republica 2025). Trust in official grading is low; transparent progress data is trust-building.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ COMPETITORS TAB ============ -->
+  <section id="tab-competitors" class="tab-panel">
+
+    <p class="text-white/70 mb-6">Nepal's edtech field is small, Kathmandu-centric, and mostly online-only — LOG's offline-first posture is a differentiator, not a me-too feature.</p>
+
+    <div class="overflow-x-auto mb-10">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px] font-bold">
+            <th class="pb-3 pr-4">Player</th>
+            <th class="pb-3 pr-4">Model</th>
+            <th class="pb-3 pr-4">Coverage / scale</th>
+            <th class="pb-3 pr-4">Gap LOG can exploit</th>
+          </tr>
+        </thead>
+        <tbody class="text-white/70">
+          <tr class="border-b border-white/5">
+            <td class="py-3 pr-4 font-bold text-white">Mero School</td>
+            <td class="py-3 pr-4">Video lessons + quizzes app, subscription</td>
+            <td class="py-3 pr-4">Leading private app; strong brand in urban areas</td>
+            <td class="py-3">Paid, online-only, consumer-oriented — not a school management/guidance layer</td>
+          </tr>
+          <tr class="border-b border-white/5">
+            <td class="py-3 pr-4 font-bold text-white">Sikai Chautari (CEHRD)</td>
+            <td class="py-3 pr-4">Government Moodle portal</td>
+            <td class="py-3 pr-4">13,472 schools of 24k target; 5-10k app downloads</td>
+            <td class="py-3">No sign-up in app, online-only, role leaks — LOG's RBAC + offline = direct contrast</td>
+          </tr>
+          <tr class="border-b border-white/5">
+            <td class="py-3 pr-4 font-bold text-white">E-Pustakalaya / E-Paath (OLE Nepal)</td>
+            <td class="py-3 pr-4">NGO digital library + interactive modules; CC BY-NC-SA</td>
+            <td class="py-3 pr-4">9,361 books, 540+ modules, 1,700+ offline servers, 400+ schools</td>
+            <td class="py-3">Content partner, not competitor — LOG should integrate, not duplicate</td>
+          </tr>
+          <tr class="border-b border-white/5">
+            <td class="py-3 pr-4 font-bold text-white">Saral</td>
+            <td class="py-3 pr-4">School management SaaS</td>
+            <td class="py-3 pr-4">Boarding/urban school management</td>
+            <td class="py-3">Admin-focused, online; no learning guidance layer or offline sync</td>
+          </tr>
+          <tr class="border-b border-white/5">
+            <td class="py-3 pr-4 font-bold text-white">Doko / Tootle-style startups</td>
+            <td class="py-3 pr-4">Consumer logistics, not education</td>
+            <td class="py-3 pr-4">—</td>
+            <td class="py-3">None — no education play</td>
+          </tr>
+          <tr class="border-b border-white/5">
+            <td class="py-3 pr-4 font-bold text-white">Khan Academy (global)</td>
+            <td class="py-3 pr-4">Free video/adaptive platform</td>
+            <td class="py-3 pr-4">No Nepali localization (verified); Hindi/Bengali yes</td>
+            <td class="py-3">Nepali-medium adaptive content is an open lane</td>
+          </tr>
+          <tr class="border-b border-white/5">
+            <td class="py-3 pr-4 font-bold text-white">Tuition centres (chain)</td>
+            <td class="py-3 pr-4">Physical coaching</td>
+            <td class="py-3 pr-4">Chainpur/Bajhang migration, urban clusters</td>
+            <td class="py-3">LOG practice + progress tracking can be the affordable alternative</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mermaid mb-10">
+flowchart TB
+  subgraph Competitors
+    C1[Mero School - paid video app]
+    C2[Sikai Chautari - govt, online-only, role leaks]
+    C3[E-Pustakalaya - NGO library, offline-capable]
+    C4[Saral - school mgmt SaaS]
+  end
+  subgraph LOG positioning
+    L1[Offline-first PWA + sync-queue]
+    L2[3-tier RBAC: admin/moderator/student]
+    L3[Real guidance from real data - no hallucination]
+    L4[Honest states - no fabricated fallbacks]
+    L5[Integrates OLE Nepal content]
+  end
+  C1 -.-> L1
+  C2 -.-> L2
+  C2 -.-> L1
+  C3 -.-> L5
+  C4 -.-> L2
+    </div>
+  </section>
+
+  <!-- ============ RULES TAB ============ -->
+  <section id="tab-rules" class="tab-panel">
+
+    <h2 class="text-2xl font-bold mb-6 tracking-tight">Design Rules distilled for LOG</h2>
+    <div class="grid md:grid-cols-2 gap-5 mb-10">
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 01</span>
+        <h4 class="font-bold mb-2">Offline is the product, not the fallback</h4>
+        <p class="text-white/60 text-sm">~20% of schools have baseline internet; ETRI explicitly recommends offline solutions. LOG's fetchWithCache/sync-queue is already the right architecture — keep it un-bypassable.</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 02</span>
+        <h4 class="font-bold mb-2">Exam-prep content first</h4>
+        <p class="text-white/60 text-sm">SEE is the iron gate and tuition is near-universal. Model questions, sample papers, practice quizzes with instant feedback are the highest-urgency content category in Nepal.</p>
+      </div>
+
+      <div class="seam rounded-2xl p-6">
+        <span class="badge badge-critical mb-3">RULE 03</span>
+        <h4 class="font-bold mb-2">Reduce the paperwork burden</h4>
+        <p class="text-white/60 text-sm">CAS documentation and "checking copies" consume teachers' planning time. Attendance + assessment tooling that auto-generates report cards is a workload win teachers will adopt.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 04</span>
+        <h4 class="font-bold mb-2">Bilingual by default, parity enforced</h4>
+        <p class="text-white/60 text-sm">Nepali and English UI + content; SEE translation failures show the cost of sloppy parity. Never machine-translate guidance into garbled Nepali.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 05</span>
+        <h4 class="font-bold mb-2">Parent portal with attendance + progress + results</h4>
+        <p class="text-white/60 text-sm">Documented as the weakest link (34.1% of variance in a 390-student study) with a direct recommendation for a digital parent portal. The paper diary is the incumbent — beat it.</p>
+      </div>
+
+      <div class="leak rounded-2xl p-6">
+        <span class="badge badge-high mb-3">RULE 06</span>
+        <h4 class="font-bold mb-2">Assume zero LMS experience</h4>
+        <p class="text-white/60 text-sm">Teachers rate LMS competency 1.39/5. Onboarding must be guided, in Nepali, with supportive language — a 5-minute first-run flow, not a manual.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 07</span>
+        <h4 class="font-bold mb-2">Low-end, shared-device support</h4>
+        <p class="text-white/60 text-sm">~70% low-end Androids, ~6% dedicated access. Small payloads, wifi-only media downloads, session handling that survives device sharing (clear local data on logout — already in F5 fix).</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 08</span>
+        <h4 class="font-bold mb-2">Integrate OLE Nepal content, don't compete</h4>
+        <p class="text-white/60 text-sm">E-Pustakalaya (9,361 books) and E-Paath (540+ modules) are CC-licensed and offline-capable with 1,700+ servers deployed. LOG becomes the guidance layer over the best content in Nepal.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 09</span>
+        <h4 class="font-bold mb-2">Trust-building transparency</h4>
+        <p class="text-white/60 text-sm">NEB re-evaluation scandal (20% of sheets checked) + Sikai Chautari role leaks = trust deficit. LOG's honest zeros, real derived analytics and strict RBAC are trust features.</p>
+      </div>
+
+      <div class="deep rounded-2xl p-6">
+        <span class="badge badge-medium mb-3">RULE 10</span>
+        <h4 class="font-bold mb-2">Anti-cheating by design, not by surveillance</h4>
+        <p class="text-white/60 text-sm">WhatsApp-organized cheating is systemic; proctoring tech backfires (biometrics, bias). LOG: practice modes with honest progress, varied questions, no cameras, no biometrics.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 11</span>
+        <h4 class="font-bold mb-2">Teacher-first community features</h4>
+        <p class="text-white/60 text-sm">Nepali teachers self-organize in WhatsApp/Facebook around practical help. In-app lesson-sharing, worksheet libraries and moderated teacher groups channel that energy productively.</p>
+      </div>
+
+      <div class="ok rounded-2xl p-6">
+        <span class="badge badge-ok mb-3">RULE 12</span>
+        <h4 class="font-bold mb-2">Scale-aware design for tiny schools</h4>
+        <p class="text-white/60 text-sm">293 community schools have fewer than 5 students; 3,424 have fewer than 20. Everything must work for a 5-student school with one phone — no per-seat minimums, no admin burden.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-8 pb-12">
+    <p class="text-white/40 text-sm">Report 02 · Nepal Reality · 2026-08-19 · Sources: CEHRD Flash Report 2082, IEMIS, NEB, NTA MIS (Chaitra 2082), World Bank ETRI, Kathmandu Post / Nepali Times / Republica / Himalayan Times, NepJOL, F1000Research, Mangal Research Journal, TechPana Sikai Chautari audit, OLE Nepal · <a href="index.html" class="text-white/60 hover:text-white">← Back to hub</a></p>
+  </footer>
+
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'base',
+  themeVariables: { background: '#fcf9f2', primaryColor: '#e4efeb', primaryBorderColor: '#11635a', primaryTextColor: '#262019', secondaryColor: '#e7edf2', secondaryBorderColor: '#3d5a80', tertiaryColor: '#e8f0e6', tertiaryBorderColor: '#4d7c58', lineColor: '#8a7d68', textColor: '#262019', edgeLabelBackground: '#fcf9f2', fontSize: '14px', fontFamily: '\"SF Mono\", Consolas, monospace' } });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+</script>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="01-global-market-and-users.html">← 01 · Market & Users</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="03-offline-and-evidence.html">03 · Offline & Evidence →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-19 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

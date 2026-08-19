@@ -1,20 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import toast from 'react-hot-toast';
 import AuditLogTable from '../admin/AuditLogTable';
 import { fetchWithCache } from '@/lib/api';
 
 jest.mock('@/lib/api', () => ({
   fetchWithCache: jest.fn(),
-}));
-
-jest.mock('react-hot-toast', () => ({
-  __esModule: true,
-  default: Object.assign(jest.fn(), {
-    success: jest.fn(),
-    error: jest.fn(),
-  }),
 }));
 
 const mockFetch = fetchWithCache as jest.Mock;
@@ -43,11 +34,11 @@ describe('AuditLogTable', () => {
     expect(await screen.findByText('No audit entries yet.')).toBeInTheDocument();
   });
 
-  it('surfaces load failures without inventing entries', async () => {
+  it('surfaces load failures distinctly from empty state', async () => {
     mockFetch.mockRejectedValue(new Error('offline'));
     render(<AuditLogTable token="t" />);
-    expect(await screen.findByText('No audit entries yet.')).toBeInTheDocument();
-    expect(toast.error).toHaveBeenCalledWith('Failed to load audit log');
+    expect(await screen.findByText('Could not load the audit log.')).toBeInTheDocument();
+    expect(screen.queryByText('No audit entries yet.')).not.toBeInTheDocument();
   });
 
   it('shows the export button only when a handler is provided', async () => {

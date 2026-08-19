@@ -20,6 +20,8 @@ const config: Config = {
           dark: "hsl(var(--brand-dark) / <alpha-value>)",
           darker: "hsl(var(--brand-darker) / <alpha-value>)",
           neon: "hsl(var(--brand-neon) / <alpha-value>)",
+          muted: "hsl(var(--brand-muted) / <alpha-value>)",
+          faint: "hsl(var(--brand-faint) / <alpha-value>)",
         }
       },
       fontFamily: {

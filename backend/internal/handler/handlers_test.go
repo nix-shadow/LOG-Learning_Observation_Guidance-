@@ -45,6 +45,7 @@ func setupTestRouter() *gin.Engine {
 
 func TestGetCourses(t *testing.T) {
 	r := setupTestRouter()
+	r.Use(func(c *gin.Context) { c.Set("userID", "user-123"); c.Next() })
 	learnerService := service.NewLearnerService(
 		repository.NewUserRepository(database.DB),
 		repository.NewActivityRepository(database.DB),
@@ -80,10 +81,125 @@ func TestGetCourses(t *testing.T) {
 	if len(courses) != 2 {
 		t.Fatalf("Expected 2 courses (due to limit=2), got %v", len(courses))
 	}
+
+	// WP-0.2 C5: seeded enrollments (user-123 in course-1 and course-3) must
+	// be visible per-learner, and every count must derive from real rows —
+	// the old static seed numbers (1250, 980, …) must never surface.
+	first, _ := courses[0].(map[string]interface{})
+	enrolledNum, _ := first["enrolled"].(float64)
+	enrolledFlag, _ := first["is_enrolled"].(bool)
+	if enrolledFlag != (first["id"] == "course-1") {
+		t.Fatalf("expected is_enrolled to reflect real enrollment, got course %v flag %v", first["id"], enrolledFlag)
+	}
+	if enrolledNum > 3 {
+		t.Fatalf("enrolled count must be derived from real rows, got %v (legacy seed leaked?)", enrolledNum)
+	}
+}
+
+// WP-0.2 C5: enrollment is persisted server-side, idempotent, and visible in
+// the catalog immediately — no client-side-only state.
+func TestEnrollUnenroll(t *testing.T) {
+	r := setupTestRouter()
+	r.Use(func(c *gin.Context) { c.Set("userID", "user-123"); c.Next() })
+	learnerService := service.NewLearnerService(
+		repository.NewUserRepository(database.DB),
+		repository.NewActivityRepository(database.DB),
+		repository.NewProgressRepository(database.DB),
+		repository.NewLearnerDataRepository(database.DB),
+		repository.NewCompletionRepository(database.DB),
+	)
+	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
+	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+
+	r.POST("/api/v1/courses/:id/enroll", learnerHandler.Enroll)
+	r.DELETE("/api/v1/courses/:id/enroll", learnerHandler.Unenroll)
+	r.GET("/api/v1/courses", learnerHandler.GetCourses)
+
+	// Enroll in course-2 (not seeded for user-123).
+	req, _ := http.NewRequest("POST", "/api/v1/courses/course-2/enroll", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on enroll, got %d", w.Code)
+	}
+
+	// Enrolling twice must not duplicate the row.
+	req2, _ := http.NewRequest("POST", "/api/v1/courses/course-2/enroll", nil)
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on re-enroll, got %d", w2.Code)
+	}
+	var enrCount int64
+	database.DB.Model(&domain.Enrollment{}).Where("user_id = ? AND course_id = ?", "user-123", "course-2").Count(&enrCount)
+	if enrCount != 1 {
+		t.Fatalf("Expected exactly 1 enrollment row after double-enroll, got %d", enrCount)
+	}
+
+	// A missing course must 404, never silently succeed.
+	req3, _ := http.NewRequest("POST", "/api/v1/courses/nope/enroll", nil)
+	w3 := httptest.NewRecorder()
+	r.ServeHTTP(w3, req3)
+	if w3.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for unknown course, got %d", w3.Code)
+	}
+
+	// Catalog reflects the new enrollment with a real count.
+	req4, _ := http.NewRequest("GET", "/api/v1/courses?page=1&limit=100", nil)
+	w4 := httptest.NewRecorder()
+	r.ServeHTTP(w4, req4)
+	var resp struct {
+		Courses []struct {
+			ID         string `json:"id"`
+			Enrolled   int    `json:"enrolled"`
+			IsEnrolled bool   `json:"is_enrolled"`
+		} `json:"courses"`
+	}
+	if err := json.Unmarshal(w4.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	for _, c := range resp.Courses {
+		if c.ID == "course-2" && !c.IsEnrolled {
+			t.Fatalf("course-2 should be enrolled after POST enroll")
+		}
+		if c.ID == "course-2" && c.Enrolled != 1 {
+			t.Fatalf("expected real count 1 for course-2, got %d", c.Enrolled)
+		}
+	}
+
+	// Unenroll is idempotent and reflected immediately.
+	req5, _ := http.NewRequest("DELETE", "/api/v1/courses/course-2/enroll", nil)
+	w5 := httptest.NewRecorder()
+	r.ServeHTTP(w5, req5)
+	if w5.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on unenroll, got %d", w5.Code)
+	}
+	req6, _ := http.NewRequest("GET", "/api/v1/courses?page=1&limit=100", nil)
+	w6 := httptest.NewRecorder()
+	r.ServeHTTP(w6, req6)
+	var resp2 struct {
+		Courses []struct {
+			ID         string `json:"id"`
+			IsEnrolled bool   `json:"is_enrolled"`
+		} `json:"courses"`
+	}
+	_ = json.Unmarshal(w6.Body.Bytes(), &resp2)
+	for _, c := range resp2.Courses {
+		if c.ID == "course-2" && c.IsEnrolled {
+			t.Fatalf("course-2 should be unenrolled after DELETE")
+		}
+	}
 }
 
 func TestGetModeratorRoster(t *testing.T) {
 	r := setupTestRouter()
+	// Real identity: the roster is scoped to the calling teacher's classes.
+	// (The old global-roster fallback that served without auth was removed.)
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", "mod-1")
+		c.Next()
+	})
 	learnerService := service.NewLearnerService(
 		repository.NewUserRepository(database.DB),
 		repository.NewActivityRepository(database.DB),
@@ -171,6 +287,10 @@ func TestCompleteActivityCreatesProgressForNewLearner(t *testing.T) {
 
 func TestGetModeratorRosterComputesNeedsAttention(t *testing.T) {
 	r := setupTestRouter()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", "mod-1")
+		c.Next()
+	})
 	learnerService := service.NewLearnerService(
 		repository.NewUserRepository(database.DB),
 		repository.NewActivityRepository(database.DB),
@@ -202,10 +322,11 @@ func TestGetModeratorRosterComputesNeedsAttention(t *testing.T) {
 		t.Fatalf("Expected computed needs_attention counter in response")
 	}
 
-	// Cross-check: count students with a zero streak directly from the DB
+	// Cross-check: count zero-streak students in THIS teacher's classes only
 	var expected int64
 	database.DB.Model(&domain.Progress{}).
-		Joins("JOIN users ON users.id = progresses.learner_id AND users.role = ?", domain.RoleStudent).
+		Joins("JOIN class_members ON class_members.user_id = progresses.learner_id").
+		Joins("JOIN classes ON classes.id = class_members.class_id AND classes.teacher_id = ?", "mod-1").
 		Where("progresses.current_streak = 0").Count(&expected)
 	if int64(needsAttention) != expected {
 		t.Fatalf("Expected needs_attention=%v from DB, got %v", expected, int64(needsAttention))

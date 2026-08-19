@@ -13,6 +13,7 @@ import (
 var (
 	ErrNotClassTeacher    = errors.New("Only the class teacher may perform this action")
 	ErrNotClassMember     = errors.New("You are not enrolled in this class")
+	ErrNotEnrolled        = errors.New("Student is not enrolled in this class")
 	ErrInvalidDueDate     = errors.New("Invalid due date. Use RFC 3339 format.")
 	ErrClassNotFound      = errors.New("Class not found")
 	ErrAssignmentNotFound = errors.New("Assignment not found")
@@ -64,7 +65,16 @@ func (s *schoolService) EnrollStudents(ctx context.Context, classID string, user
 }
 
 func (s *schoolService) UnenrollStudent(ctx context.Context, classID, userID string) error {
-	return s.repo.RemoveMember(ctx, classID, userID)
+	removed, err := s.repo.RemoveMember(ctx, classID, userID)
+	if err != nil {
+		return err
+	}
+	// A successful no-op is still a lie: report honestly when the student was
+	// never enrolled in the first place.
+	if removed == 0 {
+		return ErrNotEnrolled
+	}
+	return nil
 }
 
 func (s *schoolService) ClassRoster(ctx context.Context, classID string) ([]domain.User, error) {
@@ -129,7 +139,16 @@ func (s *schoolService) CreateAssignment(ctx context.Context, classID, title, de
 	return a, nil
 }
 
-func (s *schoolService) AssignmentsForClass(ctx context.Context, classID string) ([]domain.Assignment, error) {
+// AssignmentsForClass is the teacher view: only the class's own teacher may
+// read its assignments and submissions (admins keep principal oversight).
+func (s *schoolService) AssignmentsForClass(ctx context.Context, classID, callerID string, isAdmin bool) ([]domain.Assignment, error) {
+	class, err := s.repo.FindClassByID(ctx, classID)
+	if err != nil {
+		return nil, ErrClassNotFound
+	}
+	if !isAdmin && class.TeacherID != callerID {
+		return nil, ErrNotClassTeacher
+	}
 	return s.repo.AssignmentsForClass(ctx, classID)
 }
 
@@ -175,12 +194,30 @@ func (s *schoolService) FindSubmission(ctx context.Context, assignmentID, learne
 	return s.repo.FindSubmission(ctx, assignmentID, learnerID)
 }
 
-func (s *schoolService) SubmissionsForAssignment(ctx context.Context, assignmentID string) ([]domain.Submission, error) {
+// SubmissionsForAssignment is the teacher view: the caller must be the
+// teacher of the assignment's class (learner submission notes are private to
+// the class); admins keep oversight.
+func (s *schoolService) SubmissionsForAssignment(ctx context.Context, assignmentID, callerID string, isAdmin bool) ([]domain.Submission, error) {
+	assignment, err := s.repo.FindAssignmentByID(ctx, assignmentID)
+	if err != nil {
+		return nil, ErrAssignmentNotFound
+	}
+	class, err := s.repo.FindClassByID(ctx, assignment.ClassID)
+	if err != nil {
+		return nil, ErrClassNotFound
+	}
+	if !isAdmin && class.TeacherID != callerID {
+		return nil, ErrNotClassTeacher
+	}
 	return s.repo.SubmissionsForAssignment(ctx, assignmentID)
 }
 
 func (s *schoolService) SubmissionCount(ctx context.Context, assignmentID string) (int64, error) {
 	return s.repo.SubmissionCount(ctx, assignmentID)
+}
+
+func (s *schoolService) SubmissionCounts(ctx context.Context, assignmentIDs []string) (map[string]int64, error) {
+	return s.repo.SubmissionCounts(ctx, assignmentIDs)
 }
 
 func (s *schoolService) WriteAuditLog(ctx context.Context, userID, action, detail, ip string) {
@@ -196,8 +233,8 @@ func (s *schoolService) WriteAuditLog(ctx context.Context, userID, action, detai
 	}
 }
 
-func (s *schoolService) ListAuditLogs(ctx context.Context, limit int) ([]domain.AuditLog, error) {
-	return s.repo.ListAuditLogs(ctx, limit)
+func (s *schoolService) ListAuditLogs(ctx context.Context, limit, offset int) ([]domain.AuditLog, int64, error) {
+	return s.repo.ListAuditLogs(ctx, limit, offset)
 }
 
 func (s *schoolService) RevokeAll(ctx context.Context, userID string) error {

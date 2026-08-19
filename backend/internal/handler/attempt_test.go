@@ -2,10 +2,12 @@ package handler
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"log-backend/database"
 	"log-backend/internal/domain"
@@ -262,6 +264,98 @@ func TestCompleteActivityWithoutQuizData(t *testing.T) {
 	database.DB.Where("learner_id = ?", learnerID).Order("created_at desc").First(&gui)
 	if !strings.Contains(gui.Text, "Great momentum") {
 		t.Errorf("expected legacy encouragement, got %q", gui.Text)
+	}
+}
+
+// TestCompleteActivityUsesClientTimestamp (WP-0.2 research round) proves the
+// online path dates a completion by the client's reported instant (clamped),
+// and derives the streak/daily-chart calendar date in the learner's timezone —
+// a completion at 23:00 Kathmandu time lands on the right local day.
+func TestCompleteActivityUsesClientTimestamp(t *testing.T) {
+	learnerID := newAttemptLearner(t)
+	r, _ := setupAttemptRouter()
+
+	kathmandu, err := time.LoadLocation("Asia/Kathmandu")
+	if err != nil {
+		t.Fatalf("Asia/Kathmandu unavailable: %v", err)
+	}
+	// "3 days ago at 23:00 local" — well inside the 14-day clamp window.
+	local := time.Now().In(kathmandu).AddDate(0, 0, -3)
+	local = time.Date(local.Year(), local.Month(), local.Day(), 23, 0, 0, 0, kathmandu)
+	body := fmt.Sprintf(`{"elapsed_seconds":120,"correct_count":4,"total_count":4,"completed_at_unix_ms":%d,"timezone_iana":"Asia/Kathmandu"}`, local.UnixMilli())
+
+	if w := completeWithBody(t, r, learnerID, "act-1", body); w.Code != http.StatusOK {
+		t.Fatalf("completion failed: %v %s", w.Code, w.Body.String())
+	}
+
+	var la domain.LearnerActivity
+	if err := database.DB.First(&la, "learner_id = ? AND activity_id = ?", learnerID, "act-1").Error; err != nil {
+		t.Fatalf("expected learner activity: %v", err)
+	}
+	if !la.CompletedAt.Equal(local) {
+		t.Errorf("CompletedAt = %v, want the client-reported instant %v", la.CompletedAt, local)
+	}
+
+	// The daily row must sit on the learner's local calendar date (3 days
+	// ago in Kathmandu), not server UTC, and carry the local weekday.
+	var daily domain.DailyActivity
+	if err := database.DB.Where("learner_id = ?", learnerID).First(&daily).Error; err != nil {
+		t.Fatalf("expected daily activity: %v", err)
+	}
+	wantDate := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, kathmandu)
+	if !daily.Date.Equal(wantDate) {
+		t.Errorf("DailyActivity.Date = %v, want local midnight %v", daily.Date, wantDate)
+	}
+	if daily.DayName != local.Weekday().String()[:3] {
+		t.Errorf("DayName = %q, want %q", daily.DayName, local.Weekday().String()[:3])
+	}
+}
+
+// TestSyncBulkTimestampParity (WP-0.2 research round) proves the offline path
+// honors the same completed_at_unix_ms + timezone fields as the online path,
+// so a flushed completion is dated when the learner did the work.
+func TestSyncBulkTimestampParity(t *testing.T) {
+	learnerID := newAttemptLearner(t)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", learnerID)
+		c.Next()
+	})
+	syncHandler := NewSyncHandler(service.NewSyncService(repository.NewSyncRepository(database.DB)))
+	r.POST("/api/v1/sync/bulk", syncHandler.SyncBulk)
+
+	kathmandu, err := time.LoadLocation("Asia/Kathmandu")
+	if err != nil {
+		t.Fatalf("Asia/Kathmandu unavailable: %v", err)
+	}
+	local := time.Now().In(kathmandu).AddDate(0, 0, -2)
+	local = time.Date(local.Year(), local.Month(), local.Day(), 22, 0, 0, 0, kathmandu)
+
+	inner := fmt.Sprintf(`{"elapsed_seconds":200,"correct_count":4,"total_count":4,"completed_at_unix_ms":%d,"timezone_iana":"Asia/Kathmandu"}`, local.UnixMilli())
+	payload := fmt.Sprintf(`{"version":"1.0","data":[{"endpoint":"/activities/act-1/complete","method":"POST","body":%q}]}`, inner)
+	req, _ := http.NewRequest("POST", "/api/v1/sync/bulk", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("sync failed: %v %s", w.Code, w.Body.String())
+	}
+
+	var la domain.LearnerActivity
+	if err := database.DB.First(&la, "learner_id = ? AND activity_id = ?", learnerID, "act-1").Error; err != nil {
+		t.Fatalf("expected learner activity from sync: %v", err)
+	}
+	if !la.CompletedAt.Equal(local) {
+		t.Errorf("synced CompletedAt = %v, want %v", la.CompletedAt, local)
+	}
+
+	var daily domain.DailyActivity
+	if err := database.DB.Where("learner_id = ?", learnerID).First(&daily).Error; err != nil {
+		t.Fatalf("expected daily activity from sync: %v", err)
+	}
+	wantDate := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, kathmandu)
+	if !daily.Date.Equal(wantDate) {
+		t.Errorf("synced DailyActivity.Date = %v, want local midnight %v", daily.Date, wantDate)
 	}
 }
 

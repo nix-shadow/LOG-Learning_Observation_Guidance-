@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"log-backend/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func GetAdminDashboard(c *gin.Context) {
@@ -21,8 +23,14 @@ func GetAdminDashboard(c *gin.Context) {
 	database.DB.Model(&domain.User{}).Count(&totalUsers)
 	database.DB.Model(&domain.Activity{}).Count(&totalActivities)
 	database.DB.Model(&domain.Progress{}).Select("COALESCE(SUM(completed), 0)").Scan(&totalCompletions)
-	// Active daily = learners with progress activity in the last 24 hours
-	database.DB.Model(&domain.User{}).Where("updated_at > ?", time.Now().Add(-24*time.Hour)).Count(&activeDaily)
+	// Active daily = learners with real completion activity in the last 24
+	// hours. users.updated_at only moves on password/role changes, so counting
+	// users by it made this metric permanently ~0 — LearnerActivity.completed_at
+	// is the honest signal.
+	database.DB.Model(&domain.LearnerActivity{}).
+		Where("completed_at > ?", time.Now().Add(-24*time.Hour)).
+		Distinct("learner_id").
+		Count(&activeDaily)
 
 	var recentUsers []domain.User
 	database.DB.Order("created_at desc").Limit(5).Find(&recentUsers)
@@ -56,11 +64,44 @@ func GetUsers(c *gin.Context) {
 	var users []domain.User
 	var total int64
 
+	// Deterministic ordering — SQLite's default (rowid) order made the first
+	// page arbitrary, and the admin UI's enrollment form relies on this list.
 	database.DB.Model(&domain.User{}).Count(&total)
-	database.DB.Limit(limit).Offset(offset).Find(&users)
+	database.DB.Order("created_at desc").Limit(limit).Offset(offset).Find(&users)
+
+	// Consent status (WP-0.1): principals need to see which learners have
+	// guardian consent before relying on their participation. Additive field —
+	// null when absent, never a fabricated value.
+	userIDs := make([]string, len(users))
+	for i, u := range users {
+		userIDs[i] = u.ID
+	}
+	var consentRows []domain.ConsentRecord
+	database.DB.Where("user_id IN ? AND consent_type = ? AND status = ?", userIDs, domain.ConsentTypeGuardian, domain.ConsentStatusGranted).
+		Find(&consentRows)
+	consentByUser := make(map[string]domain.ConsentRecord, len(consentRows))
+	for _, rec := range consentRows {
+		if prev, ok := consentByUser[rec.UserID]; !ok || rec.GrantedAt.After(prev.GrantedAt) {
+			consentByUser[rec.UserID] = rec
+		}
+	}
+
+	type userWithConsent struct {
+		domain.User
+		Consent *domain.ConsentRecord `json:"consent"`
+	}
+	response := make([]userWithConsent, 0, len(users))
+	for _, u := range users {
+		var consent *domain.ConsentRecord
+		if rec, ok := consentByUser[u.ID]; ok {
+			recCopy := rec
+			consent = &recCopy
+		}
+		response = append(response, userWithConsent{User: u, Consent: consent})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"users": users,
+		"users": response,
 		"pagination": gin.H{
 			"page":  page,
 			"limit": limit,
@@ -69,13 +110,17 @@ func GetUsers(c *gin.Context) {
 	})
 }
 
+// UpdateUserRole changes a user's role. The check-then-act last-admin guard,
+// the role write, and the audit entry run inside ONE transaction so two
+// concurrent demotions can never leave a school with zero admins, and a
+// failed write never reports success.
 func UpdateUserRole(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
 		Role domain.Role `json:"role" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+		RespondError(c, http.StatusBadRequest, "Bad Request", "Invalid role")
 		return
 	}
 
@@ -84,42 +129,70 @@ func UpdateUserRole(c *gin.Context) {
 	case domain.RoleStudent, domain.RoleModerator, domain.RoleAdmin:
 		// valid — proceed
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role value. Must be STUDENT, MODERATOR, or ADMIN."})
+		RespondError(c, http.StatusBadRequest, "Bad Request", "Invalid role value. Must be STUDENT, MODERATOR, or ADMIN.")
 		return
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, "id = ?", id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
-
-	// Never demote the last remaining ADMIN — a school with zero principals
-	// has no recovery path (nobody can promote a new one).
-	if user.Role == domain.RoleAdmin && req.Role != domain.RoleAdmin {
-		var adminCount int64
-		database.DB.Model(&domain.User{}).Where("role = ?", domain.RoleAdmin).Count(&adminCount)
-		if adminCount <= 1 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot demote the last admin. Promote another user to ADMIN first."})
-			return
-		}
-	}
-
-	user.Role = req.Role
-	database.DB.Save(&user)
-
-	// Append-only audit trail for sensitive privilege changes.
 	actor, _ := c.Get("userID")
-	database.DB.Create(&domain.AuditLog{
-		UserID:    actor.(string),
-		Action:    "user.role_change",
-		Detail:    id + " -> " + string(req.Role),
-		IP:        c.ClientIP(),
-		CreatedAt: time.Now(),
+	roleChange := database.DB.Transaction(func(tx *gorm.DB) error {
+		var user domain.User
+		if err := tx.First(&user, "id = ?", id).Error; err != nil {
+			return errUserNotFound
+		}
+
+		// Never demote the last remaining ADMIN — a school with zero principals
+		// has no recovery path (nobody can promote a new one). Re-counted inside
+		// the transaction so a concurrent demotion cannot pass the guard.
+		if user.Role == domain.RoleAdmin && req.Role != domain.RoleAdmin {
+			var adminCount int64
+			if err := tx.Model(&domain.User{}).
+				Where("role = ? AND id <> ?", domain.RoleAdmin, id).
+				Count(&adminCount).Error; err != nil {
+				return err
+			}
+			if adminCount < 1 {
+				return errLastAdmin
+			}
+		}
+
+		user.Role = req.Role
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+
+		// Append-only audit trail for sensitive privilege changes — written in
+		// the same transaction as the mutation, so the trail cannot drift.
+		if err := tx.Create(&domain.AuditLog{
+			UserID:    actor.(string),
+			Action:    "user.role_change",
+			Detail:    id + " -> " + string(req.Role),
+			IP:        c.ClientIP(),
+			CreatedAt: time.Now(),
+		}).Error; err != nil {
+			return err
+		}
+		return nil
 	})
 
-	c.JSON(http.StatusOK, gin.H{"message": "Role updated", "user": user})
+	switch roleChange {
+	case nil:
+		var user domain.User
+		database.DB.First(&user, "id = ?", id)
+		c.JSON(http.StatusOK, gin.H{"message": "Role updated", "user": user})
+	case errLastAdmin:
+		RespondError(c, http.StatusBadRequest, "Bad Request", "Cannot demote the last admin. Promote another user to ADMIN first.")
+	case errUserNotFound:
+		RespondError(c, http.StatusNotFound, "Not Found", "User not found")
+	default:
+		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to update role")
+	}
 }
+
+// Sentinel errors so the transaction can report exactly why it rolled back.
+var (
+	errLastAdmin    = errors.New("last admin")
+	errUserNotFound = errors.New("user not found")
+)
 
 // CreateActivityRequest is a strict DTO that prevents clients from injecting
 // server-managed fields like ID, CreatedAt, or Order.
@@ -135,7 +208,7 @@ type CreateActivityRequest struct {
 func CreateActivity(c *gin.Context) {
 	var req CreateActivityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		RespondError(c, http.StatusBadRequest, "Bad Request", err.Error())
 		return
 	}
 
@@ -156,7 +229,7 @@ func CreateActivity(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&act).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create activity"})
+		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to create activity")
 		return
 	}
 	actor, _ := c.Get("userID")

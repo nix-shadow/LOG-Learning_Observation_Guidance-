@@ -9,6 +9,7 @@ import { fetchWithCache } from '@/lib/api';
 import { SchoolClass } from '@/lib/types';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { prefersReducedMotion } from '@/lib/motion';
 import RosterOverview, { RosterData } from '@/components/moderator/RosterOverview';
 import AssignmentManager from '@/components/moderator/AssignmentManager';
 import AnnouncementComposer from '@/components/admin/AnnouncementComposer';
@@ -46,6 +47,7 @@ export default function ModeratorDashboard() {
   }, [user, isModerator, router]);
 
   useGSAP(() => {
+    if (prefersReducedMotion()) return;
     if (!loading && rosterData) {
       gsap.fromTo(
         gsap.utils.toArray('.gsap-stagger'),
@@ -97,7 +99,7 @@ export default function ModeratorDashboard() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes.length === 0 ? (
-            <p className="text-white/40">No classes assigned yet. Ask the admin to create one for you.</p>
+            <p className="text-brand-muted">No classes assigned yet. Ask the admin to create one for you.</p>
           ) : classes.map(c => (
             <button key={c.id} onClick={() => setSelectedClass(c.id)}
               className={`text-left p-5 rounded-2xl border transition-all ${selectedClass === c.id ? 'border-brand-neon bg-brand-neon/10 shadow-glow' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
