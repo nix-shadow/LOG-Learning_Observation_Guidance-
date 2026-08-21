@@ -3,8 +3,12 @@ import React from 'react';
 
 // jsdom provides crypto.getRandomValues but NOT crypto.subtle (WebCrypto
 // primitives). Node's webcrypto.subtle is a drop-in for the queue-encryption
-// tests (Node v22 ships stable crypto.subtle). jsdom's crypto getter is
-// non-configurable, so defineProperty must target the property, not the object.
+// tests (NOT a mock). This requires Node >= 22: Node 20's webcrypto performs
+// strict cross-realm checks and rejects ArrayBuffers created inside the
+// jsdom VM realm ("2nd argument is not instance of ArrayBuffer"), which made
+// every crypto/api test fail in CI. Node 22+ accepts them. jsdom's crypto
+// getter is non-configurable, so defineProperty must target the property,
+// not the object.
 Object.defineProperty(globalThis.crypto, 'subtle', {
   writable: true,
   configurable: true,

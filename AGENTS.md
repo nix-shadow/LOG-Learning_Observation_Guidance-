@@ -90,6 +90,7 @@ The platform uses a strict 3-tier Role-Based Access Control (RBAC) system:
 **CI stability rules (learned from failed runs 96666852249 / 96666852275):**
 - Action major versions must match the tool major they wrap — `golangci-lint v2.x` requires `golangci/golangci-lint-action@v7` (v6 hard-rejects v2). When bumping either side in `.github/workflows/ci.yml`, bump the pair together.
 - WebCrypto inputs must be **fresh copies**: pass `new Uint8Array(view).buffer`, never `view.buffer` or a sliced view of a Node Buffer/pooled ArrayBuffer — some WebCrypto implementations reject such backing stores and `crypto.subtle.decrypt` throws, which `decryptQueuePayload` converts to `null` (preserved records, failing tests). See `asBuffer` in `frontend/src/lib/crypto.ts`.
+- Frontend CI/dev must run **Node >= 22** everywhere (`ci.yml`, `frontend/Dockerfile`, `engines`). `jest.setup.ts` injects Node's `webcrypto.subtle` into jsdom, and Node 20's webcrypto rejects buffers created inside the jsdom VM realm (cross-realm check) — every crypto/api test fails on Node 20 even though the code is correct. Do not downgrade the Node pin.
 
 ---
 
