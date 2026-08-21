@@ -30,9 +30,12 @@ jobs:
 
       - name: Lint (golangci-lint)
         # golangci-lint v2.x requires golangci-lint-action v7+ (v6 rejects it).
+        # `uses:` steps ignore defaults.run.working-directory, so the module
+        # dir must be passed via the action's own input.
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.1.6
+          working-directory: backend
 
       - name: Test (isolated temp DB)
         run: go test ./...
