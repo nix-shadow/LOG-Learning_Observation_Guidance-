@@ -89,6 +89,8 @@ The platform uses a strict 3-tier Role-Based Access Control (RBAC) system:
 
 **CI stability rules (learned from failed runs 96666852249 / 96666852275):**
 - Action major versions must match the tool major they wrap — `golangci-lint v2.x` requires `golangci/golangci-lint-action@v7` (v6 hard-rejects v2). When bumping either side in `.github/workflows/ci.yml`, bump the pair together.
+- **`uses:` steps ignore `defaults.run.working-directory`** (that only applies to `run:` steps) — module-scoped actions need their own input (e.g. golangci-lint-action's `working-directory: backend`), or they run at repo root and fail with "directory prefix . does not contain main module".
+- The golangci-lint binary must be built with Go >= `backend/go.mod`'s `go` directive — prebuilt v2.1.6 is Go 1.24 and refuses a `go 1.25.0` module ("can't load config"). Keep the action's `version:` and the AGENTS.md install command on a release built with a current Go (v2.13.1+).
 - WebCrypto inputs must be **fresh copies**: pass `new Uint8Array(view).buffer`, never `view.buffer` or a sliced view of a Node Buffer/pooled ArrayBuffer — some WebCrypto implementations reject such backing stores and `crypto.subtle.decrypt` throws, which `decryptQueuePayload` converts to `null` (preserved records, failing tests). See `asBuffer` in `frontend/src/lib/crypto.ts`.
 - Frontend CI/dev must run **Node >= 22** everywhere (`ci.yml`, `frontend/Dockerfile`, `engines`). `jest.setup.ts` injects Node's `webcrypto.subtle` into jsdom, and Node 20's webcrypto rejects buffers created inside the jsdom VM realm (cross-realm check) — every crypto/api test fails on Node 20 even though the code is correct. Do not downgrade the Node pin.
 
@@ -143,7 +145,7 @@ Backend tests run against a real local `log.db` — wipe it before a demo run if
 cd backend
 go test ./...
 ```
-Linting (enforced in CI): `golangci-lint run ./...` from `backend/` (config: `backend/.golangci.yml` — gosec, staticcheck, errcheck; run `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6` to install) and `npm run lint` from `frontend/`. Everything is also reachable from the root `Makefile`: `make build`, `make test`, `make lint`.
+Linting (enforced in CI): `golangci-lint run ./...` from `backend/` (config: `backend/.golangci.yml` — gosec, staticcheck, errcheck; run `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1` to install) and `npm run lint` from `frontend/`. Everything is also reachable from the root `Makefile`: `make build`, `make test`, `make lint`.
 
 ### Known Limitations & Roadmap
 See `docs/ENHANCEMENT.md` for the audited issue list and phased improvement plan (GoogleAuth verification, per-learner activity status, queue idempotency, CI/CD, etc.).

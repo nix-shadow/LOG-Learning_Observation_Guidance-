@@ -36,9 +36,13 @@ func InitDB() {
 		dbPath = "data/log.db"
 	}
 
-	// Ensure the parent directory exists (skipped for absolute temp paths in tests)
-	if !filepath.IsAbs(dbPath) {
+	// Ensure the parent directory exists (skipped for absolute temp paths in
+	// tests). DB_PATH is operator config, not attacker input, but IsLocal()
+	// refuses values that escape the deployment root via ".." segments
+	// (defense-in-depth; also satisfies gosec G703 taint analysis).
+	if !filepath.IsAbs(dbPath) && filepath.IsLocal(dbPath) {
 		if dir := filepath.Dir(dbPath); dir != "." {
+			// #nosec G703 -- operator-supplied DB_PATH; traversal rejected via filepath.IsLocal above.
 			if err := os.MkdirAll(dir, 0750); err != nil {
 				slog.Error("Failed to create data directory:", "error", err)
 				os.Exit(1)

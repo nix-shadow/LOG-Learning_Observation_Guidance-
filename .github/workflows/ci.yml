@@ -34,7 +34,9 @@ jobs:
         # dir must be passed via the action's own input.
         uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.1.6
+          # Must be built with Go >= backend/go.mod's `go` directive
+          # (v2.1.6 binaries are Go 1.24 and refuse a go 1.25 module).
+          version: v2.13.1
           working-directory: backend
 
       - name: Test (isolated temp DB)
