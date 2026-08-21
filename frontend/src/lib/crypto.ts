@@ -29,10 +29,13 @@ const ACTIVE_KEY_NAME = 'active';
 const enc = (input: string): Uint8Array => new TextEncoder().encode(input);
 const dec = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
 
-/** Returns a standalone ArrayBuffer copy (newer TS typed-array generics
- *  reject Uint8Array<ArrayBufferLike> where BufferSource is expected). */
-const asBuffer = (bytes: Uint8Array): ArrayBuffer =>
-  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+/** Returns a standalone ArrayBuffer copy. Two reasons this must be a COPY
+ *  (never `bytes.buffer` or a sliced view):
+ *  1. Node Buffers / pooled ArrayBuffers make `bytes.buffer` larger than the
+ *     view, and some WebCrypto implementations reject such backing stores.
+ *  2. Newer TS typed-array generics reject Uint8Array<ArrayBufferLike> where
+ *     BufferSource is expected — a fresh copy is always ArrayBuffer. */
+const asBuffer = (bytes: Uint8Array): ArrayBuffer => new Uint8Array(bytes).buffer;
 
 export const bufToB64 = (buf: ArrayBuffer | Uint8Array): string => {
   const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);

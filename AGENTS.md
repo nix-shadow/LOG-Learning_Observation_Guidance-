@@ -85,6 +85,11 @@ The platform uses a strict 3-tier Role-Based Access Control (RBAC) system:
 **Git Hygiene:**
 - `backend/log.db`, `backend/server`, `frontend/public/sw.js`, and `frontend/public/workbox-*.js` are generated/build artifacts — gitignored and untracked. Do not re-add them.
 - Never commit `.env` files. Copy from `.env.example` (root, `backend/`, `frontend/`) instead.
+- **No orphan submodules:** a gitlink (mode 160000) in the index without a matching `.gitmodules` entry makes every `actions/checkout` cleanup fail with "No url found for submodule path". Never `git add` a directory that contains its own `.git`; if one slips in, remove with `git rm --cached <path>`.
+
+**CI stability rules (learned from failed runs 96666852249 / 96666852275):**
+- Action major versions must match the tool major they wrap — `golangci-lint v2.x` requires `golangci/golangci-lint-action@v7` (v6 hard-rejects v2). When bumping either side in `.github/workflows/ci.yml`, bump the pair together.
+- WebCrypto inputs must be **fresh copies**: pass `new Uint8Array(view).buffer`, never `view.buffer` or a sliced view of a Node Buffer/pooled ArrayBuffer — some WebCrypto implementations reject such backing stores and `crypto.subtle.decrypt` throws, which `decryptQueuePayload` converts to `null` (preserved records, failing tests). See `asBuffer` in `frontend/src/lib/crypto.ts`.
 
 ---
 
