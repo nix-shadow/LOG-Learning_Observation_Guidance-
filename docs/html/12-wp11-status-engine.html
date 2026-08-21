@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>12 — WP-1.1 — Per-Learner Status Engine | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 12 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-1.1 — Per-Learner Status Engine</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-1.1 work package (tracker tasks wp11t01–wp11t04, RC-01): canonical per-learner per-activity status, the needs-practice rule, status UI on dashboard + catalog, and the transition tests that lock the model down. Every acceptance criterion maps to code or a test below.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">RC-01</span>
+      <span class="badge badge-ok">Canonical statuses</span>
+      <span class="badge badge-ok">Needs-practice rule</span>
+      <span class="badge badge-ok">Supportive vocabulary</span>
+      <span class="badge badge-ok">8 transition tests</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp11t01 ✓</span>
+      <h2 class="text-2xl font-bold">Per-learner status model</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>backend stores per-learner per-activity status (not-started / active / needs-practice / completed) and exposes it via API.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Canonical statuses <code class="code">not-started / active / needs-practice / completed</code> as <code class="code">domain.Status*</code> + <code class="code">ResolveActivityStatus</code> (<code class="code">backend/internal/domain/domain.go</code>).</li>
+            <li>• Exposed via <code class="code">GetDashboardData</code> / <code class="code">GetLearningJourneyData</code>; default is <code class="code">not-started</code> — never an invented value.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">domain.go</code> status constants + resolver; <code class="code">learner_service.go</code> API exposure.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp11t02 ✓</span>
+      <h2 class="text-2xl font-bold">"Needs practice" determination rules</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>rules documented and implemented (e.g. low quiz accuracy flags an activity); phrasing stays supportive — never "failed".</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Rule in <code class="code">completion_repo.go</code>: accuracy &lt; 0.7 flags <code class="code">needs-practice</code>; an improving re-attempt clears the flag.</li>
+            <li>• Idempotent replays keep the best score; the same rules apply in the sync write path (<code class="code">sync_repo.go</code>) so offline completions cannot double-flag.</li>
+            <li>• Vocabulary everywhere is supportive — "Review", "Practice again", "Continue" — never "failed".</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• ENHANCEMENT.md §1.3 FIXED note; <code class="code">completion_repo.go</code> + <code class="code">sync_repo.go</code>; AGENTS.md §1.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp11t03 ✓</span>
+      <h2 class="text-2xl font-bold">Status UI on dashboard + catalog</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>catalog badges and dashboard chips render real per-learner status; empty states honest.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Catalog badges on <code class="code">learning/page.tsx</code>: completed → Review, needs-practice → Practice again, active → Continue, else Start.</li>
+            <li>• Dashboard journey chips (<code class="code">dashboard/page.tsx</code>) render the same real per-learner statuses; empty states are honest.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">learning/page.tsx</code> badges; <code class="code">dashboard/page.tsx</code> journey chips; honest empty states.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp11t04 ✓</span>
+      <h2 class="text-2xl font-bold">Status-transition tests</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>Go tests cover start → active → needs-practice → completed transitions including idempotent replays.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/handler/status_transition_test.go</code> — 8 tests: start→completed, needs-practice flagging, flag clearing, below-threshold persistence, idempotent replays, quiz-less completion, canonical API exposure, legacy-row resolution.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• 8 green tests in <code class="code">status_transition_test.go</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 12 · WP-1.1 — Per-Learner Status Engine · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

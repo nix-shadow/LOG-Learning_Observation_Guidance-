@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>24 — WP-3.4 — NSL &amp; Accessibility Content | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 24 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-3.4 — NSL &amp; Accessibility Content</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-3.4 work package (tracker tasks wp34t01–wp34t02): Nepal Sign Language caption metadata surfaces honestly on lesson pages, and every learner can choose a bigger font or a high-contrast theme that persists locally and works offline.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">NSL caption track</span>
+      <span class="badge badge-ok">Honest caption badge</span>
+      <span class="badge badge-ok">Font A/A/A packs</span>
+      <span class="badge badge-ok">High-contrast theme</span>
+      <span class="badge badge-ok">5 a11y tests</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp34t01 ✓</span>
+      <h2 class="text-2xl font-bold">NSL video captions</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>core units captioned; NSL video content sourced with proper consent</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">Activity.caption_text</code> carries the NSL caption track; the lesson page renders a caption block only when the field is non-empty — no invented captions.</li>
+            <li>• act-4 (Electricity) seeded with a bilingual caption description (NSL text + EN gloss); catalog cards show an “NSL captions” badge for captioned units.</li>
+            <li>• Consent sourcing for the signer/video is a MoU clause, documented in <code class="code">docs/PARTNERSHIP_LANES.md</code> §2 clause 3 — videos are only added with the same consent discipline as every other asset.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">frontend/src/app/learning/[id]/page.tsx</code> caption block + catalog badge.</li>
+            <li>• <code class="code">backend/database/seed_phase3.go</code> caption seed; <code class="code">PARTNERSHIP_LANES.md</code> consent clause.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp34t02 ✓</span>
+      <h2 class="text-2xl font-bold">High-contrast &amp; font-size packs</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>user-adjustable font size and high-contrast theme; persisted locally</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">lib/a11y.ts</code>: FontScale (normal 1 / large 1.18 / xlarge 1.35), load rejects unknown stored values (honest fallback), apply sets <code class="code">data-font-scale</code> / <code class="code">data-contrast</code> on <code class="code">&lt;html&gt;</code>.</li>
+            <li>• <code class="code">A11yProvider</code> in the root layout applies persisted prefs at mount — no flash of the unstyled interface; works fully offline (localStorage only).</li>
+            <li>• Settings → Accessibility card: A/A/A font-size buttons + high-contrast switch; <code class="code">globals.css</code> overrides lift muted text/border opacity under high contrast.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">src/lib/__tests__/a11y.test.ts</code> — 5 tests: honest defaults, round-trip, unknown-value fallback, attribute application, scale ordering.</li>
+            <li>• <code class="code">frontend/src/app/settings/page.tsx</code> + <code class="code">components/A11yProvider.tsx</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 24 · WP-3.4 — NSL &amp; Accessibility Content · generated 2026-08-20 · WP-3.4 — NSL &amp; Accessibility Content
+  </footer>
+</div>
+</body>
+</html>

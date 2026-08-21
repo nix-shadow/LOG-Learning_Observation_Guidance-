@@ -45,6 +45,10 @@ describe('MicroModuleViewer', () => {
     expect(screen.getByText('Not quite — give it another try!')).toBeInTheDocument();
     expect(nextButton).toBeDisabled();
 
+    // WP-1.2: the explanation is shown for wrong answers too — every answer
+    // is a teaching moment, phrased supportively.
+    expect(screen.getByText("Here's why: Classical logic works with True and False.")).toBeInTheDocument();
+
     // Correct answer unlocks Next and shows the explanation.
     await user.click(screen.getByRole('button', { name: 'Two' }));
     expect(screen.getByText('Correct!')).toBeInTheDocument();

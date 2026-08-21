@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>25 — WP-3.5 — Partnership Lanes | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 25 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-3.5 — Partnership Lanes</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-3.5 work package (tracker tasks wp35t01–wp35t02): formal, safe collaboration — an MoU template that protects child data, and attribution/remix rules that are enforced in code, not just documented.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">MoU template</span>
+      <span class="badge badge-ok">10 clauses</span>
+      <span class="badge badge-ok">Attribution rules enforced</span>
+      <span class="badge badge-ok">Shared-library model</span>
+      <span class="badge badge-ok">Contributor credits</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp35t01 ✓</span>
+      <h2 class="text-2xl font-bold">Data-sharing agreement templates</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>school/MoE MoU template covering child-data protections, reviewed</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">docs/PARTNERSHIP_LANES.md</code> §2: a 10-clause school/district/MoE MoU template — purpose, learner data stays on LOG, consent-first, retention + erasure (2-year window, 14-day erasure), no re-sharing, licensed content in/out, QR pilot terms, incident response (72h), termination.</li>
+            <li>• Aligned with the Nepal Privacy Act 2075 and the existing consent/disclosure-hash machinery; legal annex tracked per <code class="code">docs/PRIVACY_RUNBOOK.md</code> §8 (IT &amp; Cybersecurity Bill 2082).</li>
+            <li>• Reviewed via the §6 checklist — no clause promises any access to learner-level data.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">docs/PARTNERSHIP_LANES.md</code> §2 + §6; consent policy version 2026-08-v1 referenced in-clause.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp35t02 ✓</span>
+      <h2 class="text-2xl font-bold">Shared-library model</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>content attribution and remix rules documented; contributors credited</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• §3 attribution &amp; remix rules: the allowed-license allowlist, attribution required for third-party rows, SA (share-alike) and NC (non-commercial) honored, credit rendered in the UI on every card and lesson page.</li>
+            <li>• §4 shared-library model: partner school-LAN bundles ride the same license-checked export + cache-warm path the QR pilot uses — additive, never extractive (no learner data changes hands).</li>
+            <li>• §5 contributor credits: every activity stores its author; the platform never replaces a third-party author's credit with its own; the <code class="code">oer.import</code> audit trail is the permanent provenance record.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Rules enforced in code: <code class="code">OERAllowedLicenses</code> + <code class="code">oer_service_impl.go</code> row checks; UI credit lines in <code class="code">learning/page.tsx</code> + <code class="code">learning/[id]/page.tsx</code>.</li>
+            <li>• <code class="code">docs/PARTNERSHIP_LANES.md</code> §3–§5.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 25 · WP-3.5 — Partnership Lanes · generated 2026-08-20 · WP-3.5 — Partnership Lanes
+  </footer>
+</div>
+</body>
+</html>

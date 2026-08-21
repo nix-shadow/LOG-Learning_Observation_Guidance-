@@ -2,12 +2,16 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { fetchWithCache, logout, flushSyncQueue } from '@/lib/api';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { CheckCircle2, ArrowRight, Activity, TrendingUp, Medal, Flame, Download, Upload, LogOut, ClipboardList, Megaphone, Send } from 'lucide-react';
 import { DashboardData, Activity as ActivityType, Guidance as GuidanceType, Observation as ObservationType, Announcement as AnnouncementType, Assignment as AssignmentType } from "@/lib/types";
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import SkeletonLoader from '@/components/SkeletonLoader';
+import ReviewQueueCard from '@/components/ReviewQueueCard';
+import JoinClassCard from '@/components/JoinClassCard';
+import ReconnectDigest from '@/components/ReconnectDigest';
 import { downloadSyncFile, importSyncFile } from '@/lib/syncExport';
 import toast from 'react-hot-toast';
 import gsap from 'gsap';
@@ -15,6 +19,7 @@ import { useGSAP } from '@gsap/react';
 import { prefersReducedMotion } from '@/lib/motion';
 
 export default function Dashboard() {
+  const t = useTranslations('status');
   const [data, setData] = useState<DashboardData | null>(null);
   const [asOf, setAsOf] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,8 +99,8 @@ export default function Dashboard() {
 
   if (!data || !data.learner) return (
     <div className="text-center py-20 card-glow flex flex-col items-center justify-center max-w-2xl mx-auto mt-10">
-      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 shadow-glow">
-        <Activity className="w-10 h-10 text-brand-neon animate-pulse-glow" />
+      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
+        <Activity className="w-10 h-10 text-brand-neon" />
       </div>
       <h2 className="text-3xl font-bold text-white mb-3">Welcome to LOG</h2>
       <p className="text-white/60 mb-8 text-lg">Your learning journey starts here. (Offline mode active, no cached data found).</p>
@@ -110,7 +115,7 @@ export default function Dashboard() {
   return (
     <div ref={containerRef} className="space-y-8">
       {/* Welcome Area (Hero Bento) */}
-      <section className="gsap-stagger bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] p-10 shadow-glow relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+      <section className="gsap-stagger bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] p-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="relative z-10 w-full md:w-2/3">
           <h1 className="text-4xl font-bold mb-3 text-white tracking-tight">Hello, {data.learner.name}</h1>
           <p className="text-white/70 text-lg mb-6">You are on a <span className="text-brand-neon font-bold">{data.progress.current_streak}-day</span> learning streak. Keep it up!</p>
@@ -143,14 +148,14 @@ export default function Dashboard() {
           })()}
         </div>
 
-        <div className="relative z-10 w-40 h-40 flex-shrink-0 bg-black/50 backdrop-blur-xl rounded-full p-3 border border-white/10 shadow-glow">
+        <div className="relative z-10 w-40 h-40 flex-shrink-0 bg-[#0B1220] backdrop-blur-xl rounded-full p-3 border border-brand-blue/30">
             <CircularProgressbar
               value={dailyGoalPercentage}
               text={`${dailyGoalPercentage}%`}
               styles={buildStyles({
-                pathColor: '#00F0FF',
-                textColor: '#FFFFFF',
-                trailColor: 'rgba(255,255,255,0.05)',
+                pathColor: '#60A5FA',
+                textColor: '#E9F0FA',
+                trailColor: 'rgba(255,255,255,0.08)',
                 textSize: '20px',
                 pathTransitionDuration: 2
               })}
@@ -200,17 +205,34 @@ export default function Dashboard() {
             </div>
             <div className="card-glow flex-1 p-6">
               <div className="space-y-5">
-                {data.activities.slice(0, 3).map((act: ActivityType) => (
+                {data.activities.slice(0, 3).map((act: ActivityType) => {
+                  // WP-1.1 RC-01: canonical statuses, supportive phrasing.
+                  const statusLabels: Record<string, string> = {
+                    'not-started': t('notStarted'),
+                    'active': t('active'),
+                    'needs-practice': t('needsPractice'),
+                    'completed': t('completed'),
+                  };
+                  const statusColor: Record<string, string> = {
+                    'not-started': 'text-brand-faint',
+                    'active': 'text-brand-amber',
+                    'needs-practice': 'text-brand-amber',
+                    'completed': 'text-brand-neon',
+                  };
+                  return (
                   <div key={act.id} className="flex items-start pb-5 border-b border-white/10 last:border-0 last:pb-0 group">
-                    <div className={`mt-1 flex-shrink-0 transition-transform group-hover:scale-110 ${act.status === 'Completed' ? 'text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]' : 'text-brand-faint'}`}>
+                    <div className={`mt-1 flex-shrink-0 transition-transform group-hover:scale-110 ${statusColor[act.status] ?? 'text-brand-faint'}`}>
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div className="ml-4">
                       <p className="text-base font-bold text-white group-hover:text-brand-neon transition-colors">{act.title}</p>
-                      <p className="text-sm text-white/50 font-medium mt-1">{act.status}</p>
+                      <p className={`text-sm font-medium mt-1 ${act.status === 'completed' ? 'text-brand-neon' : act.status === 'needs-practice' ? 'text-brand-amber' : 'text-white/50'}`}>
+                        {statusLabels[act.status] ?? act.status}
+                      </p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -271,8 +293,17 @@ export default function Dashboard() {
 
         </div>
 
-        {/* Sidebar (Right column) - Observations & Sync */}
+        {/* Sidebar (Right column) - Review queue, Observations & Sync */}
         <div className="space-y-8 flex flex-col">
+          <section className="gsap-stagger">
+            <ReconnectDigest />
+          </section>
+          <section className="gsap-stagger">
+            <ReviewQueueCard />
+          </section>
+          <section className="gsap-stagger">
+            <JoinClassCard />
+          </section>
           <section className="gsap-stagger">
             <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Recent Observations</h2>
             <div className="card-glow space-y-5 p-6">

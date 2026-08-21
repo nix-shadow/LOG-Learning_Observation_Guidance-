@@ -29,11 +29,26 @@ type AuthRepository interface {
 // ActivityRepository handles activity logic
 type ActivityRepository interface {
 	FindAll(ctx context.Context) ([]Activity, error)
+	FindByID(ctx context.Context, id string) (*Activity, error)
+	// CreateMany imports a batch, skipping existing IDs (WP-3.1 pipeline).
+	CreateMany(ctx context.Context, acts []Activity) (imported int, skipped int, err error)
+}
+
+// PilotRepository (WP-3.3 RC-10): QR poster scans. No IPs or device ids —
+// a scan is a poster id + moment, and Starts are honest click-throughs.
+type PilotRepository interface {
+	CreateScan(ctx context.Context, scan *PilotScan) error
+	MarkStarted(ctx context.Context, id uint) error
+	Stats(ctx context.Context) (PilotStats, error)
 }
 
 // ProgressRepository handles progress and learner activities
 type ProgressRepository interface {
 	FindLearnerActivities(ctx context.Context, learnerID string) ([]LearnerActivity, error)
+	// FindLearnerActivitiesBatch returns each learner's LearnerActivity rows
+	// keyed by learner ID (WP-2.3 gradebook — one query per class, not one
+	// per student).
+	FindLearnerActivitiesBatch(ctx context.Context, learnerIDs []string) (map[string][]LearnerActivity, error)
 	FindProgress(ctx context.Context, learnerID string) (*Progress, error)
 	SaveProgress(ctx context.Context, progress *Progress) error
 }
@@ -75,11 +90,46 @@ type ModeratorRepository interface {
 	FirstClassNameForTeacher(ctx context.Context, teacherID string) (string, error)
 }
 
+// AdminRepository backs the admin console (C3 seam, architecture review):
+// dashboard analytics, user listing with guardian-consent status, role
+// changes (check-then-act last-admin guard inside one transaction), and
+// activity creation. All mutations write their audit entries in the same
+// transaction as the change.
+type AdminRepository interface {
+	DashboardStats(ctx context.Context) (totalUsers, totalActivities, totalCompletions, activeDaily int64, recentUsers []User, err error)
+	ListUsers(ctx context.Context, page, limit int) ([]User, int64, error)
+	// GuardianConsentMap returns the most recent active guardian consent
+	// record per user — null when absent, never fabricated.
+	GuardianConsentMap(ctx context.Context, userIDs []string) (map[string]ConsentRecord, error)
+	// ChangeRoleTx loads the target, enforces the last-admin guard, writes
+	// the role, and audits — all-or-nothing.
+	ChangeRoleTx(ctx context.Context, targetID string, role Role, actorID, ip string) (*User, error)
+	// CreateActivity persists the activity and audits, all-or-nothing.
+	CreateActivity(ctx context.Context, act *Activity, actorID, ip string) error
+	// AnalyticsSummary (WP-4.3) returns aggregate usage statistics computed
+	// ONLY over learners with an active "analytics" consent. Pure counts and
+	// averages — never learner-level rows — so the admin view can never leak
+	// an individual's data through the summary.
+	AnalyticsSummary(ctx context.Context) (AnalyticsSummary, error)
+}
+
+// AnalyticsSummary is the aggregate-only result of the analytics consent
+// gate. AvgScore is nil (never fabricated 0) when no opted-in learner has
+// a completed activity.
+type AnalyticsSummary struct {
+	TotalUsers   int64    `json:"total_users"`
+	OptedInUsers int64    `json:"opted_in_users"`
+	Completions  int64    `json:"completions"`
+	ActiveDaily  int64    `json:"active_daily"`
+	AvgScore     *float64 `json:"avg_score"`
+}
+
 // SchoolRepository handles classes, enrollment, announcements, assignments,
 // submissions, audit logging, and session revocation.
 type SchoolRepository interface {
 	CreateClass(ctx context.Context, class *Class) error
 	FindClassByID(ctx context.Context, id string) (*Class, error)
+	FindClassByInviteCode(ctx context.Context, code string) (*Class, error)
 	ListClasses(ctx context.Context) ([]Class, error)
 	ListClassesByTeacher(ctx context.Context, teacherID string) ([]Class, error)
 	Enroll(ctx context.Context, classID string, userIDs []string) error
@@ -87,6 +137,12 @@ type SchoolRepository interface {
 	ClassMembers(ctx context.Context, classID string) ([]User, error)
 	ClassMemberCount(ctx context.Context, classID string) (int64, error)
 	ClassesOfLearner(ctx context.Context, learnerID string) ([]Class, error)
+	// StudentInTeacherClasses reports whether the learner is enrolled in any
+	// class owned by the teacher (WP-1.5 per-student progress scoping).
+	StudentInTeacherClasses(ctx context.Context, teacherID, learnerID string) (bool, error)
+	// Roster import (WP-1.5): find-or-create a STUDENT user by email.
+	FindUserByEmail(ctx context.Context, email string) (*User, error)
+	CreateStudentUser(ctx context.Context, user *User) error
 
 	CreateAnnouncement(ctx context.Context, ann *Announcement) error
 	ListAnnouncements(ctx context.Context, limit int) ([]Announcement, error)
@@ -143,4 +199,34 @@ type PrivacyRepository interface {
 	// returned report carries the before/after evidence (freelist pages, WAL
 	// frames) so the caller can log that the wipe actually shrank the surface.
 	ScrubDeletedData(ctx context.Context) (*ScrubReport, error)
+}
+
+// ParentRepository (WP-2.1 RC-04): school-verified guardian→learner links.
+type ParentRepository interface {
+	CreateParentLink(ctx context.Context, link *ParentLink) error
+	FindParentLinkByCode(ctx context.Context, code string) (*ParentLink, error)
+	// FindLinkedParentLink returns the active link between a parent and a
+	// learner — the scope gate for every parent read.
+	FindLinkedParentLink(ctx context.Context, parentID, studentID string) (*ParentLink, error)
+	LinkedChildren(ctx context.Context, parentID string) ([]ParentLink, error)
+	UpdateParentLink(ctx context.Context, link *ParentLink) error
+	// ClaimParentLinkTx creates the PARENT user, claims the pending link, and
+	// records the parent_access consent in one transaction — a partial claim
+	// must never leave a half-linked guardian.
+	ClaimParentLinkTx(ctx context.Context, user *User, link *ParentLink, consent *ConsentRecord) error
+}
+
+// SupportRepository (WP-2.2 RC-06): the who-to-call escalation funnel.
+type SupportRepository interface {
+	CreateIssue(ctx context.Context, issue *SupportIssue) error
+	IssuesByUser(ctx context.Context, userID string) ([]SupportIssue, error)
+	OpenEscalatedIssues(ctx context.Context) ([]SupportIssue, error)
+	FindIssueByID(ctx context.Context, id string) (*SupportIssue, error)
+	ResolveIssue(ctx context.Context, issue *SupportIssue) error
+}
+
+// NoteRepository (WP-2.3 RC-08): teacher annotations on learners.
+type NoteRepository interface {
+	FindNote(ctx context.Context, studentID string) (*LearnerNote, error)
+	UpsertNote(ctx context.Context, note *LearnerNote) error
 }

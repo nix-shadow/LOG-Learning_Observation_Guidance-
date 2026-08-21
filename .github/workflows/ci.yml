@@ -28,6 +28,11 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.1.6
+
       - name: Test (isolated temp DB)
         run: go test ./...
 
@@ -55,8 +60,8 @@ jobs:
       - name: Jest (offline sync layer)
         run: npx jest
 
-      - name: Build
-        run: npm run build
+      - name: Build + RESPECT budget check (WP-4.2)
+        run: node scripts/check-budget.mjs
         env:
           NEXT_PUBLIC_API_URL: http://localhost:6101/api/v1
 

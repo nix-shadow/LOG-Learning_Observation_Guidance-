@@ -383,7 +383,8 @@ func TestAdminGetUsersShowsConsent(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("failed to seed consent: %v", err)
 	}
-	r.GET("/api/v1/admin/users", GetUsers)
+	h := NewAdminHandler(service.NewAdminService(repository.NewAdminRepository(database.DB)))
+	r.GET("/api/v1/admin/users", h.GetUsers)
 
 	req, _ := http.NewRequest("GET", "/api/v1/admin/users?limit=100", nil)
 	w := httptest.NewRecorder()
@@ -438,6 +439,7 @@ func TestAdminGetUsersShowsConsent(t *testing.T) {
 	}
 	if without == nil {
 		t.Fatalf("seeded moderator missing from admin list")
+		return
 	}
 	if without.Consent != nil {
 		t.Fatalf("expected null consent for moderator, got %+v", without.Consent)
@@ -502,7 +504,7 @@ func TestRequireConsentGate(t *testing.T) {
 	}
 
 	// 3. A withdrawn grant blocks again (re-grant is the only unblock).
-	repo.UpsertConsent(context.Background(), &domain.ConsentRecord{
+	if err := repo.UpsertConsent(context.Background(), &domain.ConsentRecord{
 		ID:          service.GenerateSecureID("csn"),
 		UserID:      withConsent.ID,
 		ConsentType: domain.ConsentTypeGuardian,
@@ -512,7 +514,9 @@ func TestRequireConsentGate(t *testing.T) {
 		Language:    "ne",
 		Source:      "settings",
 		GrantedAt:   time.Now(),
-	})
+	}); err != nil {
+		t.Fatalf("failed to withdraw consent: %v", err)
+	}
 	w = post(newRouter(withConsent.ID, domain.RoleStudent))
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected 403 after withdrawal, got %d", w.Code)

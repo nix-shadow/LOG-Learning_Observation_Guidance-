@@ -119,6 +119,7 @@ describe('queue encryption (WP-0.1)', () => {
       const hash = await disclosureHash('notice text');
       expect(hash).toMatch(/^djb2-[0-9a-f]+$/);
     } finally {
+      // @ts-expect-error restoring the mocked property (read-only in typings)
       globalThis.crypto.subtle = subtle;
     }
   });

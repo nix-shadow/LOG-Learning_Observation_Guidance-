@@ -105,7 +105,7 @@ func countRosterRequest(t *testing.T, wantRoster int) int64 {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(countingDB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(countingDB))
-	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 	r.GET("/api/v1/moderator/roster", learnerHandler.GetModeratorRoster)
 
 	req, _ := http.NewRequest("GET", "/api/v1/moderator/roster?page=1&limit=100", nil)

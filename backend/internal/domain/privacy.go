@@ -9,6 +9,14 @@ const (
 	ConsentTypeGuardian = "guardian"
 	ConsentTypeTerms    = "terms"
 	ConsentTypePrivacy  = "privacy"
+	// ConsentTypeParentAccess (WP-2.1 RC-04): recorded when a guardian claims
+	// a parent link, evidencing that they consented to viewing the digest.
+	ConsentTypeParentAccess = "parent_access"
+	// ConsentTypeAnalytics (WP-4.3): the school's aggregate usage statistics
+	// (anonymous counts only, never individual learner data) are only
+	// computed over users who opted in. Recorded with granted_by "self" when
+	// a user toggles it in Settings.
+	ConsentTypeAnalytics = "analytics"
 )
 
 // ConsentRecord is the versioned, auditable evidence store for consent.

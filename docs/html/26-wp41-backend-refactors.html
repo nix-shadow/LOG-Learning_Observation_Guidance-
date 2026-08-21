@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>26 — WP-4.1 — Backend Refactors | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 26 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-4.1 — Backend Refactors</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-4.1 work package (tracker tasks wp41t01–wp41t03): the architecture review's C2/C3/C4 debt retired — one completion path, a real admin seam, and foreign keys that the database actually enforces.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">C2 parity seam</span>
+      <span class="badge badge-ok">C3 admin seam</span>
+      <span class="badge badge-ok">C4 real FKs</span>
+      <span class="badge badge-ok">Parity tests</span>
+      <span class="badge badge-ok">Cascade + idempotent</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp41t01 ✓</span>
+      <h2 class="text-2xl font-bold">Unify completion recording (C2)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>single server-side path records completions; client-side-only completion removed</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">applyCompletion</code> seam in <code class="code">backend/internal/repository/completion_engine.go</code> — the one transactional path that derives status, best score, supportive observation, and next-step guidance from real attempt stats.</li>
+            <li>• Both <code class="code">CompleteActivityTx</code> (online) and <code class="code">SyncBulk</code> (offline queue) delegate to it — identical outcomes on both paths, proven by <code class="code">TestCompletionParityOnlineVsSync</code>.</li>
+            <li>• Client-side-only completion engine deleted (<code class="code">frontend/src/lib/adaptiveEngine.ts</code>); the lesson page's review gate shows success only when the backend recorded the attempt or the offline queue accepted it (<code class="code">recorded = res.ok || queued</code>).</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/handler/wp41_test.go</code> — parity + foreign-shape rejection.</li>
+            <li>• <code class="code">frontend/src/app/learning/[id]/page.tsx</code> — the recorded gate.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp41t02 ✓</span>
+      <h2 class="text-2xl font-bold">Refactor admin handler seam (C3)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>admin-only logic extracted behind a service seam; unit tests cover role checks</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">AdminHandler</code> (HTTP only) → <code class="code">AdminService</code> (business rules) → <code class="code">AdminRepository</code> (transactions) — the review's C3 seam, applied to dashboard, users, role changes, and activity creation.</li>
+            <li>• Service owns validation: role must be one of the three constants (<code class="code">ErrInvalidRole</code>), last-admin demotion guard (<code class="code">ErrLastAdmin</code>), not-found (<code class="code">ErrUserNotFound</code>); handler maps sentinels to 400/404.</li>
+            <li>• <code class="code">CreateActivityInput</code> DTO blocks server-managed fields (id/created_at/order); display order assigned inside the same transaction as the insert + audit write.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/service/admin_service_test.go</code> — role checks against a fake repo (invalid roles never reach the repo; repo errors propagate).</li>
+            <li>• <code class="code">backend/internal/handler/admin_test.go</code> — last-admin guard end to end (demote-with-remaining passes, last-admin blocked, rejected changes never audited).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp41t03 ✓</span>
+      <h2 class="text-2xl font-bold">Real foreign keys (C4)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>schema migration adds real FKs with cascade rules; migration tested against a copy of log.db</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/database/migrate_fks.go</code>: idempotent table-rebuild migration adding <code class="code">ON DELETE CASCADE</code> constraints to 20 columns across 14 child tables — learner data cannot orphan when an account is erased.</li>
+            <li>• Existing FKs are preserved during rebuilds (the "only the first FK survived" bug caught and fixed); orphan rows are skipped with a warning — data is never destroyed by the migration.</li>
+            <li>• Deliberately no FK on <code class="code">parent_links.parent_id</code> (pending invites hold "" until claimed) or anonymized columns (audit_logs.user_id, announcements.author_id, assignments.created_by, classes.teacher_id).</li>
+            <li>• Erasure map extended: <code class="code">DeleteAccountTx</code> now covers parent links, support issues, and learner notes.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/database/migrate_fks_test.go</code> — cascade enforcement, idempotency, anonymized columns unconstrained, orphan skip; suite green against a copy of the real dev <code class="code">log.db</code>.</li>
+            <li>• The migration surfaced 11 ghost learner-activity rows (from earlier tests' ghost users with empty emails) — cleaned, and the unique <code class="code">users.email</code> index now fails loudly instead of silently.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 26 · WP-4.1 — Backend Refactors · generated 2026-08-20 · tracker wp41t01–wp41t03 ✓
+  </footer>
+</div>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="25-wp35-partnership-lanes.html">← 25 · WP-3.5 Partnership Lanes</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="27-wp42-scale-performance.html">27 · WP-4.2 Scale &amp; Performance →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-20 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

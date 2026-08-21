@@ -40,9 +40,9 @@ export default function Guidance() {
 
   const getIconForType = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'next_step': return <ArrowRight className="w-6 h-6 text-brand-neon drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" />;
-      case 'practice': return <RefreshCw className="w-6 h-6 text-brand-amber drop-shadow-[0_0_8px_rgba(255,183,3,0.8)]" />;
-      case 'insight': return <Lightbulb className="w-6 h-6 text-[#FF003C] drop-shadow-[0_0_8px_rgba(255,0,60,0.8)]" />;
+      case 'next_step': return <ArrowRight className="w-6 h-6 text-brand-neon" />;
+      case 'practice': return <RefreshCw className="w-6 h-6 text-brand-amber" />;
+      case 'insight': return <Lightbulb className="w-6 h-6 text-brand-teal" />;
       default: return <BookOpen className="w-6 h-6 text-white/50" />;
     }
   };
@@ -50,7 +50,7 @@ export default function Guidance() {
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto w-full">
       <div className="gsap-stagger mb-12 flex items-center">
-        <Compass className="w-10 h-10 text-brand-neon mr-4 animate-pulse-glow" />
+        <Compass className="w-10 h-10 text-brand-neon mr-4" />
         <div>
           <h1 className="text-4xl font-bold text-white tracking-tight mb-2">Guidance</h1>
           <p className="text-white/60 text-lg">Actionable recommendations based on your recent observations.</p>
@@ -59,7 +59,7 @@ export default function Guidance() {
 
       <div className="space-y-6">
         {data?.guidance.map((g: GuidanceType) => (
-          <div key={g.id} className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 relative overflow-hidden group hover:border-brand-neon/50 hover:shadow-glow transition-all duration-300 hover:-translate-y-1">
+          <div key={g.id} className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 relative overflow-hidden group hover:border-brand-neon/50 transition-all duration-300 hover:-translate-y-1">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-white/10 group-hover:bg-brand-neon transition-colors duration-500"></div>
             <div className="pl-8 py-4 pr-6 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
               <div className="flex items-start gap-5">
@@ -75,7 +75,7 @@ export default function Guidance() {
               </div>
 
               {g.action && (
-                <Link href={g.action} className="btn-primary whitespace-nowrap flex-shrink-0 mt-4 sm:mt-0 text-sm py-3 px-6 shadow-glow">
+                <Link href={g.action} className="btn-primary whitespace-nowrap flex-shrink-0 mt-4 sm:mt-0 text-sm py-3 px-6">
                   Take Action
                 </Link>
               )}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>27 — WP-4.2 — Scale &amp; Performance | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 27 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-4.2 — Scale &amp; Performance</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-4.2 work package (tracker tasks wp42t01–wp42t02): a single-writer SQLite pool, query plans backed by real EXPLAIN output, a rejected index with the evidence for rejecting it, and a CI-enforced bundle budget.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">1-writer pool</span>
+      <span class="badge badge-ok">EXPLAIN evidence</span>
+      <span class="badge badge-ok">Index rejected honestly</span>
+      <span class="badge badge-ok">Budget gate in CI</span>
+      <span class="badge badge-ok">15 routes ≤ 174 kB</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp42t01 ✓</span>
+      <h2 class="text-2xl font-bold">Pool sizing &amp; index set</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>GORM pool sized for single-writer SQLite; index choices benchmarked, not assumed</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">db.go</code>: <code class="code">SetMaxOpenConns(1)</code> / <code class="code">SetMaxIdleConns(1)</code> / <code class="code">SetConnMaxLifetime(0)</code> — one writer, no <code class="code">SQLITE_BUSY</code> churn, documented in <code class="code">docs/QUERY_PLANS.md</code>.</li>
+            <li>• <code class="code">idx_da_learner_date</code> composite (<code class="code">daily_activities learner_id, date</code>) kept — SEARCH evidence; <code class="code">idx_ann_created_at</code> added to <code class="code">announcements</code> — kills the <code class="code">USE TEMP B-TREE FOR ORDER BY</code> (the only temp-b-tree left on the hot list).</li>
+            <li>• A <code class="code">completed_at</code> index on <code class="code">learner_activities</code> was built, benchmarked to 200k rows (with/without ANALYZE), and <strong>rejected</strong>: the planner kept the PK scan and runtime was identical (18.806 ms vs 18.825 ms). The rejection is documented in <code class="code">domain.go</code> as a NOTE and in QUERY_PLANS.md — no index that doesn't move the plan.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">docs/QUERY_PLANS.md</code> — real <code class="code">EXPLAIN QUERY PLAN</code> for 10 hot queries, the studied-and-rejected indexes, and re-run instructions.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp42t02 ✓</span>
+      <h2 class="text-2xl font-bold">Budget checker</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>CI fails when any route exceeds the 500 kB budget</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">frontend/scripts/check-budget.mjs</code> — runs <code class="code">npm run build</code> (or takes a <code class="code">--file</code> log) and parses the real route table; exit 1 on offenders, 2 on invalid input / no route table. No route table parsing = no passing grade.</li>
+            <li>• Wired into CI in place of the bare Build step, and as <code class="code">make budget</code> locally.</li>
+            <li>• Current reality: all 15 routes ≤ 174 kB vs the 500 kB budget — honest headroom; the manual real-device TTI &lt; 5s step lives in <code class="code">docs/RELEASE.md</code> because CI cannot measure it.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">node scripts/check-budget.mjs</code> → PASS (max 174 kB, 15 routes).</li>
+            <li>• <code class="code">.github/workflows/ci.yml</code> step "Build + RESPECT budget check (WP-4.2)".</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 27 · WP-4.2 — Scale &amp; Performance · generated 2026-08-20 · tracker wp42t01–wp42t02 ✓
+  </footer>
+</div>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="26-wp41-backend-refactors.html">← 26 · WP-4.1 Backend Refactors</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="28-wp43-monitoring-honesty.html">28 · WP-4.3 Monitoring &amp; Honesty →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-20 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

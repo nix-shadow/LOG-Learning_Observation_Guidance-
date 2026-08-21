@@ -330,6 +330,32 @@
     </div>
   </section>
 
+  <!-- 10.7 ROUND 4 (WP-4.3) -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-extrabold tracking-tight mb-4">10.7 · Round 4 — opt-in analytics (2026-08-20, WP-4.3)</h2>
+    <p class="text-white/60 text-sm mb-4">School-level usage reporting is only allowed over learners who opted in. The consent evidence store grows a fourth type; the admin summary is structurally incapable of leaking an individual because it is aggregate-only <em>and</em> opt-in-filtered.</p>
+    <div class="grid md:grid-cols-2 gap-4 text-sm mb-6">
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Analytics consent type + withdrawal path</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• New <code>consent_type: "analytics"</code> in the same evidence store; the Settings page shows a real three-state toggle (not-loaded / on / off) — never an invented default</li>
+          <li>• Toggling off sends <code>status: "withdrawn"</code>; the backend flips the same (user, type) row and sets <code>WithdrawnAt</code> — evidence is never deleted, consistent with guardian consent</li>
+          <li>• <code>POST /me/consent</code> now accepts an optional <code>status</code> (<code>granted</code>/<code>withdrawn</code>); the audit trail records <code>privacy.consent_withdrawn</code> distinctly</li>
+          <li>• Tests: <code>TestAnalyticsSummaryOptInGate</code> (two learners, one opted in — only the opted-in learner&apos;s counts appear)</li>
+        </ul>
+      </div>
+      <div class="ok rounded-2xl p-5">
+        <p class="font-bold mb-2 text-green-300">Aggregate-only admin summary</p>
+        <ul class="text-white/60 space-y-1">
+          <li>• <code>GET /api/v1/admin/analytics/summary</code> returns <em>only</em>: opted-in count, total users, total completions, active daily, and average score — pure COUNT/SUM/AVG constrained to the opted-in set</li>
+          <li>• No learner-level rows are ever queried or returned; <code>avg_score</code> is <code>null</code> (not fabricated <code>0</code>) when no opted-in learner has completions</li>
+          <li>• The per-route HTTP counters (<code>GET /metrics</code>, admin <code>GET /metrics</code>) are keyed by route <em>pattern</em> (<code>/api/v1/users/:id/role</code>), so the aggregate never carries user ids</li>
+          <li>• Policy version stays <code>2026-08-v1</code>; the analytics toggle reuses the same policy constant</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <!-- 10. LEGAL ANNEX -->
   <section class="mb-12">
     <h2 class="text-2xl font-extrabold tracking-tight mb-4">10 · Legal annex (what Nepal law actually says)</h2>
@@ -345,7 +371,7 @@
 
   <!-- Footer -->
   <footer class="border-t border-white/10 pt-6 text-sm text-white/40">
-    <p>Companion docs: <code>docs/PRIVACY_RUNBOOK.md</code> · <code>AGENTS.md §3/§3b</code> · tracker <code>07-phased-implementation-plan.html</code> (WP-0.1 checked).</p>
+    <p>Companion docs: <code>docs/PRIVACY_RUNBOOK.md</code> · <code>AGENTS.md §3/§3b</code> · tracker <code>07-phased-implementation-plan.html</code> (WP-0.1 + WP-4.3 checked).</p>
   </footer>
 </div>
 <script>mermaid.initialize({ startOnLoad: true, theme: 'base',

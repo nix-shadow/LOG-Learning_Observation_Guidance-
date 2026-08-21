@@ -45,6 +45,142 @@ Only the roadmap items (SMS gateway, teacher workflow, Nepali i18n, reconnect di
 
 ---
 
+## ⚡ Phase 1 — Product Hardening (2026-08-20, in progress)
+
+Phase 1 ships RC-01/02/03/09 from `docs/html/07-phased-implementation-plan.html` (WP-1.1 → WP-1.5). Live verdicts below.
+
+| WP | What shipped | Verdict |
+|---|---|---|
+| WP-1.1 (RC-01) | Canonical per-learner status engine (`not-started`/`active`/`needs-practice`/`completed`); supportive vocabulary everywhere ("Review", "Practice again", "Continue", "Start") | ✅ DONE |
+| WP-1.2 (RC-02) | Needs-practice rule (accuracy < 70% flags; improving re-attempt clears; replays idempotent) in both write paths; explanation shown for correct AND incorrect answers; SEE 9–12 pilot content (3 activities, 18 modules: Quadratic Equations, Electricity, Tenses); `DailyActivity.Attempts`/`Accuracy` with weighted running mean in both write paths; accuracy area + practice totals on the observation chart | ✅ DONE |
+| WP-1.3 (i18n) | next-intl (client-side, no URL prefix — school-LAN SPA shell); EN/NP switcher in nav; Noto Sans Devanagari bundled; Bikram Sambat dates (AD⇄BS round-trip, Devanagari digits) in `src/lib/bikramSambat.ts` + 7 tests; NP copy for nav/status/quiz/chart/review/reminder | ✅ DONE |
+| WP-1.4 (RC-09) | SM-2 review scheduler (local-first IndexedDB v5 `review-schedule`, synced because every review is a real completion replay); dashboard review-queue card with honest empty state; opt-in permission-gated daily reminders (tab-open limitation disclosed); streaks stay backend-derived from real completions only | ✅ DONE |
+| WP-1.5 (RC-03) | Moderator onboarding + class wizard; invite-by-code; roster CSV import with one-time passwords; per-student progress (WP-1.1 engine) | ✅ DONE |
+
+**WP-1.4 details (Spaced repetition & streaks):**
+- `src/lib/spacedRepetition.ts` — pure SM-2: quality = round(accuracy × 5) from REAL `correct_count/total_count`; q < 3 resets repetition to a 1-day interval (ease factor survives — a lapse is scheduling noise, never a "hard item" verdict); ease clamped ≥ 1.3; due-date math UTC-date based. 9 unit tests.
+- `src/lib/reviewStore.ts` + `api.ts`/`crypto.ts` DB bumped to version 5 (`review-schedule` store, `keyPath: activityId`, created idempotently). Never encrypts; scheduler state is device-local (like settings), the completions behind it flow through the AES-GCM queue.
+- `ReviewQueueCard.tsx` — dashboard card listing genuinely due/overdue items; empty schedule renders an honest "Nothing is due right now." state (never invented items); 3-test honesty suite.
+- `ReminderToggle.tsx` (settings) — `Notification.requestPermission()` only on explicit click; daily time picker; fires once per day while the tab is open; UI explicitly discloses "no push server on the school LAN" (no VAPID — honest local approximation of web-push).
+- Streaks remain backend `Progress.CurrentStreak` — derived exclusively from genuinely new completions, date-aware in the learner's timezone (`completion_repo.go`); the scheduler never fabricates streak activity.
+
+**WP-1.3 details (Bilingual shell):**
+- Locale via `src/i18n/LocaleProvider.tsx`: localStorage `log-locale`, fallback `navigator.language` (`ne` → `np`); NO URL-prefix routing (per-device language, not per-URL — right call for offline school LANs).
+- `@sbmdkl/nepali-date-converter` (BS 1978–2099; anchor 1921-04-13 = BS 1978-01-01; round-trip 2026-08-20 ⇄ 2083-05-04 — note this dataset's Baisakh 1 = Apr 13, so Aug 20, 2026 = **Bhadra 4, 2083**). TS shim at `src/types/nepali-date-converter.d.ts` (package exports omit the "types" condition).
+- Jest: next-intl's untranspiled ESM is mocked against the real `en.json` (`jest.setup.ts`) so component tests keep asserting actual user-facing English copy.
+
+**WP-1.5 details (Moderator day-one experience):**
+- Backend: `Class.InviteCode` (uniqueness enforced in service via re-roll loop — no DB unique index, keeps legacy empty rows migration-safe); `POST /moderator/classes`, `POST /classes/join` (consent-gated learner mutation), `POST /moderator/classes/:id/roster/import` (multipart CSV: `name,email[,phone,password]`; per-row 1-based honest errors; generated temp passwords returned exactly once in `report.passwords`, never logged), `GET /moderator/classes` now exposes `invite_code`; `GET /moderator/students/:id` reuses `GetDashboardData` (WP-1.1 status engine, hard-404 scope gate via `StudentInTeacherClasses`). Seed class `cls-1` code `LOG101`. 5 new tests (`wp15_test.go`) + 84→90 jest.
+- Frontend: `ClassWizard.tsx` (3 steps: create → show/copy invite code + CSV import with report incl. one-time password table and row errors → done; honest failure toasts); onboarding banner on the moderator portal when `classes.length === 0` (3-step guide); roster rows clickable → `StudentProgressModal` (canonical status chips, translated supportive labels — "Review"/"Practice again"/"In progress"/"Not started" in EN+NP); `JoinClassCard` on the student dashboard (uppercases + trims code, honest "No class found" toast on 404). New i18n namespaces: `onboard`, `wizard`, `studentProgress`, `joinClass` (EN+NP).
+
+---
+
+## ⚡ Phase 2 — Teacher & Parent (2026-08-20)
+
+Phase 2 ships RC-04/06/08 from `docs/html/07-phased-implementation-plan.html` (WP-2.1 → WP-2.4): the parent portal, the who-to-call support funnel, an honest gradebook, and a reconnect digest that makes offline sync visible. Backend green (`go build`, `go test ./...`, golangci-lint 0 issues), frontend green (`tsc --noEmit`, `next lint`, 101 jest tests, `next build`).
+
+| WP | What shipped | Verdict |
+|---|---|---|
+| WP-2.1 (RC-04) | Parent portal: teacher-issued one-time invite codes (`ParentLink` + atomic `ClaimParentLinkTx`), `POST /api/v1/auth/parent-signup` (disclosure_hash validated), read-only digest (`/api/v1/parents/children`, `/children/:id/digest` — id+name+opt-in only, no OTPs/contacts/observations), opt-in toggle (`POST /children/:id/opt-in`, default off); `/parent` page + middleware PARENT gate + login tab "Parent · अभिभावक" | ✅ DONE |
+| WP-2.2 (RC-06) | Support funnel: `/support` wizard (category → bilingual guidance → helped? → escalate → done) + `POST /api/v1/support/issue` (rate-limited); moderator/admin inbox (`GET /support/inbox`, `PUT /support/issue/:id` resolve with note), `SupportInbox` on /moderator + /admin; `GET /support/my-issues` for the reporter; actions audit-logged | ✅ DONE |
+| WP-2.3 (RC-08) | Honest gradebook: `GET /moderator/gradebook[.csv]` — real accuracy/attempts per learner×activity, attempts=0 → "Not yet assessed", CSV sanitized + BOM; `GradebookOverview` on /moderator; per-learner teacher notes (`GET/PUT /moderator/students/:id/note`, `LearnerNote` table) with supportive-language guidance | ✅ DONE |
+| WP-2.4 (offline) | Reconnect digest: `syncQueue` writes `{synced, failed, at}` to `log_reconnect_digest` + dispatches `log:digest-ready` (both window-online and manual flush paths; written only when synced>0 \|\| failed>0); `ReconnectDigest` card on the dashboard (dismiss clears); SyncIsland (WP-0.3) remains the persistent offline/syncing indicator with live queue count | ✅ DONE |
+
+**WP-2.1 details (Parent portal):**
+- Backend: `ParentLink` model (`domain.go`); `CreateParentLink` (teacher, 6-char code, `expires_at` 7 days) + `ClaimParentLinkTx` (single tx: PARENT user + pending→linked transition + `parent_access` consent with `disclosure_hash`); routes `/moderator/students/:id/parent-invite`, `/auth/parent-signup`, `/parents/*` (scoped to the caller's linked children only); `disclosure_hash` accepts 64-hex sha256 OR `djb2-<hex>` (non-secure-context school LANs — weaker by design, like the queue's `enc:null`); `ConsentRecord.IP` never persisted.
+- Frontend: login page third tab with bilingual `PARENT_NOTICE_EN/NP` constants (the checkbox renders exactly the text the hash commits to — drift = invalid evidence); `/parent` page (children list, per-child digest expand, opt-in toggle); `AuthContext.login` lands PARENT → `/parent`; `middleware.ts` gates `/parent` to the PARENT role; nav item (HeartHandshake) for parents only.
+
+**WP-2.2 details (Support funnel):**
+- Backend: `SupportIssue` (`category` ∈ device/connectivity/account/content/other, `escalated`, `status`, `resolution_note`, timestamps); `POST /support/issue` rate-limited (10/IP); `GET /support/inbox` returns open escalated issues only; `PUT /support/issue/:id` resolves with required note; `GET /support/my-issues` scoped to the reporter; `support.*` events audit-logged.
+- Frontend: `/support` wizard walks category → bilingual guidance (real, local copy — never invented help) → "did this help?" → describe + escalate → done; `SupportInbox` on /moderator + /admin with inline resolve + note; `GET /support/my-issues` list; nav item (LifeBuoy) for all roles.
+
+**WP-2.3 details (Honest gradebook):**
+- Backend: `GET /moderator/gradebook?class_id=` returns per-student rows over the class's activities with REAL `accuracy`/`attempts` from the completion engine; `GET /moderator/gradebook.csv?class_id=` (UTF-8 BOM, `sanitizeCSVCell`); `LearnerNote` table + GET/PUT note routes (teacher-scoped).
+- Frontend: `GradebookOverview` — student × activity matrix, "Not yet assessed" when `attempts === 0` (never an invented 0% or dash), CSV export via direct authenticated fetch + blob download, inline per-student note editor; cache-invalidation rule: `/note` mutations clear the whole API cache; tests: `GradebookOverview.test.tsx` (3), `wp23_test.go` (gradebook honesty + CSV).
+
+**WP-2.4 details (Reconnect digest):**
+- `src/lib/api.ts`: digest written inside `syncQueue` (single choke point covering the `online` listener AND `flushSyncQueue`), key `log_reconnect_digest`, event `log:digest-ready`; helpers `getReconnectDigest()`/`clearReconnectDigest()`.
+- `ReconnectDigest.tsx` (dashboard sidebar, above ReviewQueueCard): listens for the event, renders "Back online — changes synced: N · failed: M" with the `at` timestamp, dismiss clears; renders nothing on honest zero (no event → no card). Tests: 5 (event fire, pre-mount read, dismiss, zero state, helper round-trip).
+- Sync status indicator remains `SyncIsland` (WP-0.3): persistent offline/syncing pill, live queue count, manual "Sync now" — the digest explains what that sync actually did.
+
+**New tests:** backend `wp21_test.go` (parent invite/claim, sanitized digest, opt-in), `wp22_test.go` (issue create, escalation, inbox scoping, resolve), `wp23_test.go` (gradebook honesty, CSV, notes) — all in `internal/handler/`; frontend `ReconnectDigest.test.tsx` (5), `SupportInbox.test.tsx` (3), `GradebookOverview.test.tsx` (3) — 101 total. Frontend CI chain (`tsc --noEmit` + `next build` + jest) green; a pre-existing TS2540 in `crypto.test.ts` was fixed with `@ts-expect-error`.
+
+---
+
+## ⚡ Phase 3 — Content & Ecosystem (2026-08-20)
+
+Phase 3 ships RC-07/10/11/12 from `docs/html/07-phased-implementation-plan.html` (WP-3.1 → WP-3.5): OER metadata + import pipeline, full SEE 9–12 content, the QR poster pilot, NSL captions + accessibility packs, and formal partnership lanes. Backend green (`go build`, `go vet`, `go test ./...`, golangci-lint 0 issues), frontend green (`tsc --noEmit`, `next lint`, 113 jest tests, `next build` incl. the new `/qr/[activityId]` route).
+
+| WP | What shipped | Verdict |
+|---|---|---|
+| WP-3.1 (RC-07) | OER metadata: `Activity` carries `license`/`license_url`/`attribution`/`source_url` with a strict `OERAllowedLicenses` allowlist; catalog cards + lesson pages render license + attribution honestly (nothing shown when absent). Import pipeline: `POST /api/v1/admin/oer/import` — per-row license checks, attribution required for third-party rows, existing IDs skipped (progress never orphaned), audit-logged; seeded OER packs act-11/act-12 (original LOG content under CC BY-SA 4.0) | ✅ DONE |
+| WP-3.2 (content) | SEE 9–12 units act-6..act-10: Statistics, Chemical Reactions, Social Studies (federalism), Computer Science (number systems), Nepali व्याकरण (bilingual NP) — 24 new modules, each a practice-first quiz bank with a supportive explanation; per-activity seed gating so existing databases never duplicate | ✅ DONE |
+| WP-3.3 (RC-10) | QR poster program: admin `PilotPosters` panel renders a printable QR per activity (qrcode lib, offline); `/qr/<activityId>` landing records the scan, warms the offline cache (fetchWithCache), and marks started on click-through. Pilot measurement: `PilotScan` table (no IP/device data by design), `POST /api/v1/pilot/scans` + `/scans/:id/start` (public, rate-limited), `GET /api/v1/admin/pilot/stats` — scans/starts/start-rate derived from real rows, honest zeros | ✅ DONE |
+| WP-3.4 (RC-12) | NSL captions: `Activity.caption_text` + caption block on the lesson page (badge only when a real caption exists; act-4 seeded with an NSL caption; consent sourcing documented in PARTNERSHIP_LANES.md). Accessibility packs: Settings card with A/A/A font scale + high-contrast switch — `lib/a11y.ts` + `A11yProvider` apply `data-font-scale`/`data-contrast` on `<html>`, persisted in localStorage, works fully offline | ✅ DONE |
+| WP-3.5 (RC-11) | `docs/PARTNERSHIP_LANES.md`: school/MoE MoU template (10 clauses: consent-first, retention/erasure, no re-sharing, incident response, Nepal Privacy Act 2075 alignment), attribution & remix rules (allowlist, SA/NC), shared-library model, contributor credits — the rules are enforced in code by the OER pipeline + UI credit lines | ✅ DONE |
+
+**WP-3.1 details (OER metadata & import):**
+- `domain.go`: `OERAllowedLicenses` (CC BY 4.0 / BY-SA / BY-NC / BY-NC-SA / CC0 / "Own work (LOG team)") + `OERLicenseURLs` + `IsAllowedOERLicense`; `OERPack`/`OERImportReport` (honest imported/skipped/rejected counts).
+- `oer_service_impl.go`: rejects missing-id, unknown/empty license, and un-attributed third-party rows — each with a per-row reason; normalizes the canonical license URL; `activityRepo.CreateMany` inserts in one tx skipping existing IDs.
+- `oer_handler.go` → `POST /admin/oer/import` (rate-limited 5/IP, audit `oer.import` with counts); tests `wp31_test.go` (valid pack, re-import skip, unknown license + missing attribution rejection, nameless pack 400).
+- Seed backfills honest metadata on act-1..act-5 ("Own work (LOG team)") and imports two CC BY-SA 4.0 packs (act-11/act-12) with real attribution lines.
+- Frontend: license badge + attribution + NSL badge on catalog cards; "Licensed under …" credit line + caption block on lesson pages; types updated (`Activity.license*`, `caption_text`).
+
+**WP-3.3 details (QR pilot):**
+- `PilotScan {poster_id, source, started, created_at}` — deliberately NO IP/device/user columns (privacy by design, AGENTS.md §3b).
+- Public routes rate-limited 30/IP (`RateLimitPilotScan`); unknown poster → 404 (never a fabricated scan); stats route admin-only; `TestPilotStatsHonestZeros` pins the no-data state to real zeros.
+- `/qr/<activityId>` landing: records scan (fire-and-forget; offline → honest "not counted" copy), warms `/activities/:id/modules` + `/learning-journey` into the api-cache (offline demo kit), marks `started` on click-through, then navigates.
+- Admin `PilotPosters` panel: QR per activity (pointing at `window.location.origin`, so school-LAN deployments print correct URLs), honest stats grid (total/24h/starts/start-rate/posters seen) + refresh; tests `PilotPosters.test.tsx` (4) + `QRLanding.test.tsx` (3).
+
+**WP-3.4 details (NSL & accessibility):**
+- Caption track: `caption_text` on the Activity model; lesson page shows the caption block only when the field is non-empty — honest, nothing invented; act-4's caption is written bilingual (NSL description + EN gloss).
+- `lib/a11y.ts`: `FontScale` (normal 1 / large 1.18 / xlarge 1.35), `loadA11yPrefs` rejects unknown stored values (falls back to defaults), `applyA11yPrefs` sets `data-font-scale`/`data-contrast` on `<html>`; `A11yProvider` in the root layout applies at mount (no flash); `globals.css` overrides lift muted text/border opacity under high contrast; Settings card exposes both controls; tests `a11y.test.ts` (5).
+
+**New tests:** backend `wp31_test.go` (3), `wp33_test.go` (4) — all in `internal/handler/`; frontend `a11y.test.ts` (5), `PilotPosters.test.tsx` (4), `QRLanding.test.tsx` (3) — 113 total (was 101). Tracker: 63/72 (Phase 3 10/10).
+
+---
+
+## ⚡ Phase 4 — Scale & Trust at Depth (2026-08-20)
+
+Phase 4 retires the architecture-review debt (C2/C3/C4), proves the performance budgets, and adds honest monitoring — tracker 72/72. Backend green (`go build`, `go vet`, `go test ./...` all packages), frontend green (`tsc --noEmit`, `next lint` 0 warnings, 113 jest tests, `node scripts/check-budget.mjs` build + budget gate).
+
+| WP | What shipped | Verdict |
+|---|---|---|
+| WP-4.1 (C2) | Completion parity: `applyCompletion` seam (`backend/internal/repository/completion_engine.go`) shared by online complete + bulk sync — same status/score/guidance on both paths; client-side-only engine deleted (`frontend/src/lib/adaptiveEngine.ts`); lesson page shows success only when the backend recorded the attempt or the offline queue accepted it (`recorded` gate in `learning/[id]/page.tsx`) | ✅ DONE |
+| WP-4.1 (C3) | Admin seam: `AdminHandler` → `AdminService` (role validation, sentinel errors `ErrInvalidRole`/`ErrLastAdmin`/`ErrUserNotFound`) → `AdminRepository` (transactions own order assignment + audit writes); handler maps sentinels to 400/404; unit tests pin role checks without a DB | ✅ DONE |
+| WP-4.1 (C4) | Real FKs: `backend/database/migrate_fks.go` — idempotent rebuild migration, 20 FK columns across 14 child tables, `ON DELETE CASCADE`, existing FKs preserved, orphan rows skipped (data preserved); ran against dev `log.db` (11 ghost learner-activity rows cleaned first); erasure map extended to parent links / support issues / learner notes | ✅ DONE |
+| WP-4.2 (pool) | `db.go`: `SetMaxOpenConns(1)`/`SetMaxIdleConns(1)`/`SetConnMaxLifetime(0)` — single-writer SQLite, zero `SQLITE_BUSY` churn | ✅ DONE |
+| WP-4.2 (indexes) | `daily_activities (learner_id, date)` composite + `announcements (created_at)`; a `completed_at` index was benchmarked and rejected (no plan/runtime change to 200k rows — honest rejection documented); real `EXPLAIN QUERY PLAN` for 10 hot queries in `docs/QUERY_PLANS.md` | ✅ DONE |
+| WP-4.2 (budget) | `frontend/scripts/check-budget.mjs` parses real `next build` output (all 15 routes ≤ 174 kB vs 500 kB budget); wired into CI + `make budget`; manual real-device TTI < 5s step in `docs/RELEASE.md` (CI cannot measure it) | ✅ DONE |
+| WP-4.3 (metrics) | `backend/internal/metrics`: per-route-pattern counters (`c.FullPath()`, PII-free by construction), public `GET /metrics` (text/plain) + admin `GET /metrics` (JSON), 5xx spike alarm ≥5/60s with last-alert state; `wp43_test.go` proves pattern recording, spike fire/re-arm, PII-free render | ✅ DONE |
+| WP-4.3 (analytics) | `analytics` consent type + real withdrawal (`status: granted|withdrawn` on `POST /me/consent`, `privacy.consent_withdrawn` audit); Settings three-state toggle; `GET /api/v1/admin/analytics/summary` aggregate-only over opted-in learners (`avg_score` null when none — never a fabricated 0); `TestAnalyticsSummaryOptInGate`; privacy pack §10.7 | ✅ DONE |
+| WP-4.4 (release) | `VERSION` (0.5.0) + `CHANGELOG.md` rewritten: phase sections 0.1.0 → 0.5.0 tied to WP ids; `docs/RELEASE.md` procedure incl. the mandatory manual TTI check and rollback notes | ✅ DONE |
+| WP-4.4 (docs) | `docs/README.md` docs hub (architecture, operations, constraints); `CONTRIBUTING.md` for humans and agents | ✅ DONE |
+
+**Evidence for the C4 migration run:** `migrate_fks_test.go` (cascade enforcement, idempotency, anonymized columns stay unconstrained, orphan skip), database suite green on a copy of the real `log.db`. The dev DB itself was migrated at startup (FKs verified via `PRAGMA foreign_key_list`), after removing 11 orphan learner-activity rows that earlier tests left behind (ghost users with empty emails — the unique `users.email` index is now exposed, so future leaks fail loudly).
+
+**Backlog (carried forward):** `Course.Enrolled` seed field · recharts dynamic import · per-route budget tuning beyond 500 kB if a real device misses TTI.
+
+## ⚡ Phase 4.5 — Live-Stack Verification & Dark Mode (2026-08-20)
+
+The Phase 4 line items were proven against the **running Docker stack** (backend `:6101`, frontend `:6100`) instead of unit tests alone — `scripts/live_stack_test.py` (L1–L13 API + W1 frontend routes + W2 real-browser Playwright run, `executable_path=/usr/bin/chromium`, venv `/tmp/logvenv`). 79/79 checks pass. The live tests found and fixed two real bugs:
+
+| WP | What shipped | Verdict |
+|---|---|---|
+| WP-4.5 (rate limiter) | `rateLimiter.allow()` used the global `rateLimitMax`/`rateLimitWindow` constants instead of `rl.limit`/`rl.window` — every per-route budget silently collapsed to 4 requests/min (`RateLimitLogin=10`, `RateLimitRequestOTP=5`, etc. were dead config). Fixed in `backend/internal/handler/middleware.go`; regression tests `TestRateLimiterHonorsPerRouteBudget` + `TestRateLimiterWindowResets`; live check proves the 10/min login budget resets across windows | ✅ DONE |
+| WP-4.5 (register) | `POST /api/v1/auth/register` answered 404 — the email/password register route was dropped in the backend rewrite while the frontend Register tab kept calling it. Restored through the service seam: `AuthService.Register` (validate → `ErrEmailTaken` 409 → bcrypt → STUDENT account, no invented phone) + `AuthHandler.Register` (audit `auth.register` with empty user id on public routes — `audit()` helper hardened against the nil assertion) + rate-limited route in `main.go`. Tests: 201+token / 409 / 400; live suite registers a fresh account and proves the consent gate on it (403 `consent_required` → grant → enroll/complete) | ✅ DONE |
+| WP-4.5 (dark mode) | App re-skinned to the LOG palette in **both** themes (AGENTS.md §2a is the source of truth): dark = brand navy `#0B1220` canvas (no more OLED black), `#60A5FA`/`#3B82F6` blue, `#2DD4BF` teal, `#FBBF24` amber; light = official palette (`#F8FAFC` bg, `#0F172A` navy text, `#2563EB`/`#0D9488`/`#F59E0B`). Done via token remap + literal-utility override layer in `globals.css` (`html:not(.dark)`) plus `--glow-rgb`/`--teal-rgb`/`--amber-rgb` vars — the legacy cyan/magenta glow (`0,240,255`, `#00B4D8`, `#FF0070`, `#7000FF`, `#FFB703`) was removed from every component and chart (score `#2563EB`, accuracy `#0D9488`, engagement `#F59E0B`; goal ring = fixed navy badge `#0B1220` + `#60A5FA`). `ThemeToggle` (was login-only) added to `Navigation`; Settings gained an Appearance card (`role="switch"`, `aria-label="Toggle dark mode"`). W2 browser checks: default dark → toggle light (class + localStorage `theme=light`, offline-ready) → toggle back; Settings switch reflects and persists across navigation; computed-style probes verify LOG hexes per mode (btn `#2563EB`/white label on light, `#3B82F6`/white on dark, navy text on light) | ✅ DONE |
+
+| WP-4.5 (nav + de-glow) | Navigation rebuilt after user feedback ("items clustered, blue hover glow"): desktop is a `1fr auto 1fr` grid — logo \| truly-centered pill group (labels `2xl`+, tooltips below) \| utilities (lang/theme/logout); phone gets an evenly-distributed 6-target bottom bar (`flex-1` items, no scroll clustering) plus a settings gear in the top row. Every glow-on-hover was stripped app-wide (~35 sites): `hover:shadow-glow`, icon `drop-shadow-[0_0_*]`, ambient card blooms; `glow`/`glow-strong` shadows redefined as subtle elevation halos and `.card-glow:hover` capped at 0.55 opacity — feedback is now border/background tints and lifts. Off-brand `#FF003C` insight icon → brand teal. Verified: computed probes show nav/link `boxShadow: none`, pill group center offset **0.0px** in both modes, mobile bar = 6 equal-width targets; live suite 79/79 | ✅ DONE |
+
+| WP-4.6 (nav v2) | Second nav rebuild after user feedback, this time research-driven (8 parallel agents: Canvas/Moodle/Coursera/Udemy/Open edX anatomy, MD3/HIG mobile bars, WCAG 2.2 targets+contrast, APG disclosure pattern, Next.js App Router menu patterns). Desktop = `1fr auto 1fr` grid: logo far-left \| exactly 5 learner links dead-centered (probes: 0.0px offset) \| lang + theme + avatar; **logout removed from the bar** and pinned LAST in the new `AccountMenu` disclosure (identity header w/ initials avatar + role chip → Settings/Support → role-gated Parent/Moderator/Admin → Log out), with `aria-expanded`, Escape-closes-and-refocuses, pointerdown-outside close, route-change close, 44px targets. Mobile = logo + avatar top row (utilities inside the menu) and a 5-tab bottom bar (`flex-1 min-w-0`, equal 76px widths, ≥48px targets). Fixed a latent bug: `backdrop-filter` on `<nav>` was the containing block for the `position:fixed` bottom bar, pinning it under the header — bar now renders outside `<nav>`. Verified by an 18-check Playwright probe (`/tmp/opencode/nav_probe2.py`): all pass; live suite 79/79 | ✅ DONE |
+
+**Verification:** backend `go build`/`go vet`/`go test ./...` green + `golangci-lint` 0 issues; frontend `tsc --noEmit` clean, `next lint` 0 warnings, 113 jest tests, budget gate PASS. Live suite: 79/79 (`RESULT: 79/79 checks passed, 0 failed`). Nothing committed — working tree carries the WP-4.5 delta for review.
+
+**Backlog (carried forward):** same list as Phase 4 + per-route limiter budgets validated against real device traffic.
+
+---
+
 ## ⚡ Phase 2 Revalidation (2026-08-19)
 
 Second hardening pass — auth/rate-limit seam, OTP lifecycle, JWT claims, export sanitization, read-scoping, and the offline-sync UX. Full evidence + before/after diagrams in `docs/architecture-review-2-20260818.html`. Statuses below are live verdicts.
@@ -118,6 +254,7 @@ Two audit premises were disproven against the code and are therefore NOT in this
 - **Evidence:** `Activity` has a global `Status` column and no learner field (`backend/models/models.go:36-48`). `CompleteActivity` (and `SyncBulk`) unconditionally set `activity.Status = "Completed"` (`backend/api/handlers.go:115`, `:365`). Every reader surfaces the same global value: `GetLearningJourney` (`:58-62`), `GetDashboard` (`:34`), `GetMicroModules` (`:74-86`), moderator `assignments_due` (`:277`).
 - **Impact:** Learner A completing act-1 changes what learners B and C see on their journeys/dashboards; completion states and roster percentages become meaningless. Violates the "metrics derived from actual learner data" principle.
 - **Fix:** Introduce a per-learner join table, e.g. `LearnerActivity {LearnerID, ActivityID (PK), Status, CompletedAt, Score}` with `Activity` holding only catalog data; derive journey/dashboard/roster from the join. Unique constraint on `(LearnerID, ActivityID)` for idempotency.
+- **✅ FIXED + WP-1.1 (RC-01) status model:** the join table landed earlier; Phase 1 adds the canonical per-learner vocabulary and needs-practice determination. Statuses: `not-started` / `active` / `needs-practice` / `completed` (`domain.Status*` constants, `backend/internal/domain/domain.go`), with `ResolveActivityStatus` normalizing legacy rows for reads. **Needs-practice determination rule** (documented in `completion_repo.go`): a completion with quiz data below `NeedsPracticeAccuracyThreshold` (70% accuracy) is flagged `needs-practice` — supportive framing, never "failed"; an improving re-attempt crossing the threshold clears the flag; equal/lower replays are idempotent (never double-bump progress); quiz-less completions stay `completed` (no accuracy signal to judge). Applied identically in the online completion path (`completion_repo.go`) and the offline bulk-sync path (`sync_repo.go`). Status-transition tests: `backend/internal/handler/status_transition_test.go` (start → completed, needs-practice flagging, flag clearing, below-threshold persistence, idempotent replays, API canonical-status exposure, legacy-row resolution).
 
 ### 1.4 Logout redirect trap — users can never reach /login again
 - **Evidence:** `AuthContext.logout` calls `serverLogout()` which clears localStorage + IndexedDB but **never clears the `log_token` cookie** (`frontend/src/lib/api.ts:52-74`). `setTokenCookie(null)` exists (`frontend/src/context/AuthContext.tsx:59-68`) but is only ever called with a token. `frontend/src/middleware.ts:44-47` redirects `/login` → `/dashboard` whenever the cookie is present.
@@ -202,7 +339,7 @@ Two audit premises were disproven against the code and are therefore NOT in this
 - **Accessibility:** white-on-brand teal `#00B4D8` ≈ 2.5:1 and white-on-amber `#FFB703` ≈ 1.9:1 (WCAG AA fail; `frontend/src/app/globals.css:12-14`, `learning/[id]/page.tsx:260-262`, `moderator/page.tsx:89`); no `prefers-reduced-motion` handling for framer-motion/skeleton/confetti; unlabeled InstallPrompt close button (`InstallPrompt.tsx:80-85`); unlabeled import file input (`dashboard/page.tsx:191-206`); no bottom-padding compensation for the fixed bottom nav (`layout.tsx:30`).
 - **Bundle size:** recharts statically imported in the observation route chunk (~100-200KB, `observation/page.tsx:7`). → `next/dynamic`.
 - **Manifest mismatch:** declared 192/512 maskable while the actual file is 1254×1254 and not maskable-safe; `start_url: "/dashboard"` means offline cold start for a logged-out user fails until one online visit (`frontend/public/manifest.json:6-21`).
-- **Redundant listeners/polling:** 3 separate online/offline listeners + a 5s IndexedDB poll mounted globally (`api.ts:18-27`, `OfflineBanner.tsx`, `Navigation.tsx:20-28`, `useSyncQueue.ts:19`) — battery/CPU cost on low-end Android.
+- **Redundant listeners/polling:** 3 separate online/offline listeners + a 5s IndexedDB poll mounted globally (`api.ts:18-27`, `OfflineBanner.tsx`, `Navigation.tsx:20-28`, `useSyncQueue.ts:19`) — battery/CPU cost on low-end Android. ✅ FIXED (WP-0.4) — `OfflineBanner.tsx` deleted (unmounted dead code), Navigation consolidated to SyncIsland, `useSyncQueue` is now event-driven (`log:queue-changed` after enqueue/flush in `api.ts`, `online`, `visibilitychange`) — zero constant polling.
 - **Queue dedup ignores body:** `queueRequest` collapses distinct payloads to the same endpoint+method (`api.ts:177-184`).
 - **Route params:** `params?.id as string` can be `string[]`; hardcoded `'act-2'` fallback masks bad URLs (`learning/[id]/page.tsx:47`).
 - **CORS/trusted proxies:** no `Vary: Origin`, no explicit `TrustedProxies` config (`backend/main.go:56-62`).

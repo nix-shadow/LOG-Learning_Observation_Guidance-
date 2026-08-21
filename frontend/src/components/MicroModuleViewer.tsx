@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export interface MicroModuleData {
   id: string;
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function MicroModuleViewer({ modules, onComplete }: Props) {
+  const t = useTranslations('quiz');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -101,13 +103,13 @@ export default function MicroModuleViewer({ modules, onComplete }: Props) {
         ? "border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
         : "border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]";
     } else {
-      cls += "border-white/10 bg-white/5 hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow text-white hover:text-brand-neon";
+      cls += "border-white/10 bg-white/5 hover:border-brand-neon hover:bg-brand-neon/10 text-white hover:text-brand-neon";
     }
     return cls;
   };
 
   return (
-    <div className="card-glow bg-black/40 backdrop-blur-3xl border border-white/10 max-w-2xl mx-auto overflow-hidden rounded-[2rem] p-8 shadow-glow relative">
+    <div className="card-glow bg-black/40 backdrop-blur-3xl border border-white/10 max-w-2xl mx-auto overflow-hidden rounded-[2rem] p-8 relative">
       <div className="absolute inset-0 bg-brand-neon/5 pointer-events-none" />
       <div className="mb-6 flex items-center justify-between relative z-10">
         <span className="text-xs font-bold text-white/50 uppercase tracking-widest">
@@ -117,7 +119,7 @@ export default function MicroModuleViewer({ modules, onComplete }: Props) {
           {modules.map((_, idx) => (
             <div
               key={idx}
-              className={`h-1.5 rounded-full ${idx <= currentIndex ? 'bg-brand-neon w-6 shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'bg-white/10 w-3'} transition-all duration-300`}
+              className={`h-1.5 rounded-full ${idx <= currentIndex ? 'bg-brand-neon w-6 shadow-[0_0_8px_rgb(var(--glow-rgb)/0.8)]' : 'bg-white/10 w-3'} transition-all duration-300`}
             />
           ))}
         </div>
@@ -157,7 +159,7 @@ export default function MicroModuleViewer({ modules, onComplete }: Props) {
             {hasQuiz && (
               <div className="mt-8 space-y-4">
                 <span className="inline-block px-4 py-1.5 bg-brand-amber/20 text-brand-amber border border-brand-amber/30 text-[10px] font-bold uppercase rounded-full tracking-widest">
-                  Knowledge Check
+                  {t('knowledgeCheck')}
                 </span>
                 <h3 className="text-xl font-bold text-white">{currentModule.question}</h3>
 
@@ -183,10 +185,17 @@ export default function MicroModuleViewer({ modules, onComplete }: Props) {
                     }`}
                   >
                     <p className={isCorrect ? 'text-brand-blue font-medium' : 'text-brand-amber font-medium'}>
-                      {isCorrect ? 'Correct!' : 'Not quite — give it another try!'}
+                      {isCorrect ? t('correct') : t('notQuite')}
                     </p>
-                    {isCorrect && currentModule.explanation && (
-                      <p className="text-white/70 text-sm mt-2">{currentModule.explanation}</p>
+                    {/* WP-1.2 RC-02: explain EVERY answer in supportive
+                        language — a wrong answer is a teaching moment, not
+                        a dead end. */}
+                    {currentModule.explanation && (
+                      <p className="text-white/70 text-sm mt-2">
+                        {isCorrect
+                          ? currentModule.explanation
+                          : `${t('heresWhy')} ${currentModule.explanation}`}
+                      </p>
                     )}
                   </motion.div>
                 )}
@@ -208,14 +217,14 @@ export default function MicroModuleViewer({ modules, onComplete }: Props) {
         <button
           onClick={handleNext}
           disabled={hasQuiz && !answerLocked}
-          className={`btn-primary flex items-center gap-2 px-6 py-3 font-bold tracking-wide shadow-glow ${
+          className={`btn-primary flex items-center gap-2 px-6 py-3 font-bold tracking-wide ${
             hasQuiz && !answerLocked ? 'opacity-40 cursor-not-allowed' : ''
           }`}
         >
           {isLast ? (
-            <>Complete <CheckCircle2 className="w-5 h-5 ml-1" /></>
+            <>{t('complete')} <CheckCircle2 className="w-5 h-5 ml-1" /></>
           ) : (
-            <>Next <ChevronRight className="w-5 h-5 ml-1" /></>
+            <>{t('next')} <ChevronRight className="w-5 h-5 ml-1" /></>
           )}
         </button>
       </div>

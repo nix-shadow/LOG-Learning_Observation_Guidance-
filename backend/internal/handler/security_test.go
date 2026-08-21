@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"log-backend/database"
 	"log-backend/internal/domain"
@@ -109,7 +110,7 @@ func TestAuthMiddlewareRejectsDeletedUser(t *testing.T) {
 func TestSyncBulkIdempotent(t *testing.T) {
 	learnerID := service.GenerateSecureID("user")
 	phone := "99000011"
-	database.DB.Create(&domain.User{ID: learnerID, Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
+	database.DB.Create(&domain.User{ID: learnerID, Name: "Sync Idempotence Tester", Email: learnerID + "@sync.test", Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
 	t.Cleanup(func() {
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Observation{})
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Guidance{})
@@ -174,7 +175,7 @@ func TestSyncBulkIdempotent(t *testing.T) {
 func TestSyncBulkImprovingReplayKeepsBestScore(t *testing.T) {
 	learnerID := service.GenerateSecureID("user")
 	phone := "99000022"
-	database.DB.Create(&domain.User{ID: learnerID, Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
+	database.DB.Create(&domain.User{ID: learnerID, Name: "Sync Best-Score Tester", Email: learnerID + "@sync.test", Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
 	t.Cleanup(func() {
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Observation{})
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Guidance{})
@@ -273,7 +274,7 @@ func TestRequestOTPCooldownReturns429(t *testing.T) {
 	phone := "9800000042"
 	ctx := context.Background()
 	t.Cleanup(func() {
-		authRepo.DeleteOTP(ctx, phone)
+		_ = authRepo.DeleteOTP(ctx, phone)
 		database.DB.Where("phone = ?", phone).Delete(&domain.User{})
 	})
 
@@ -314,7 +315,7 @@ func TestVerifyOTPPerPhoneLimit(t *testing.T) {
 	phone := "9800000009"
 	ctx := context.Background()
 	t.Cleanup(func() {
-		authRepo.DeleteOTP(ctx, phone)
+		_ = authRepo.DeleteOTP(ctx, phone)
 		database.DB.Where("phone = ?", phone).Delete(&domain.User{})
 	})
 
@@ -325,11 +326,11 @@ func TestVerifyOTPPerPhoneLimit(t *testing.T) {
 	for i := 1; i <= 5; i++ {
 		_, _, err := authService.VerifyOTP(ctx, phone, "000000")
 		if i < 5 {
-			if err == nil || err.Error() != "Invalid OTP" {
-				t.Fatalf("attempt %d: expected Invalid OTP, got %v", i, err)
+			if err == nil || err.Error() != "invalid OTP" {
+				t.Fatalf("attempt %d: expected invalid OTP, got %v", i, err)
 			}
 		} else {
-			if err == nil || err.Error() != "Too many incorrect attempts. Please request a new OTP" {
+			if err == nil || err.Error() != "too many incorrect attempts, please request a new OTP" {
 				t.Fatalf("attempt %d: expected limit message, got %v", i, err)
 			}
 		}
@@ -345,8 +346,11 @@ func TestVerifyOTPPerPhoneLimit(t *testing.T) {
 // truth is written on completion (no fabricated fallback needed).
 func TestCompleteActivityWritesDailyActivity(t *testing.T) {
 	learnerID := service.GenerateSecureID("user")
-	phone := "99000022"
-	database.DB.Create(&domain.User{ID: learnerID, Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
+	phone := service.GenerateSecureID("ph")
+	// Unique email: soft-deleted rows keep their unique-index entries, so a
+	// shared empty string would block every later test run on the same DB.
+	email := service.GenerateSecureID("em") + "@test.local"
+	database.DB.Create(&domain.User{ID: learnerID, Email: email, Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
 	t.Cleanup(func() {
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Observation{})
 		database.DB.Where("learner_id = ?", learnerID).Delete(&domain.Guidance{})
@@ -370,7 +374,7 @@ func TestCompleteActivityWritesDailyActivity(t *testing.T) {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
-	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 	r.POST("/api/v1/activities/:id/complete", learnerHandler.CompleteActivity)
 
 	req, _ := http.NewRequest("POST", "/api/v1/activities/act-2/complete", nil)
@@ -389,6 +393,14 @@ func TestCompleteActivityWritesDailyActivity(t *testing.T) {
 	}
 	if daily.DayName == "" {
 		t.Fatal("expected a day name on the daily activity row")
+	}
+	// WP-1.2 RC-02 practice metrics: a quiz-less completion carries no
+	// accuracy signal (honest 0), but it is still a real practice attempt.
+	if daily.Attempts != 1 {
+		t.Fatalf("expected attempts=1, got %v", daily.Attempts)
+	}
+	if daily.Accuracy != 0 {
+		t.Fatalf("expected accuracy=0 for quiz-less completion, got %v", daily.Accuracy)
 	}
 }
 
@@ -426,10 +438,10 @@ func TestGoogleAuthMissingConfigRejected(t *testing.T) {
 	r.POST("/api/v1/auth/google", authHandler.GoogleAuth)
 
 	previous, had := os.LookupEnv("GOOGLE_CLIENT_ID")
-	os.Unsetenv("GOOGLE_CLIENT_ID")
+	_ = os.Unsetenv("GOOGLE_CLIENT_ID")
 	t.Cleanup(func() {
 		if had {
-			os.Setenv("GOOGLE_CLIENT_ID", previous)
+			_ = os.Setenv("GOOGLE_CLIENT_ID", previous)
 		}
 	})
 
@@ -464,5 +476,135 @@ func TestGoogleAuthRejectsForgedToken(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("Expected 401 for forged Google token, got %v: %s", w.Code, w.Body.String())
+	}
+}
+
+// Regression: per-route rate-limit budgets used to be capped by the shared
+// `rateLimitMax` constant (5) instead of the limiter's own `limit`, so a
+// RateLimitLogin=10 bucket silently 429'd at the 5th request. Live-stack
+// testing against the Docker image caught it (scripts/live_stack_test.py).
+func TestRateLimiterHonorsPerRouteBudget(t *testing.T) {
+	rl := newRateLimiter(RateLimitLogin, time.Minute) // budget 10/min
+	for i := 1; i <= RateLimitLogin; i++ {
+		ok, remaining := rl.allow("10.0.0.1")
+		if !ok {
+			t.Fatalf("request %d/%d: expected allowed (budget %d), got blocked (remaining=%d)",
+				i, RateLimitLogin, RateLimitLogin, remaining)
+		}
+	}
+	if ok, _ := rl.allow("10.0.0.1"); ok {
+		t.Fatal("request beyond the budget must be blocked")
+	}
+	// A different IP starts fresh — the budget is per client, not global.
+	if ok, _ := rl.allow("10.0.0.2"); !ok {
+		t.Fatal("a new client must not inherit the first client's consumption")
+	}
+}
+
+func TestRateLimiterWindowResets(t *testing.T) {
+	rl := newRateLimiter(2, 60*time.Millisecond)
+	if ok, _ := rl.allow("10.0.0.9"); !ok {
+		t.Fatal("first request must be allowed")
+	}
+	if ok, _ := rl.allow("10.0.0.9"); !ok {
+		t.Fatal("second request must be allowed")
+	}
+	if ok, _ := rl.allow("10.0.0.9"); ok {
+		t.Fatal("third request within the window must be blocked")
+	}
+	time.Sleep(80 * time.Millisecond)
+	if ok, _ := rl.allow("10.0.0.9"); !ok {
+		t.Fatal("request after the window elapsed must be allowed again")
+	}
+}
+
+// Registration (live-stack finding): the email/password register route was
+// dropped in the backend rewrite while the frontend kept calling it —
+// /auth/register answered 404 and the Register tab could never create an
+// account. Ported through the service seam; these tests pin it.
+func TestRegisterCreatesStudentAndReturnsToken(t *testing.T) {
+	userRepo := repository.NewUserRepository(database.DB)
+	authRepo := repository.NewAuthRepository(database.DB)
+	authService := service.NewAuthService(userRepo, authRepo)
+	authHandler := NewAuthHandler(authService, service.NewSchoolService(repository.NewSchoolRepository(database.DB)))
+
+	email := "register-test@log.edu"
+	t.Cleanup(func() {
+		database.DB.Where("email = ?", email).Delete(&domain.User{})
+	})
+
+	r := gin.New()
+	r.POST("/api/v1/auth/register", authHandler.Register)
+
+	body := `{"name":"Register Test","email":"` + email + `","password":"Password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/auth/register", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %v: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Token string `json:"token"`
+		User  struct {
+			ID    string      `json:"id"`
+			Role  domain.Role `json:"role"`
+			Email string      `json:"email"`
+			Phone *string     `json:"phone"`
+		} `json:"user"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("bad response json: %v", err)
+	}
+	if resp.Token == "" {
+		t.Fatal("registration must return a usable token")
+	}
+	if resp.User.Role != domain.RoleStudent {
+		t.Fatalf("new accounts must be STUDENT, got %v", resp.User.Role)
+	}
+	if resp.User.Phone != nil {
+		t.Fatal("new email accounts must not invent a phone number")
+	}
+}
+
+func TestRegisterDuplicateEmailReturns409(t *testing.T) {
+	userRepo := repository.NewUserRepository(database.DB)
+	authRepo := repository.NewAuthRepository(database.DB)
+	authService := service.NewAuthService(userRepo, authRepo)
+	authHandler := NewAuthHandler(authService, service.NewSchoolService(repository.NewSchoolRepository(database.DB)))
+
+	r := gin.New()
+	r.POST("/api/v1/auth/register", authHandler.Register)
+
+	body := `{"name":"Dup","email":"aisha@example.com","password":"Password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/auth/register", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409 for existing email, got %v: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestRegisterInvalidPayloadReturns400(t *testing.T) {
+	userRepo := repository.NewUserRepository(database.DB)
+	authRepo := repository.NewAuthRepository(database.DB)
+	authHandler := NewAuthHandler(service.NewAuthService(userRepo, authRepo), service.NewSchoolService(repository.NewSchoolRepository(database.DB)))
+
+	r := gin.New()
+	r.POST("/api/v1/auth/register", authHandler.Register)
+
+	for _, body := range []string{`{"name":"X","email":"nope","password":"short"}`,
+		`{"name":"","email":"a@b.co","password":"longenough"}`,
+		`not json`} {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/auth/register", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("body %q: expected 400, got %v", body, w.Code)
+		}
 	}
 }

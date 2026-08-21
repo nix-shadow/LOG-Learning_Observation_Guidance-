@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>21 — WP-3.1 — OER Metadata &amp; Content Packs | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 21 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-3.1 — OER Metadata &amp; Content Packs</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-3.1 work package (tracker tasks wp31t01–wp31t02): every activity carries an honest license + attribution, and the admin OER import pipeline validates licenses row-by-row before content ever enters the library.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">License + attribution schema</span>
+      <span class="badge badge-ok">OER import pipeline</span>
+      <span class="badge badge-ok">Per-row license checks</span>
+      <span class="badge badge-ok">Audit-logged</span>
+      <span class="badge badge-ok">3 backend tests</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp31t01 ✓</span>
+      <h2 class="text-2xl font-bold">OER metadata schema</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>content model carries license + attribution fields; UI displays them</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">Activity</code> gains <code class="code">license</code> / <code class="code">license_url</code> / <code class="code">attribution</code> / <code class="code">source_url</code> (<code class="code">backend/internal/domain/domain.go</code>).</li>
+            <li>• Strict allowlist <code class="code">OERAllowedLicenses</code>: CC BY 4.0, CC BY-SA 4.0, CC BY-NC 4.0, CC BY-NC-SA 4.0, CC0, or “Own work (LOG team)” — with canonical deed URLs in <code class="code">OERLicenseURLs</code>.</li>
+            <li>• Catalog cards render the license badge + attribution; lesson pages render a “Licensed under …” credit line. Nothing is shown when metadata is absent — honest, never invented.</li>
+            <li>• Seed backfills act-1..act-5 with “Own work (LOG team)” + LOG Learning Team attribution.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">frontend/src/app/learning/page.tsx</code> + <code class="code">learning/[id]/page.tsx</code>; <code class="code">src/lib/types.ts</code> Activity fields.</li>
+            <li>• Allowlist exercised by <code class="code">backend/internal/handler/wp31_test.go</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp31t02 ✓</span>
+      <h2 class="text-2xl font-bold">Nepal OER import pipeline</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>batch import of curated OER (CK-12-style packs) with license checks; downloadable for offline use</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">POST /api/v1/admin/oer/import</code> (<code class="code">oer_handler.go</code> + <code class="code">oer_service_impl.go</code>): per-row validation — missing id, unknown/empty license, and un-attributed third-party rows are rejected with a human reason; the rest still import.</li>
+            <li>• <code class="code">activityRepo.CreateMany</code> imports in one transaction, skipping existing IDs so learner progress is never orphaned by a re-import.</li>
+            <li>• Every import writes an <code class="code">oer.import</code> audit row with pack name + imported/skipped/rejected counts; route rate-limited (5/IP).</li>
+            <li>• Two seeded OER packs (act-11, act-12) — original LOG-authored content shared under CC BY-SA 4.0 with real attribution; offline use rides the existing fetchWithCache seam.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/handler/wp31_test.go</code> — 3 tests: valid pack imports with stored metadata, re-import skips, unknown license + missing attribution rejected with reasons, nameless pack 400.</li>
+            <li>• <code class="code">backend/database/seed_phase3.go</code>; <code class="code">docs/PARTNERSHIP_LANES.md</code> §3/§4 for the rules.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 21 · WP-3.1 — OER Metadata &amp; Content Packs · generated 2026-08-20 · WP-3.1 — OER Metadata &amp; Content Packs
+  </footer>
+</div>
+</body>
+</html>

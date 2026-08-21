@@ -77,8 +77,9 @@ func TestAuditLogOnRoleChange(t *testing.T) {
 
 	r := gin.New()
 	actor := admin.ID
+	h := NewAdminHandler(service.NewAdminService(repository.NewAdminRepository(database.DB)))
 	r.Use(func(c *gin.Context) { c.Set("userID", actor); c.Next() })
-	r.PUT("/api/v1/admin/users/:id/role", UpdateUserRole)
+	r.PUT("/api/v1/admin/users/:id/role", h.UpdateUserRole)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("PUT", "/api/v1/admin/users/"+target.ID+"/role", bytes.NewBufferString(`{"role":"MODERATOR"}`))

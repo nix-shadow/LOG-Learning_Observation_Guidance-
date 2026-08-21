@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"log-backend/internal/domain"
@@ -11,12 +12,13 @@ import (
 
 // Sentinel errors for school operations
 var (
-	ErrNotClassTeacher    = errors.New("Only the class teacher may perform this action")
-	ErrNotClassMember     = errors.New("You are not enrolled in this class")
-	ErrNotEnrolled        = errors.New("Student is not enrolled in this class")
-	ErrInvalidDueDate     = errors.New("Invalid due date. Use RFC 3339 format.")
-	ErrClassNotFound      = errors.New("Class not found")
-	ErrAssignmentNotFound = errors.New("Assignment not found")
+	ErrNotClassTeacher    = errors.New("only the class teacher may perform this action")
+	ErrNotClassMember     = errors.New("you are not enrolled in this class")
+	ErrNotEnrolled        = errors.New("student is not enrolled in this class")
+	ErrInvalidDueDate     = errors.New("invalid due date, use RFC 3339 format")
+	ErrClassNotFound      = errors.New("class not found")
+	ErrAssignmentNotFound = errors.New("assignment not found")
+	ErrInviteCodeNotFound = errors.New("no class found for this invite code")
 )
 
 type schoolService struct {
@@ -28,18 +30,125 @@ func NewSchoolService(repo domain.SchoolRepository) SchoolService {
 }
 
 func (s *schoolService) CreateClass(ctx context.Context, name, grade, section, teacherID string) (*domain.Class, error) {
+	// Generate a collision-free invite code (uniqueness is enforced here, not
+	// by a DB index, so legacy rows without codes never break migrations).
+	code := GenerateInviteCode()
+	for i := 0; i < 5; i++ {
+		if _, err := s.repo.FindClassByInviteCode(ctx, code); err != nil {
+			break
+		}
+		code = GenerateInviteCode()
+	}
 	class := &domain.Class{
-		ID:        GenerateSecureID("cls"),
-		Name:      name,
-		Grade:     grade,
-		Section:   section,
-		TeacherID: teacherID,
-		CreatedAt: time.Now(),
+		ID:         GenerateSecureID("cls"),
+		Name:       name,
+		Grade:      grade,
+		Section:    section,
+		TeacherID:  teacherID,
+		InviteCode: code,
+		CreatedAt:  time.Now(),
 	}
 	if err := s.repo.CreateClass(ctx, class); err != nil {
 		return nil, err
 	}
 	return class, nil
+}
+
+// JoinClassByCode (WP-1.5): enrolls the learner in the class behind the code.
+// Idempotent — an existing member gets the class back, not an error.
+func (s *schoolService) JoinClassByCode(ctx context.Context, code, learnerID string) (*domain.Class, error) {
+	class, err := s.repo.FindClassByInviteCode(ctx, code)
+	if err != nil {
+		return nil, ErrInviteCodeNotFound
+	}
+	if err := s.repo.Enroll(ctx, class.ID, []string{learnerID}); err != nil {
+		return nil, err
+	}
+	return class, nil
+}
+
+// StudentInTeacherClasses (WP-1.5): scope gate for per-student progress.
+func (s *schoolService) StudentInTeacherClasses(ctx context.Context, teacherID, learnerID string) (bool, error) {
+	return s.repo.StudentInTeacherClasses(ctx, teacherID, learnerID)
+}
+
+// ImportRoster (WP-1.5): find-or-create STUDENT users from CSV rows and
+// enroll them. Every skipped/failed row is reported honestly; generated
+// passwords are returned exactly once.
+func (s *schoolService) ImportRoster(ctx context.Context, classID, teacherID string, rows []RosterImportRow) (RosterImportReport, error) {
+	report := RosterImportReport{Passwords: map[string]string{}}
+	class, err := s.repo.FindClassByID(ctx, classID)
+	if err != nil {
+		return report, ErrClassNotFound
+	}
+	if class.TeacherID != teacherID {
+		return report, ErrNotClassTeacher
+	}
+
+	var toEnroll []string
+	for _, row := range rows {
+		line := row.RowNo
+		if line == 0 {
+			line = 1
+		}
+		email := strings.TrimSpace(row.Email)
+		name := strings.TrimSpace(row.Name)
+		if email == "" || !strings.Contains(email, "@") {
+			report.Errors = append(report.Errors, RosterRowError{Row: line, Email: email, Reason: "missing or invalid email"})
+			continue
+		}
+		if name == "" {
+			report.Errors = append(report.Errors, RosterRowError{Row: line, Email: email, Reason: "missing name"})
+			continue
+		}
+
+		user, err := s.repo.FindUserByEmail(ctx, email)
+		if err != nil {
+			// New student: create with a hashed password (given or generated).
+			password := strings.TrimSpace(row.Password)
+			if password == "" {
+				password = GenerateTempPassword()
+			}
+			hash, err := HashPassword(password)
+			if err != nil {
+				report.Errors = append(report.Errors, RosterRowError{Row: line, Email: email, Reason: "could not hash password"})
+				continue
+			}
+			phone := strings.TrimSpace(row.Phone)
+			user = &domain.User{
+				ID:           GenerateSecureID("usr"),
+				Name:         name,
+				Email:        email,
+				Phone:        &phone,
+				PasswordHash: hash,
+				Role:         domain.RoleStudent,
+			}
+			if err := s.repo.CreateStudentUser(ctx, user); err != nil {
+				// Honest per-row failure (e.g. duplicate phone) — never a
+				// silent drop and never a fabricated success.
+				report.Errors = append(report.Errors, RosterRowError{Row: line, Email: email, Reason: "could not create user"})
+				continue
+			}
+			report.Passwords[email] = password
+			report.Imported++
+			toEnroll = append(toEnroll, user.ID)
+			continue
+		}
+
+		// Existing user: enroll if they are a student; otherwise skip honestly.
+		if user.Role != domain.RoleStudent {
+			report.Skipped++
+			report.Errors = append(report.Errors, RosterRowError{Row: line, Email: email, Reason: "existing user is not a student — skipped"})
+			continue
+		}
+		toEnroll = append(toEnroll, user.ID)
+		report.Imported++
+	}
+
+	if err := s.repo.Enroll(ctx, class.ID, toEnroll); err != nil {
+		return report, err
+	}
+	return report, nil
 }
 
 func (s *schoolService) ListClasses(ctx context.Context) ([]domain.Class, error) {

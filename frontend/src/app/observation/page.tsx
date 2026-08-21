@@ -80,7 +80,7 @@ export default function Observation() {
           <p className="text-5xl font-extrabold text-white relative z-10 tracking-tight">{data?.progress.completed ?? 0} <span className="text-xl text-brand-muted font-medium">/ {data?.progress.total_topics ?? 0}</span></p>
         </div>
         
-        <div className="gsap-stagger card-glow bg-black/40 backdrop-blur-2xl border-brand-neon/30 shadow-[0_0_30px_rgba(0,240,255,0.1)] text-center relative overflow-hidden group hover:-translate-y-1 transition-transform">
+        <div className="gsap-stagger card-glow bg-black/40 backdrop-blur-2xl border-brand-neon/30 text-center relative overflow-hidden group hover:-translate-y-1 transition-transform">
           <div className="absolute top-0 right-0 p-6 opacity-10 text-brand-neon group-hover:scale-125 transition-transform duration-500"><BarChart2 className="w-20 h-20"/></div>
           <p className="text-[11px] font-bold text-brand-neon uppercase tracking-[0.2em] mb-3 relative z-10">Current Streak</p>
           <p className="text-5xl font-extrabold text-white relative z-10 tracking-tight">{data?.progress.current_streak ?? 0} <span className="text-xl text-brand-muted font-medium">days</span></p>

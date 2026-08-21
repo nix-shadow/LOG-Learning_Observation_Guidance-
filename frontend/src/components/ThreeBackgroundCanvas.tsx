@@ -63,7 +63,7 @@ function Particles({ count = 2000 }) {
 
   return (
     <>
-      <pointLight ref={light} distance={40} intensity={8} color="#00B4D8" />
+      <pointLight ref={light} distance={40} intensity={8} color="#2563EB" />
       <instancedMesh ref={mesh} args={[undefined, undefined, count]}>
         <dodecahedronGeometry args={[0.2, 0]} />
         <meshStandardMaterial color="#212529" roughness={0.5} metalness={0.8} />
@@ -89,8 +89,8 @@ export default function ThreeBackgroundCanvas() {
       <Canvas frameloop={visible ? 'always' : 'never'} camera={{ fov: 75, position: [0, 0, 30] }}>
         <color attach="background" args={['#050505']} />
         <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} intensity={1} color="#FF0070" />
-        <pointLight position={[-10, -10, -10]} intensity={1} color="#7000FF" />
+        <pointLight position={[10, 10, 10]} intensity={1} color="#F59E0B" />
+        <pointLight position={[-10, -10, -10]} intensity={1} color="#0D9488" />
         <Particles />
       </Canvas>
     </div>

@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { fetchWithCache } from '@/lib/api';
-import { AlertCircle, BookOpen, Users } from 'lucide-react';
+import { AlertCircle, BookOpen, Users, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import StudentProgressModal from './StudentProgressModal';
 
 export interface RosterStudent {
   id: string;
@@ -33,6 +34,7 @@ interface RosterOverviewProps {
 export default function RosterOverview({ token, onLoaded }: RosterOverviewProps) {
   const [data, setData] = useState<RosterData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<RosterStudent | null>(null);
 
   useEffect(() => {
     fetchWithCache('/moderator/roster', { headers: { 'Authorization': `Bearer ${token}` } })
@@ -99,12 +101,18 @@ export default function RosterOverview({ token, onLoaded }: RosterOverviewProps)
                   </td>
                 </tr>
               ) : (data?.roster || []).map((st) => (
-                <tr key={st.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                <tr
+                  key={st.id}
+                  onClick={() => setSelected(st)}
+                  className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors cursor-pointer group"
+                  title="View student progress"
+                >
                   <td className="py-5 px-6 font-medium text-white flex items-center text-base">
                     <div className="w-10 h-10 rounded-full bg-brand-neon/20 text-brand-neon flex items-center justify-center mr-4 font-bold shadow-sm">
                       {st.name.charAt(0)}
                     </div>
                     {st.name}
+                    <ChevronRight className="w-4 h-4 ml-2 text-white/30 group-hover:text-brand-neon group-hover:translate-x-1 transition-all" />
                   </td>
                   <td className="py-5 px-6">
                     <div className="flex items-center">
@@ -123,6 +131,15 @@ export default function RosterOverview({ token, onLoaded }: RosterOverviewProps)
           </table>
         </div>
       </div>
+
+      {selected && (
+        <StudentProgressModal
+          token={token}
+          studentId={selected.id}
+          studentName={selected.name}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }

@@ -20,9 +20,12 @@ func NewAuthHandler(authService service.AuthService, schoolService service.Schoo
 }
 
 func (h *AuthHandler) audit(c *gin.Context, action, detail string) {
-	userID, _ := c.Get("userID")
+	// Public routes (register, OTP) carry no authenticated user — log the
+	// event with an empty user id rather than panicking on the assertion.
+	uid, _ := c.Get("userID")
+	uidStr, _ := uid.(string)
 	ip := c.ClientIP()
-	h.schoolService.WriteAuditLog(c.Request.Context(), userID.(string), action, detail, ip)
+	h.schoolService.WriteAuditLog(c.Request.Context(), uidStr, action, detail, ip)
 }
 
 func (h *AuthHandler) RequestOTP(c *gin.Context) {
@@ -80,6 +83,46 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Password reset instructions sent (Not Implemented in MVP)"})
+}
+
+// Register creates a STUDENT account from email + password. The frontend
+// gates this form on guardian consent and records the consent evidence
+// right after via POST /me/consent (the server-side RequireConsent gate then
+// blocks learner mutations until that grant exists).
+func (h *AuthHandler) Register(c *gin.Context) {
+	var req struct {
+		Name     string `json:"name" binding:"required,min=2"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=6"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		RespondError(c, http.StatusBadRequest, "Bad Request", "Invalid request payload")
+		return
+	}
+
+	user, token, err := h.authService.Register(c.Request.Context(), req.Name, req.Email, req.Password)
+	if err != nil {
+		if errors.Is(err, service.ErrEmailTaken) {
+			RespondError(c, http.StatusConflict, "Conflict", err.Error())
+			return
+		}
+		slog.Error("register failed", "error", err)
+		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to register user")
+		return
+	}
+
+	h.audit(c, "auth.register", "email="+user.Email)
+	c.JSON(http.StatusCreated, gin.H{
+		"token": token,
+		"user": gin.H{
+			"id":          user.ID,
+			"name":        user.Name,
+			"email":       user.Email,
+			"phone":       user.Phone,
+			"role":        user.Role,
+			"is_verified": user.IsVerified,
+		},
+	})
 }
 
 func (h *AuthHandler) GoogleAuth(c *gin.Context) {

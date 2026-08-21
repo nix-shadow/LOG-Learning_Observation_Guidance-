@@ -32,6 +32,36 @@ func GenerateSecureID(prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(b))
 }
 
+// GenerateInviteCode returns a short, human-friendly class join code
+// (WP-1.5): unambiguous uppercase letters+digits, easy to read aloud on a
+// school LAN. Collisions are handled by the DB unique index at create time.
+func GenerateInviteCode() string {
+	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+	b := make([]byte, 6)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%d", time.Now().UnixNano()%1000000)
+	}
+	for i := range b {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	return string(b)
+}
+
+// GenerateTempPassword produces the one-time credential handed to an
+// imported student's teacher (WP-1.5 roster import). 10 chars, unambiguous
+// alphabet — never logged, returned exactly once in the import report.
+func GenerateTempPassword() string {
+	const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+	b := make([]byte, 10)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("LOG-%d", time.Now().UnixNano())
+	}
+	for i := range b {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	return string(b)
+}
+
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	return string(bytes), err

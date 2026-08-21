@@ -36,6 +36,9 @@ type ConsentRequest struct {
 	Language        string `json:"language" binding:"required"`
 	Source          string `json:"source" binding:"omitempty,max=40"`
 	DisclosureHash  string `json:"disclosure_hash" binding:"omitempty"`
+	// Status (WP-4.3): "granted" (default) or "withdrawn" — the Settings
+	// analytics toggle withdraws by flipping the same (user, type) row.
+	Status string `json:"status" binding:"omitempty,oneof=granted withdrawn"`
 }
 
 // RecordConsent stores or refreshes the caller's consent evidence.
@@ -57,6 +60,7 @@ func (h *PrivacyHandler) RecordConsent(c *gin.Context) {
 		Language:        req.Language,
 		Source:          req.Source,
 		DisclosureHash:  req.DisclosureHash,
+		Status:          req.Status,
 		IP:              c.ClientIP(),
 	})
 	if err != nil {
@@ -64,9 +68,13 @@ func (h *PrivacyHandler) RecordConsent(c *gin.Context) {
 		return
 	}
 
+	auditAction := "privacy.consent_granted"
+	if req.Status == "withdrawn" {
+		auditAction = "privacy.consent_withdrawn"
+	}
 	database.DB.Create(&domain.AuditLog{
 		UserID:    userID.(string),
-		Action:    "privacy.consent_granted",
+		Action:    auditAction,
 		Detail:    req.ConsentType + " v" + req.Version,
 		IP:        c.ClientIP(),
 		CreatedAt: time.Now(),

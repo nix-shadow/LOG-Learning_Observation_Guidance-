@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"math"
 
 	"log-backend/internal/domain"
 
@@ -13,11 +14,11 @@ import (
 // exist. Handlers map ONLY this sentinel to 404 — every other completion
 // failure is a server error, so a transient DB issue never looks like "activity
 // not found" (which would make the offline queue delete the learner's work).
-var ErrActivityNotFound = errors.New("Activity not found")
+var ErrActivityNotFound = errors.New("activity not found")
 
 // ErrCourseNotFound maps to 404 on enroll/unenroll. Anything else is a 500 —
 // a failed enroll must never look like a missing course.
-var ErrCourseNotFound = errors.New("Course not found")
+var ErrCourseNotFound = errors.New("course not found")
 
 type ActivityResponse struct {
 	domain.Activity
@@ -65,12 +66,12 @@ func (s *learnerService) GetDashboardData(ctx context.Context, learnerID string)
 
 	statusMap := make(map[string]string)
 	for _, la := range learnerActs {
-		statusMap[la.ActivityID] = la.Status
+		statusMap[la.ActivityID] = domain.ResolveActivityStatus(la)
 	}
 
 	var activities []ActivityResponse
 	for _, act := range dbActivities {
-		status := "Pending"
+		status := domain.StatusNotStarted
 		if st, ok := statusMap[act.ID]; ok {
 			status = st
 		}
@@ -89,7 +90,9 @@ func (s *learnerService) GetDashboardData(ctx context.Context, learnerID string)
 			CurrentStreak: 0,
 			OverallScore:  0,
 		}
-		s.progressRepo.SaveProgress(ctx, progress)
+		if err := s.progressRepo.SaveProgress(ctx, progress); err != nil {
+			return domain.User{}, domain.Progress{}, nil, nil, nil, err
+		}
 	}
 
 	observations, _ := s.learnerDataRepo.FindObservations(ctx, learnerID)
@@ -104,12 +107,12 @@ func (s *learnerService) GetLearningJourneyData(ctx context.Context, learnerID s
 
 	statusMap := make(map[string]string)
 	for _, la := range learnerActs {
-		statusMap[la.ActivityID] = la.Status
+		statusMap[la.ActivityID] = domain.ResolveActivityStatus(la)
 	}
 
 	var activities []ActivityResponse
 	for _, act := range dbActivities {
-		status := "Pending"
+		status := domain.StatusNotStarted
 		if st, ok := statusMap[act.ID]; ok {
 			status = st
 		}
@@ -133,6 +136,10 @@ func (s *learnerService) GetChartData(ctx context.Context, learnerID string) ([]
 			"name":     act.DayName,
 			"score":    act.Score,
 			"duration": act.Duration,
+			// WP-1.2 RC-02: real practice metrics (attempts + mean accuracy),
+			// derived from actual completion rows — honest zeros otherwise.
+			"attempts": act.Attempts,
+			"accuracy": math.Round(act.Accuracy*10) / 10,
 		})
 	}
 	return chartData, nil

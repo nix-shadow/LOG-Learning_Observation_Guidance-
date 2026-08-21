@@ -19,6 +19,7 @@ interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isModerator: boolean;
+  isParent: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -122,14 +123,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('log_token', jwt);
     localStorage.setItem('log_user', JSON.stringify(userData));
     setTokenCookie(jwt);
-    window.location.href = '/dashboard';
+    // WP-2.1: role-based landing — PARENT accounts land on the parent portal,
+    // not the student dashboard (which would 404 without a learner profile).
+    const landing: Record<string, string> = {
+      ADMIN: '/admin',
+      MODERATOR: '/moderator',
+      PARENT: '/parent',
+    };
+    window.location.href = landing[userData.role] || '/dashboard';
   };
 
   const isAdmin = user?.role === 'ADMIN';
   const isModerator = user?.role === 'MODERATOR' || isAdmin;
+  const isParent = user?.role === 'PARENT';
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAdmin, isModerator }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isAdmin, isModerator, isParent }}>
       {children}
     </AuthContext.Provider>
   );

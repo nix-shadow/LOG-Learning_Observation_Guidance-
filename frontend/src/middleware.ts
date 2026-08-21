@@ -11,6 +11,11 @@ const PROTECTED_ROUTES = [
   '/moderator',
   '/admin',
   '/settings',
+  // WP-2.1: parent portal — a PARENT token is required (students have no
+  // learner identity there and /dashboard 404s for parents).
+  '/parent',
+  // WP-2.2: support funnel is available to every authenticated role.
+  '/support',
 ];
 
 // Routes that should redirect authenticated users away (login/register pages)
@@ -61,6 +66,9 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     if (pathname.startsWith('/moderator') && role !== 'ADMIN' && role !== 'MODERATOR') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    if (pathname.startsWith('/parent') && role !== 'PARENT') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

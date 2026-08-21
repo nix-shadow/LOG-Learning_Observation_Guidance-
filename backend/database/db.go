@@ -7,12 +7,23 @@ import (
 	"path/filepath"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
+
+// devPasswords holds the LOCAL TESTING credentials for the seeded demo
+// accounts. They exist only so a fresh install (or an existing dev DB)
+// can be exercised end-to-end with email/password login. Never reuse
+// these in production — rotate them before any real deployment.
+var devPasswords = map[string]string{
+	"admin-1":  "Admin@123",
+	"mod-1":    "Teacher@123",
+	"user-123": "Student@123",
+}
 
 // strPtr returns a pointer to the given string, useful for optional unique fields.
 func strPtr(s string) *string { return &s }
@@ -28,7 +39,7 @@ func InitDB() {
 	// Ensure the parent directory exists (skipped for absolute temp paths in tests)
 	if !filepath.IsAbs(dbPath) {
 		if dir := filepath.Dir(dbPath); dir != "." {
-			if err := os.MkdirAll(dir, 0755); err != nil {
+			if err := os.MkdirAll(dir, 0750); err != nil {
 				slog.Error("Failed to create data directory:", "error", err)
 				os.Exit(1)
 			}
@@ -57,6 +68,21 @@ func InitDB() {
 		os.Exit(1)
 	}
 
+	// WP-4.2 pool sizing for SQLite: this engine is a single-writer. Pinning
+	// the pool to ONE connection makes concurrent goroutines serialize on
+	// SQLite's own locking instead of tripping SQLITE_BUSY, and removes
+	// connection-split hazards entirely. Reads are WAL-fast and the app is
+	// low-traffic, so the serialization cost is negligible on the low-end
+	// school hardware LOG targets.
+	sqlDB, err := DB.DB()
+	if err != nil {
+		slog.Error("Failed to reach sql pool:", "error", err)
+		os.Exit(1)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+	sqlDB.SetConnMaxLifetime(0) // SQLite connections are cheap file handles — never recycle mid-flight
+
 	// Auto Migrate
 	err = DB.AutoMigrate(
 		&domain.User{},
@@ -79,6 +105,12 @@ func InitDB() {
 		&domain.AuditLog{},
 		&domain.UserRevocation{},
 		&domain.ConsentRecord{},
+		// Phase 2 (WP-2.1/2.2/2.3): parent links, support issues, notes.
+		&domain.ParentLink{},
+		&domain.SupportIssue{},
+		&domain.LearnerNote{},
+		// Phase 3 (WP-3.3 RC-10): QR poster pilot scans.
+		&domain.PilotScan{},
 	)
 	if err != nil {
 		slog.Error("Failed to migrate database:", "error", err)
@@ -89,6 +121,12 @@ func InitDB() {
 	DB.Where("expires_at < ?", time.Now()).Delete(&domain.TokenBlocklist{})
 
 	seedData()
+
+	// WP-4.1 C4: real, enforced FOREIGN KEY constraints. AutoMigrate (above)
+	// cannot emit them, so MigrateForeignKeys rebuilds each affected table —
+	// idempotent, and it skips tables with orphan rows rather than deleting
+	// data. Runs after seeding so a stock DB is guaranteed orphan-free.
+	MigrateForeignKeys(DB)
 }
 
 func seedData() {
@@ -110,6 +148,11 @@ func seedData() {
 		acts := []domain.Activity{
 			{ID: "act-1", Title: "Introduction to Logic", Description: "Basic concepts.", Topic: "Logic", Order: 1},
 			{ID: "act-2", Title: "Boolean Algebra", Description: "AND, OR, NOT.", Topic: "Logic", Order: 2},
+			// WP-1.2 RC-02: SEE 9-12 pilot units — curriculum-aligned practice
+			// with a supportive explanation on every question.
+			{ID: "act-3", Title: "SEE Mathematics: Quadratic Equations", Description: "Solve, factor, and graph quadratics step by step.", Topic: "Mathematics", Order: 3},
+			{ID: "act-4", Title: "SEE Science: Electricity", Description: "Current, voltage, Ohm's law, and circuits.", Topic: "Science", Order: 4},
+			{ID: "act-5", Title: "SEE English: Tenses", Description: "Master the 12 tenses with supportive practice.", Topic: "English", Order: 5},
 		}
 		for _, a := range acts {
 			DB.Create(&a)
@@ -137,6 +180,23 @@ func seedData() {
 		for _, g := range gui {
 			DB.Create(&g)
 		}
+	}
+
+	// Ensure the seeded demo accounts can log in via email/password.
+	// Runs on every startup but only writes when the hash is empty, so
+	// existing dev databases get backfilled and a real user's hash is
+	// never overwritten.
+	for id, pw := range devPasswords {
+		var u domain.User
+		if err := DB.Where("id = ?", id).First(&u).Error; err != nil || u.PasswordHash != "" {
+			continue
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(pw), 12)
+		if err != nil {
+			slog.Error("Failed to hash seed password", "user", id, "error", err)
+			continue
+		}
+		DB.Model(&domain.User{}).Where("id = ?", id).Update("password_hash", string(hash))
 	}
 
 	// Seed Micro-Modules independently of users, so existing databases
@@ -241,6 +301,66 @@ func seedData() {
 			{ID: "mm-30", ActivityID: "act-2", Title: "Real Machines, Real Logic", ContentText: "Your phone's ALU adds numbers with XOR and AND gates, checks passwords with AND chains, and stores memory with NAND latches. Boolean algebra runs the whole device.", Order: 16,
 				Question: "Binary addition uses which gate for the sum bit?", Options: []string{"AND", "OR", "XOR", "NAND"}, CorrectIndex: 2,
 				Explanation: "The sum bit of 1+1=0-with-carry is exactly XOR's truth table."},
+
+			// ─── act-3: SEE Mathematics — Quadratic Equations (6 modules) ───
+			{ID: "mm-31", ActivityID: "act-3", Title: "Standard Form", ContentText: "A quadratic equation has the form ax² + bx + c = 0, where a ≠ 0. The highest power of x is 2, which is why the graph is a parabola.", Order: 1,
+				Question: "Which is a quadratic equation?", Options: []string{"x + 3 = 7", "x² − 5x + 6 = 0", "x³ − 2 = 0", "2x = 10"}, CorrectIndex: 1,
+				Explanation: "A quadratic has an x² term as its highest power. x² − 5x + 6 = 0 fits ax² + bx + c = 0 with a=1."},
+			{ID: "mm-32", ActivityID: "act-3", Title: "Finding Roots by Factoring", ContentText: "To factor x² − 5x + 6, find two numbers that multiply to 6 and add to −5: −2 and −3. So (x−2)(x−3) = 0, giving roots x=2 and x=3.", Order: 2,
+				Question: "What are the roots of x² − 5x + 6 = 0?", Options: []string{"x = 2 and x = 3", "x = −2 and x = −3", "x = 1 and x = 6", "x = 5 and x = 6"}, CorrectIndex: 0,
+				Explanation: "Factored, (x−2)(x−3)=0. A product is zero when one factor is zero, so x=2 or x=3. Good factoring work!"},
+			{ID: "mm-33", ActivityID: "act-3", Title: "The Quadratic Formula", ContentText: "When factoring is tricky, use x = (−b ± √(b²−4ac)) / 2a. It always works — every quadratic has at most two roots.", Order: 3,
+				Question: "For 2x² + 4x − 6 = 0, what is the value of b² − 4ac?", Options: []string{"16 − 48 = −32", "16 + 48 = 64", "4 − 48 = −44", "8 − 12 = −4"}, CorrectIndex: 1,
+				Explanation: "a=2, b=4, c=−6. So b² − 4ac = 16 − 4(2)(−6) = 16 + 48 = 64. A perfect square — the roots will be whole numbers."},
+			{ID: "mm-34", ActivityID: "act-3", Title: "The Discriminant", ContentText: "The discriminant b² − 4ac tells you how many roots exist: positive means two real roots, zero means one (repeated), negative means none in the real numbers.", Order: 4,
+				Question: "A discriminant of −9 means the equation has…", Options: []string{"Two real roots", "One real root", "No real roots", "Infinitely many roots"}, CorrectIndex: 2,
+				Explanation: "A negative discriminant means the square root is not a real number, so there are no real roots. Nothing to worry about — it's a property of the equation, not a mistake."},
+			{ID: "mm-35", ActivityID: "act-3", Title: "Solving by Completing the Square", ContentText: "Rewrite x² + 6x = 7 by adding (6/2)² = 9 to both sides: (x+3)² = 16, then x+3 = ±4, so x = 1 or x = −7.", Order: 5,
+				Question: "Completing the square turns x² + 6x = 7 into…", Options: []string{"(x+3)² = 7", "(x+3)² = 16", "(x+6)² = 16", "(x+3)² = 9"}, CorrectIndex: 1,
+				Explanation: "Half of 6 is 3; squaring gives 9. Adding 9 to both sides yields (x+3)² = 7 + 9 = 16. Then x+3 = ±4."},
+			{ID: "mm-36", ActivityID: "act-3", Title: "Quadratics in Word Problems", ContentText: "The area of a rectangle is length × width. If the length is 3 m more than the width and the area is 10 m², then w(w+3) = 10 → w² + 3w − 10 = 0 → (w+5)(w−2) = 0 → w = 2 m (width is positive).", Order: 6,
+				Question: "A rectangle's width is 3 m less than its length, and its area is 10 m². What is the width?", Options: []string{"2 m", "3 m", "5 m", "10 m"}, CorrectIndex: 0,
+				Explanation: "w(w+3)=10 gives w²+3w−10=0, which factors to (w+5)(w−2)=0. Lengths can't be negative, so w=2 m. A rectangle with width 2 and length 5 has area 10."},
+
+			// ─── act-4: SEE Science — Electricity (6 modules) ───
+			{ID: "mm-37", ActivityID: "act-4", Title: "Current, Voltage, Resistance", ContentText: "Current (I) is the flow of charge in amperes, voltage (V) is the push that drives it in volts, and resistance (R) is the opposition to flow in ohms.", Order: 1,
+				Question: "What unit measures electric current?", Options: []string{"Volt", "Ohm", "Ampere", "Watt"}, CorrectIndex: 2,
+				Explanation: "Current is measured in amperes (A). Volts measure voltage, ohms measure resistance, and watts measure power."},
+			{ID: "mm-38", ActivityID: "act-4", Title: "Ohm's Law", ContentText: "Ohm's law says V = I × R. A 12 V battery pushing 3 A through a bulb means the bulb has resistance R = V/I = 4 Ω.", Order: 2,
+				Question: "A 12 V battery drives 3 A of current. What is the resistance?", Options: []string{"4 Ω", "15 Ω", "36 Ω", "9 Ω"}, CorrectIndex: 0,
+				Explanation: "R = V/I = 12/3 = 4 Ω. Dividing, not multiplying, is the easy slip here — you got it right."},
+			{ID: "mm-39", ActivityID: "act-4", Title: "Series Circuits", ContentText: "In a series circuit, the same current flows through every component and resistances add up: R_total = R₁ + R₂ + …", Order: 3,
+				Question: "Two resistors, 2 Ω and 3 Ω, are in series. What is the total resistance?", Options: []string{"1.2 Ω", "5 Ω", "6 Ω", "2.5 Ω"}, CorrectIndex: 1,
+				Explanation: "In series, resistances add: 2 + 3 = 5 Ω. Same current flows through both."},
+			{ID: "mm-40", ActivityID: "act-4", Title: "Parallel Circuits", ContentText: "In a parallel circuit, each branch gets the full voltage, and the total current is the sum of the branch currents. The total resistance is smaller than the smallest branch.", Order: 4,
+				Question: "In a parallel circuit, the voltage across each branch is…", Options: []string{"Divided equally", "The same as the source voltage", "Always zero", "Half the source voltage"}, CorrectIndex: 1,
+				Explanation: "Parallel branches each receive the full source voltage. That's why home appliances in Nepal run on the same 220 V mains."},
+			{ID: "mm-41", ActivityID: "act-4", Title: "Electrical Power", ContentText: "Power P = V × I in watts. A 220 V device drawing 2 A uses P = 440 W. This is how electricity bills are calculated.", Order: 5,
+				Question: "A heater on 220 V draws 5 A. What is its power?", Options: []string{"44 W", "1100 W", "225 W", "110 W"}, CorrectIndex: 1,
+				Explanation: "P = V × I = 220 × 5 = 1100 W. One kilowatt of heating — that's why heaters are energy-hungry."},
+			{ID: "mm-42", ActivityID: "act-4", Title: "Fuses and Safety", ContentText: "A fuse is a thin wire that melts when current exceeds its rating, breaking the circuit before wires overheat. It protects the device and prevents fires.", Order: 6,
+				Question: "What is the main job of a fuse?", Options: []string{"Increase voltage", "Save electricity", "Break the circuit on excess current", "Store charge"}, CorrectIndex: 2,
+				Explanation: "A fuse deliberately melts on excess current, cutting power before overheating can start a fire. Safety first, always."},
+
+			// ─── act-5: SEE English — Tenses (6 modules) ───
+			{ID: "mm-43", ActivityID: "act-5", Title: "Present Simple", ContentText: "Present simple states facts and habits: \"She walks to school every day.\" Use the base verb; add -s/-es for he/she/it.", Order: 1,
+				Question: "Which is correct?", Options: []string{"She walk to school.", "She walks to school.", "She walking to school.", "She walked to school."}, CorrectIndex: 1,
+				Explanation: "With he/she/it, present simple adds -s: \"She walks to school.\" Habitual actions use present simple."},
+			{ID: "mm-44", ActivityID: "act-5", Title: "Present Continuous", ContentText: "Present continuous describes actions happening now: \"I am studying for the SEE.\" Form: am/is/are + verb-ing.", Order: 2,
+				Question: "Which is correct?", Options: []string{"I am study now.", "I is studying now.", "I am studying now.", "I studying now."}, CorrectIndex: 2,
+				Explanation: "Use am/is/are + the -ing form: \"I am studying now.\" Present continuous is for actions in progress."},
+			{ID: "mm-45", ActivityID: "act-5", Title: "Past Simple", ContentText: "Past simple describes finished actions: \"He finished the exam at noon.\" Regular verbs add -ed; irregular verbs change form (go → went).", Order: 3,
+				Question: "Which is the correct past simple?", Options: []string{"He goed to school.", "He went to school.", "He go to school.", "He has go to school."}, CorrectIndex: 1,
+				Explanation: "\"Go\" is irregular: go → went. \"Goed\" is a common slip — remember the irregular list and you'll do great."},
+			{ID: "mm-46", ActivityID: "act-5", Title: "Present Perfect", ContentText: "Present perfect links past to now: \"I have finished my homework.\" Form: have/has + past participle. It shows a result that matters today.", Order: 4,
+				Question: "Which is correct?", Options: []string{"I have finish my homework.", "I have finished my homework.", "I finished my homework yesterday", "I finish my homework."}, CorrectIndex: 1,
+				Explanation: "Present perfect = have/has + past participle: \"I have finished my homework.\" The past participle of finish is finished."},
+			{ID: "mm-47", ActivityID: "act-5", Title: "Future with Will", ContentText: "\"Will\" expresses future intentions and predictions: \"The bus will arrive at 8.\" Form: will + base verb.", Order: 5,
+				Question: "Which is correct?", Options: []string{"We will arrives tomorrow.", "We will arrive tomorrow.", "We will arriving tomorrow.", "We will to arrive tomorrow."}, CorrectIndex: 1,
+				Explanation: "Will is followed by the base verb: \"We will arrive tomorrow.\" No -s, no -ing after will."},
+			{ID: "mm-48", ActivityID: "act-5", Title: "Choosing the Right Tense", ContentText: "Ask: is it a habit (simple), happening now (continuous), finished (past), or a result that matters now (perfect)? The time word — every day, now, yesterday, already — is the biggest clue.", Order: 6,
+				Question: "\"She ___ already eaten.\" Which word completes the sentence?", Options: []string{"have", "has", "is", "was"}, CorrectIndex: 1,
+				Explanation: "\"Already\" signals present perfect, and with she we use has: \"She has already eaten.\""},
 		}
 		for _, m := range microModules {
 			DB.Create(&m)
@@ -302,7 +422,7 @@ func seedData() {
 	var classCount int64
 	DB.Model(&domain.Class{}).Count(&classCount)
 	if classCount == 0 {
-		DB.Create(&domain.Class{ID: "cls-1", Name: "Grade 10 A", Grade: "10", Section: "A", TeacherID: "mod-1", CreatedAt: time.Now()})
+		DB.Create(&domain.Class{ID: "cls-1", Name: "Grade 10 A", Grade: "10", Section: "A", TeacherID: "mod-1", InviteCode: "LOG101", CreatedAt: time.Now()})
 		DB.Create(&domain.ClassMember{ClassID: "cls-1", UserID: "user-123", JoinedAt: time.Now()})
 	}
 
@@ -316,4 +436,7 @@ func seedData() {
 			AuthorID: "admin-1", CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		})
 	}
+
+	// Phase 3 content (WP-3.1 OER metadata + packs, WP-3.2 SEE units).
+	seedPhase3()
 }

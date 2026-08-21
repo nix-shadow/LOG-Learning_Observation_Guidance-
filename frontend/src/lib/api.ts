@@ -20,6 +20,17 @@ const DB_NAME = 'log-db';
 export const CACHE_STORE = 'api-cache';
 export const QUEUE_STORE = 'sync-queue';
 
+// WP-2.4: reconnect digest — after a successful queue flush we leave a
+// lightweight summary in localStorage so the dashboard can show what came
+// back online (and what still waits), long after the transient toast is gone.
+export const RECONNECT_DIGEST_KEY = 'log_reconnect_digest';
+
+export interface ReconnectDigest {
+  synced: number;
+  failed: number;
+  at: string;
+}
+
 // Cache TTL: entries older than this are considered stale (24 hours)
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -77,7 +88,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const initDB = async () => {
-  return openDB(DB_NAME, 4, {
+  return openDB(DB_NAME, 5, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore(CACHE_STORE);
@@ -91,6 +102,12 @@ export const initDB = async () => {
       // disappear naturally; new records are always encrypted.
       if (oldVersion < 4 && !db.objectStoreNames.contains(KEY_STORE)) {
         db.createObjectStore(KEY_STORE);
+      }
+      // Version 5 (WP-1.4): review-schedule store (SM-2 scheduler state).
+      // Created idempotently here and in reviewStore.ts — whichever
+      // connection upgrades first wins.
+      if (oldVersion < 5 && !db.objectStoreNames.contains('review-schedule')) {
+        db.createObjectStore('review-schedule', { keyPath: 'activityId' });
       }
     },
   });
@@ -334,6 +351,7 @@ async function queueRequest(endpoint: string, options: RequestInit) {
       retryCount: 0,
     });
     toast.success('Action saved offline. Will sync later.', { icon: '💾' });
+    window.dispatchEvent(new Event('log:queue-changed'));
     return { queued: true, status: 202 }; // Optimistic response
   } catch (err) {
     console.error('Failed to queue request', err);
@@ -394,6 +412,19 @@ async function invalidateRelatedCache(endpoint: string) {
     // Assignment submissions change the learner's assignment list
     if (endpoint.includes('/submit')) {
       await db.delete(CACHE_STORE, '/assignments');
+    }
+    // WP-2.1: a parent opt-in flips digest_opt_in in the cached children list
+    if (endpoint.includes('/opt-in') || endpoint.includes('/parents/children')) {
+      await db.delete(CACHE_STORE, '/parents/children');
+    }
+    // WP-2.2: new support issues change my-issues; resolutions change the inbox
+    if (endpoint.includes('/support/issue')) {
+      await db.delete(CACHE_STORE, '/support/my-issues');
+      await db.delete(CACHE_STORE, '/support/inbox');
+    }
+    // WP-2.3: a saved note is a dynamic per-student key — clear the whole cache
+    if (endpoint.includes('/note')) {
+      await clearApiCache();
     }
     // F4: school-module mutations (classes, enrollment, announcements,
     // assignments, roles) read through dynamic cache keys (e.g. per-class
@@ -551,9 +582,50 @@ async function syncQueue() {
     if (failedCount > 0) {
       toast(`${failedCount} change${failedCount > 1 ? 's' : ''} could not be synced. Will retry later.`, { icon: '⚠️' });
     }
+
+    // WP-2.4: persist a reconnect digest for the dashboard card — honest
+    // counts of what came back online and what still waits. Written for both
+    // flush paths (the online window event and flushSyncQueue), so the
+    // summary survives even if the flush was triggered before the page
+    // finished loading its listeners.
+    if (syncedCount > 0 || failedCount > 0) {
+      try {
+        const digest: ReconnectDigest = {
+          synced: syncedCount,
+          failed: failedCount,
+          at: new Date().toISOString(),
+        };
+        localStorage.setItem(RECONNECT_DIGEST_KEY, JSON.stringify(digest));
+        window.dispatchEvent(new Event('log:digest-ready'));
+      } catch { /* non-critical */ }
+    }
   } catch (e) {
     console.error('Failed to process sync queue', e);
   }
+}
+
+/** Returns the last reconnect digest, or null when none was recorded. */
+export function getReconnectDigest(): ReconnectDigest | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(RECONNECT_DIGEST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ReconnectDigest;
+    if (typeof parsed.synced !== 'number' || typeof parsed.failed !== 'number' || typeof parsed.at !== 'string') {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** Clears the reconnect digest (dismissed card / fresh flush). */
+export function clearReconnectDigest(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(RECONNECT_DIGEST_KEY);
+  } catch { /* non-critical */ }
 }
 
 /**
@@ -565,6 +637,7 @@ export async function flushSyncQueue(): Promise<{ synced: number; failed: number
   if (before === 0) return { synced: 0, failed: 0 };
   await syncQueue();
   const after = await getSyncQueueCount();
+  window.dispatchEvent(new Event('log:queue-changed'));
   return { synced: before - after, failed: after };
 }
 

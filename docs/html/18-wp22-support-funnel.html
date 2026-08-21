@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>18 — WP-2.2 — Who-to-Call Support Workflow | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 18 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-2.2 — Who-to-Call Support Workflow</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-2.2 work package (tracker tasks wp22t01–wp22t02, RC-06): a structured bilingual support funnel that walks a user from "it’s broken" to a named resolver, and a moderator/admin resolution inbox where every action is audit-logged.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">RC-06</span>
+      <span class="badge badge-ok">Bilingual issue wizard</span>
+      <span class="badge badge-ok">Rate-limited escalation</span>
+      <span class="badge badge-ok">Moderator inbox</span>
+      <span class="badge badge-ok">Audit-logged</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp22t01 ✓</span>
+      <h2 class="text-2xl font-bold">Structured support funnel</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>issue wizard → guidance article → community → admin escalation, in NP and EN.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">/support</code> wizard: category (device/connectivity/account/content/other) → bilingual guidance (real local copy, never invented help) → "did this help?" → describe + escalate → done.</li>
+            <li>• <code class="code">POST /support/issue</code> (rate-limited 10/IP) records the <code class="code">SupportIssue</code>; <code class="code">GET /support/my-issues</code> lists the reporter’s own issues with honest empty state.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp22_test.go</code> TestSupportIssueCreate + TestSupportEscalation; <code class="code">support/page.tsx</code> wizard; EN+NP guide copy.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp22t02 ✓</span>
+      <h2 class="text-2xl font-bold">Moderator resolution inbox</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>escalated issues land in an admin/moderator inbox; every action audit-logged.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">GET /support/inbox</code> returns open escalated issues only (moderator/admin); <code class="code">PUT /support/issue/:id</code> resolves with a required <code class="code">resolution_note</code>.</li>
+            <li>• <code class="code">SupportInbox</code> component mounted on <code class="code">/moderator</code> and <code class="code">/admin</code>; <code class="code">SupportIssue</code> events audit-logged.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp22_test.go</code> TestSupportInboxModeratorOnly + TestSupportResolve; <code class="code">SupportInbox.test.tsx</code> (3 tests).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 18 · WP-2.2 — Who-to-Call Support Workflow · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

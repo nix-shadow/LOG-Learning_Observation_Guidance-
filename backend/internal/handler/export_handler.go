@@ -75,7 +75,7 @@ func (h *SchoolHandler) ExportStudentsCSV(c *gin.Context) {
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", `attachment; filename="students_export.csv"`)
 	// UTF-8 BOM so Excel opens the file as UTF-8 (names/classes may be Nepali)
-	c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+	_, _ = c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
 	w := csv.NewWriter(c.Writer)
 	defer w.Flush()
 	_ = w.Write([]string{"name", "email", "phone", "class"})

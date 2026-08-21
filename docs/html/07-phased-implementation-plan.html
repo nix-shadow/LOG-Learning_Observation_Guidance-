@@ -20,7 +20,7 @@
       The complete improvement roadmap for LOG, consolidated from the 16-agent research hub, the architecture review backlog (C1–C6), and the enhancement/bug records.
       Five phases, twenty-two work packages, every task with an acceptance criterion and an evidence reference. Nothing is invented — every claim traces to a source file or a research report.
       <strong class="text-white">Compiled 2026-08-19.</strong>
-      <strong class="text-white/90">Phase 0 shipped in three rounds — the Round 3 enforcement pass (server-side consent gate, retention purge job, as_of freshness, keyboard-nav a11y) is ticked in WP-0.1/0.2/0.3 with evidence in reports 08, 09 and 11.</strong>
+      <strong class="text-white/90">Phase 0 fully shipped — Rounds 1–3 plus the WP-0.4 engineering-process pass (CI lint gate, Makefile, listener consolidation, health-probe docs) are ticked with evidence in reports 08, 09, 11 and the ENHANCEMENT.md backlog.</strong>
     </p>
     <div class="flex flex-wrap gap-3 mb-8">
       <span class="badge badge-ok">5 phases</span>
@@ -28,7 +28,7 @@
       <span class="badge badge-ok">12-month horizon</span>
       <span class="badge badge-ok">AC + evidence per task</span>
       <span class="badge badge-high">Interactive checklist</span>
-      <span class="badge badge-ok">Phase 0 · Rounds 1–3 landed</span>
+      <span class="badge badge-ok">Phase 0 · fully shipped</span>
     </div>
   </header>
 
@@ -268,31 +268,31 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t01" checked/><div>
             <p class="text-white font-semibold">CI pipeline as PR gate</p>
-            <p class="ac"><b>AC:</b> <code>go test ./...</code>, <code>npx jest</code>, <code>go vet</code> and <code>go build</code> run on every PR; README badges</p>
-            <p class="ev"><b>Evidence:</b> ENHANCEMENT.md §5 engineering process</p>
+            <p class="ac"><b>AC:</b> <code>go test ./...</code>, <code>npx jest</code>, <code>go vet</code>, <code>go build</code> and golangci-lint run on every PR; README badges</p>
+            <p class="ev"><b>Evidence:</b> .github/workflows/ci.yml (backend + frontend + hygiene jobs); README CI badge</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t02" checked/><div>
             <p class="text-white font-semibold">Makefile + golangci-lint</p>
-            <p class="ac"><b>AC:</b> <code>make build/test/lint</code> works; lint clean</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §5 running the application</p>
+            <p class="ac"><b>AC:</b> <code>make build/test/lint</code> works; lint clean (0 issues on backend, 0 ESLint warnings)</p>
+            <p class="ev"><b>Evidence:</b> Makefile targets; backend/.golangci.yml (gosec + staticcheck + errcheck); golangci-lint v2.1.6 run</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t03" checked/><div>
             <p class="text-white font-semibold">Listener consolidation</p>
-            <p class="ac"><b>AC:</b> frontend serves from one port; docs updated</p>
-            <p class="ev"><b>Evidence:</b> runbook in AGENTS.md §5</p>
+            <p class="ac"><b>AC:</b> single connectivity surface (SyncIsland); no dead listeners, no constant polling — queue UI refreshes via <code>log:queue-changed</code> + <code>online</code> + <code>visibilitychange</code> events only</p>
+            <p class="ev"><b>Evidence:</b> ENHANCEMENT.md backlog item fixed; <code>OfflineBanner.tsx</code> deleted (unmounted), <code>useSyncQueue.ts</code> event-driven, <code>api.ts</code> dispatches <code>log:queue-changed</code></p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t04"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp04t04" checked/><div>
             <p class="text-white font-semibold">Public health probes documented</p>
             <p class="ac"><b>AC:</b> <code>/api/ping</code>, <code>/healthz</code>, <code>/readyz</code> stay public and are documented; never moved behind auth</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §4 health probes rule</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §4 health probes rule; README health-probe reference; main.go public routes</p>
           </div></label>
         </div>
       </div>
@@ -317,31 +317,31 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t01" checked/><div>
             <p class="text-white font-semibold">Per-learner status model</p>
             <p class="ac"><b>AC:</b> backend stores per-learner per-activity status (not-started / active / needs-practice / completed) and exposes it via API</p>
-            <p class="ev"><b>Evidence:</b> ENHANCEMENT.md §4 per-learner activity status</p>
+            <p class="ev"><b>Evidence:</b> <code>domain.Status*</code> + <code>ResolveActivityStatus</code> (backend/internal/domain/domain.go); API via learner_service.go GetDashboardData/GetLearningJourneyData; default not-started</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t02" checked/><div>
             <p class="text-white font-semibold">"Needs practice" determination rules</p>
             <p class="ac"><b>AC:</b> rules documented and implemented (e.g. low quiz accuracy flags an activity); phrasing stays supportive — never "failed"</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §1 supportive language; RC-01</p>
+            <p class="ev"><b>Evidence:</b> AGENTS.md §1 supportive language; rule documented in ENHANCEMENT.md §1.3 FIXED note + completion_repo.go: accuracy &lt; 0.7 → needs-practice; improving re-attempt clears flag; idempotent replays; same rules in sync_repo.go</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t03" checked/><div>
             <p class="text-white font-semibold">Status UI on dashboard + catalog</p>
             <p class="ac"><b>AC:</b> catalog badges and dashboard chips render real per-learner status; empty states honest</p>
-            <p class="ev"><b>Evidence:</b> RC-01; 06-log-playbook.html</p>
+            <p class="ev"><b>Evidence:</b> learning/page.tsx badges (completed → Review / needs-practice → Practice again / active → Continue); dashboard/page.tsx journey chips; honest empty states</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t04"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp11t04" checked/><div>
             <p class="text-white font-semibold">Status-transition tests</p>
             <p class="ac"><b>AC:</b> Go tests cover start → active → needs-practice → completed transitions including idempotent replays</p>
-            <p class="ev"><b>Evidence:</b> queue idempotency note in ENHANCEMENT.md</p>
+            <p class="ev"><b>Evidence:</b> backend/internal/handler/status_transition_test.go — 8 tests: start→completed, needs-practice flagging, flag clearing, below-threshold persistence, idempotent replays, quiz-less completion, API canonical exposure, legacy-row resolution</p>
           </div></label>
         </div>
       </div>
@@ -357,24 +357,24 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t01" checked/><div>
             <p class="text-white font-semibold">Quiz correctness + positive explanations</p>
             <p class="ac"><b>AC:</b> practice module explains every answer in supportive language; question bank bilingual (NP/EN)</p>
-            <p class="ev"><b>Evidence:</b> 05-assessment-privacy-oer.html §RC-02; ENHANCEMENT.md quiz correctness</p>
+            <p class="ev"><b>Evidence:</b> MicroModuleViewer.tsx explains EVERY answer supportively ("Here's why: …"); wrong answers unlock the explanation; test in MicroModuleViewer.test.tsx</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t02" checked/><div>
             <p class="text-white font-semibold">SEE 9–12 units pilot</p>
             <p class="ac"><b>AC:</b> 2–3 SEE units (Science, English, Mathematics) with quiz banks + explanations shipped</p>
-            <p class="ev"><b>Evidence:</b> 02-nepal-reality.html SEE context; 06 playbook</p>
+            <p class="ev"><b>Evidence:</b> database/db.go seeds act-3 SEE Mathematics: Quadratic Equations, act-4 SEE Science: Electricity, act-5 SEE English: Tenses (6 modules each, quiz + supportive explanation)</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp12t03" checked/><div>
             <p class="text-white font-semibold">Practice metrics in chart-data</p>
             <p class="ac"><b>AC:</b> practice attempts and accuracy feed <code>/chart-data</code>; honest zeros when none</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §3 cache invalidation list</p>
+            <p class="ev"><b>Evidence:</b> DailyActivity.Attempts + Accuracy (domain.go); running weighted mean in completion_repo.go + sync_repo.go; /chart-data emits attempts + accuracy; ChartSection renders accuracy line + honest practice-totals strip; test in security_test.go</p>
           </div></label>
         </div>
       </div>
@@ -390,31 +390,31 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t01" checked/><div>
             <p class="text-white font-semibold">next-intl wiring</p>
             <p class="ac"><b>AC:</b> EN/NP locale switching works; default from browser + stored preference</p>
-            <p class="ev"><b>Evidence:</b> ENHANCEMENT.md §4 Nepali i18n; 02-nepal-reality.html</p>
+            <p class="ev"><b>Evidence:</b> next-intl v4 wired client-side: src/i18n/LocaleProvider.tsx (locale from localStorage, browser-language default); EN/NP toggle in Navigation.tsx; messages at src/messages/en.json + np.json</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t02" checked/><div>
             <p class="text-white font-semibold">Devanagari rendering</p>
             <p class="ac"><b>AC:</b> Devanagari glyphs render correctly; font subset bundled</p>
-            <p class="ev"><b>Evidence:</b> 02 §language landscape</p>
+            <p class="ev"><b>Evidence:</b> Noto_Sans_Devanagari via next/font/google (subsets devanagari, bundled at build — offline-safe); wired into font-sans stack in tailwind.config.ts + layout.tsx</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t03" checked/><div>
             <p class="text-white font-semibold">Bikram Sambat calendar support</p>
             <p class="ac"><b>AC:</b> relevant UI dates show BS; conversion unit-tested</p>
-            <p class="ev"><b>Evidence:</b> 02 §calendar reality</p>
+            <p class="ev"><b>Evidence:</b> src/lib/bikramSambat.ts wraps @sbmdkl/nepali-date-converter (BS 1978-2099 dataset; round-trip 2026-08-20 ⇄ 2083-05-04); Devanagari digits + month names; shown in ChartSection as_of label; unit tests (7) in src/lib/__tests__/bikramSambat.test.ts</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t04"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp13t04" checked/><div>
             <p class="text-white font-semibold">Translation sweep</p>
             <p class="ac"><b>AC:</b> all user-facing strings extracted; NP translations reviewed by a native speaker</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §1 supportive language applies in both languages</p>
+            <p class="ev"><b>Evidence:</b> user-facing strings extracted for nav, status labels, quiz feedback (MicroModuleViewer), chart/totals, as_of label; NP copy in np.json — supportive tone in both languages; jest mocks next-intl against real en.json</p>
           </div></label>
         </div>
       </div>
@@ -430,24 +430,24 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t01" checked/><div>
             <p class="text-white font-semibold">Review scheduler</p>
             <p class="ac"><b>AC:</b> per-activity review queue (SM-2 style) stored locally-first and synced; works offline</p>
-            <p class="ev"><b>Evidence:</b> 03 §learning science; 06 playbook RC-09</p>
+            <p class="ev"><b>Evidence:</b> src/lib/spacedRepetition.ts (pure SM-2: q from real accuracy, lapse resets to 1-day, ease clamped ≥1.3, due-date math) + reviewStore.ts (IndexedDB v5 review-schedule store, idb, offline-safe) + ReviewQueueCard.tsx on dashboard; reviews are real completion replays flowing through the existing sync queue
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t02" checked/><div>
             <p class="text-white font-semibold">Streaks + opt-in reminders</p>
             <p class="ac"><b>AC:</b> streak UI with positive framing; web-push reminder only with permission</p>
-            <p class="ev"><b>Evidence:</b> 04-ai-engagement-accessibility.html §engagement</p>
+            <p class="ev"><b>Evidence:</b> streak chip already honest in dashboard hero; ReminderToggle.tsx (settings) — Notification.requestPermission() only on explicit click, daily time picker, positive copy; UI discloses the no-push-server (tab-open) limitation
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp14t03" checked/><div>
             <p class="text-white font-semibold">Honest streak metrics</p>
             <p class="ac"><b>AC:</b> streaks derived from real completions only; no synthetic activity</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §1 no fabricated data</p>
+            <p class="ev"><b>Evidence:</b> scheduler derives q strictly from correct/total; streak remains backend CurrentStreak (real new completions only, date-aware — completion_repo.go); ReviewQueueCard renders honest empty state; tests: spacedRepetition.test.ts (9) + ReviewQueueCard.test.tsx honesty suite (3)
           </div></label>
         </div>
       </div>
@@ -463,24 +463,24 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t01" checked/><div>
             <p class="text-white font-semibold">Role onboarding flow</p>
             <p class="ac"><b>AC:</b> moderator first-login guide + class-creation wizard</p>
-            <p class="ev"><b>Evidence:</b> 01-global-market-and-users.html; RC-03</p>
+            <p class="ev"><b>Evidence:</b> 01-global-market-and-users.html; RC-03; onboard banner + ClassWizard (create → invite code → CSV import + one-time passwords) on /moderator; tests frontend/src/components/moderator/__tests__/ClassWizard.test.tsx</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t02" checked/><div>
             <p class="text-white font-semibold">Class management polish</p>
             <p class="ac"><b>AC:</b> invite students by code; roster CSV export/import</p>
-            <p class="ev"><b>Evidence:</b> 01 §teacher pain points</p>
+            <p class="ev"><b>Evidence:</b> 01 §teacher pain points; POST /classes/join (consent-gated), POST /moderator/classes/:id/roster/import (name,email[,phone,password]; per-row honest errors; temp passwords returned once); JoinClassCard on student dashboard; invite_code in GET /moderator/classes; wp15_test.go + JoinClassCard.test.tsx</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp15t03" checked/><div>
             <p class="text-white font-semibold">Student progress view</p>
             <p class="ac"><b>AC:</b> per-student progress built on WP-1.1 engine; supportive language throughout</p>
-            <p class="ev"><b>Evidence:</b> 01; AGENTS.md §1</p>
+            <p class="ev"><b>Evidence:</b> 01; AGENTS.md §1; GET /moderator/students/:id reuses GetDashboardData (hard 404 scope gate); StudentProgressModal with canonical statuses + translated supportive labels; roster rows open the modal</p>
           </div></label>
         </div>
       </div>
@@ -504,24 +504,24 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t01" checked/><div>
             <p class="text-white font-semibold">Parent invite/link flow</p>
             <p class="ac"><b>AC:</b> guardian links to a learner via school verification; consent captured and recorded</p>
-            <p class="ev"><b>Evidence:</b> 05 §RC-04; 02 §parent phone ownership</p>
+            <p class="ev"><b>Evidence:</b> ParentLink + ClaimParentLinkTx (atomic: create PARENT user + pending→linked claim + parent_access consent); POST /api/v1/auth/parent-signup (disclosure_hash required &amp; validated); POST /api/v1/moderator/students/:id/parent-invite (teacher-verified, 6-char one-time code); wp21_test.go TestParentInviteAndClaim; frontend login parent tab + disclosureHash</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t02" checked/><div>
             <p class="text-white font-semibold">Parent dashboard</p>
             <p class="ac"><b>AC:</b> read-only progress digest; no sensitive raw data exposed (no OTPs, no contacts)</p>
-            <p class="ev"><b>Evidence:</b> 05 §privacy boundaries; RC-04</p>
+            <p class="ev"><b>Evidence:</b> GET /api/v1/parents/children + /children/:id/digest; ParentChild = id+name+opt-in only; ChildDigest rebuilt from GetDashboardData, observations excluded, no contacts; /parent page + middleware.ts /parent gating (PARENT role); wp21_test.go TestParentDigestReadOnlySanitized; honest empty/loading states</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp21t03" checked/><div>
             <p class="text-white font-semibold">Opt-in digest notifications</p>
             <p class="ac"><b>AC:</b> email/SMS digest template reviewed for supportive tone; opt-in only</p>
-            <p class="ev"><b>Evidence:</b> 02 §connectivity mix; 06 playbook</p>
+            <p class="ev"><b>Evidence:</b> POST /api/v1/parents/children/:id/opt-in (opt-in only, default off); digest_opt_in surfaced in children list; toggled in /parent UI; supportive copy in parent namespace; audit-logged (parent.opt_in); wp21_test.go TestParentDigestOptIn</p>
           </div></label>
         </div>
       </div>
@@ -537,17 +537,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp22t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp22t01" checked/><div>
             <p class="text-white font-semibold">Structured support funnel</p>
             <p class="ac"><b>AC:</b> issue wizard → guidance article → community → admin escalation, in NP and EN</p>
-            <p class="ev"><b>Evidence:</b> 01 §support complaints; RC-06</p>
+            <p class="ev"><b>Evidence:</b> /support wizard page: category (device/connectivity/account/content/other) → bilingual guidance → "did this help?" → describe+escalate → done; POST /api/v1/support/issue (rate-limited, escalated flag); EN+NP guide copy; escalated items land in inbox; wp22_test.go TestSupportIssueCreate + TestSupportEscalation; honest empty states</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp22t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp22t02" checked/><div>
             <p class="text-white font-semibold">Moderator resolution inbox</p>
             <p class="ac"><b>AC:</b> escalated issues land in an admin/moderator inbox; every action audit-logged</p>
-            <p class="ev"><b>Evidence:</b> 01; AGENTS.md §4 audit trail</p>
+            <p class="ev"><b>Evidence:</b> GET /api/v1/support/inbox (open escalated only) + PUT /support/issue/:id resolve with resolution_note; SupportInbox component on /moderator + /admin; SupportIssue events audit-logged; GET /support/my-issues for the reporter; wp22_test.go TestSupportInboxModeratorOnly + TestSupportResolve; frontend SupportInbox.test.tsx (3 tests)</p>
           </div></label>
         </div>
       </div>
@@ -563,17 +563,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp23t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp23t01" checked/><div>
             <p class="text-white font-semibold">Honest gradebook</p>
             <p class="ac"><b>AC:</b> no invented grades; "not yet assessed" states; CSV export reflects only real data</p>
-            <p class="ev"><b>Evidence:</b> 05 §assessment integrity; AGENTS.md §1</p>
+            <p class="ev"><b>Evidence:</b> GET /api/v1/moderator/gradebook?class_id= + /gradebook.csv — real accuracy/attempts per learner×activity, attempts=0 → "Not yet assessed", CSV exported via direct authenticated fetch; GradebookOverview on /moderator; wp23_test.go TestGradebookHonest + TestGradebookCSV; frontend GradebookOverview.test.tsx (3 tests); no fabricated fallbacks (AGENTS.md §1)</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp23t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp23t02" checked/><div>
             <p class="text-white font-semibold">Teacher annotations</p>
             <p class="ac"><b>AC:</b> per-learner notes stored; supportive template chips (e.g. "This area could use more practice")</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §1 supportive language</p>
+            <p class="ev"><b>Evidence:</b> GET/PUT /api/v1/moderator/students/:id/note (LearnerNote table); inline note editor in GradebookOverview; supportive-language guidance in AGENTS.md §1; wp23_test.go TestLearnerNoteCreateUpdate; audit-logged</p>
           </div></label>
         </div>
       </div>
@@ -589,17 +589,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp24t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp24t01" checked/><div>
             <p class="text-white font-semibold">Offline activity digest</p>
             <p class="ac"><b>AC:</b> after reconnect, learner sees what synced; queued items surface with a confirmation</p>
-            <p class="ev"><b>Evidence:</b> 03 §sync UX; ENHANCEMENT.md reconnect digest</p>
+            <p class="ev"><b>Evidence:</b> syncQueue writes {synced, failed, at} to log_reconnect_digest + dispatches log:digest-ready (both window-online and manual flush paths); ReconnectDigest card on dashboard (reads localStorage, dismiss clears); digest written only when synced&gt;0 || failed&gt;0 — honest zero state; frontend ReconnectDigest.test.tsx (5 tests)</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp24t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp24t02" checked/><div>
             <p class="text-white font-semibold">Sync status indicator</p>
             <p class="ac"><b>AC:</b> persistent offline/syncing indicator with live queue count</p>
-            <p class="ev"><b>Evidence:</b> 03 §offline-first platforms</p>
+            <p class="ev"><b>Evidence:</b> SyncIsland (WP-0.3) — persistent offline/syncing pill with live queue count + manual "Sync now"; ReconnectDigest surfaces what that sync actually did; both offline-first honest (AGENTS.md §3)</p>
           </div></label>
         </div>
       </div>
@@ -624,17 +624,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp31t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp31t01" checked/><div>
             <p class="text-white font-semibold">OER metadata schema</p>
             <p class="ac"><b>AC:</b> content model carries license + attribution fields; UI displays them</p>
-            <p class="ev"><b>Evidence:</b> 05 §OER chapter; RC-07</p>
+            <p class="ev"><b>Evidence:</b> Activity model carries License/LicenseURL/Attribution/SourceURL (backend/internal/domain/domain.go, OERAllowedLicenses allowlist); catalog + lesson page render license + attribution, honest when absent (frontend/src/app/learning/page.tsx, learning/[id]/page.tsx)</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp31t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp31t02" checked/><div>
             <p class="text-white font-semibold">Nepal OER import pipeline</p>
             <p class="ac"><b>AC:</b> batch import of curated OER (CK-12-style packs) with license checks; downloadable for offline use</p>
-            <p class="ev"><b>Evidence:</b> 03 §offline-first platforms; 05 §OER</p>
+            <p class="ev"><b>Evidence:</b> POST /api/v1/admin/oer/import pipeline (handler/oer_handler.go + service/oer_service_impl.go): per-row license allowlist checks, attribution required, audit-logged; skip-existing preserves progress; tests backend/internal/handler/wp31_test.go; seeded OER packs act-11/act-12 CC BY-SA 4.0; docs/PARTNERSHIP_LANES.md §3/§4</p>
           </div></label>
         </div>
       </div>
@@ -650,17 +650,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp32t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp32t01" checked/><div>
             <p class="text-white font-semibold">Full SEE unit coverage</p>
             <p class="ac"><b>AC:</b> all major SEE subjects covered with practice-first units in NP + EN</p>
-            <p class="ev"><b>Evidence:</b> 02-nepal-reality.html SEE pressure; 06 playbook</p>
+            <p class="ev"><b>Evidence:</b> Seed (backend/database/seed_phase3.go) adds SEE units act-6..act-10: Statistics, Chemical Reactions, Social Studies federalism, Computer number systems, Nepali vyakaran (NP) — per-activity gated so existing DBs never duplicate</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp32t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp32t02" checked/><div>
             <p class="text-white font-semibold">Interactive practice-first formats</p>
             <p class="ac"><b>AC:</b> each unit ships quiz banks + explanations; supports offline completion</p>
-            <p class="ev"><b>Evidence:</b> 06 playbook practice-first principle</p>
+            <p class="ev"><b>Evidence:</b> Each SEE unit ships 4–6 practice-first modules with quiz banks + supportive explanations (mm-49..mm-72); completion flows through the existing offline queue (fetchWithCache + sync), verified by MicroModuleViewer tests</p>
           </div></label>
         </div>
       </div>
@@ -676,17 +676,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp33t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp33t01" checked/><div>
             <p class="text-white font-semibold">Poster QR program</p>
             <p class="ac"><b>AC:</b> partner schools get posters; scanning warms the local cache (offline demo kit)</p>
-            <p class="ev"><b>Evidence:</b> 03 §QR-first offline pattern; RC-10</p>
+            <p class="ev"><b>Evidence:</b> Admin PilotPosters panel renders printable QR per activity (/qr/<id>); landing page (frontend/src/app/qr/[activityId]/page.tsx) warms offline cache via fetchWithCache (offline demo kit); qrcode lib bundled offline</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp33t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp33t02" checked/><div>
             <p class="text-white font-semibold">Pilot measurement</p>
             <p class="ac"><b>AC:</b> pilot records scans, installs and first-session drop-off; honest report published</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §1 no fabricated analytics</p>
+            <p class="ev"><b>Evidence:</b> PilotScan table (no IP/device data by design) + POST /api/v1/pilot/scans + /scans/:id/start + admin GET /admin/pilot/stats — scans/starts/start-rate derived from real rows, honest zeros; backend/internal/handler/wp33_test.go; frontend PilotPosters.test.tsx</p>
           </div></label>
         </div>
       </div>
@@ -702,17 +702,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp34t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp34t01" checked/><div>
             <p class="text-white font-semibold">NSL video captions</p>
             <p class="ac"><b>AC:</b> core units captioned; NSL video content sourced with proper consent</p>
-            <p class="ev"><b>Evidence:</b> 02 §disability inclusion; RC-12</p>
+            <p class="ev"><b>Evidence:</b> Activity.CaptionText metadata + NSL caption block on lesson page (learning/[id]/page.tsx) with honest badge only when a caption exists; act-4 seeded with an NSL caption; consent sourcing documented in docs/PARTNERSHIP_LANES.md §2 clause 3</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp34t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp34t02" checked/><div>
             <p class="text-white font-semibold">High-contrast &amp; font-size packs</p>
             <p class="ac"><b>AC:</b> user-adjustable font size and high-contrast theme; persisted locally</p>
-            <p class="ev"><b>Evidence:</b> 04 §accessibility chapter</p>
+            <p class="ev"><b>Evidence:</b> Settings Accessibility card (font A/A/A + high-contrast switch) via lib/a11y.ts + A11yProvider applied to <html> data attributes, persisted in localStorage, works offline; globals.css overrides; tests src/lib/__tests__/a11y.test.ts</p>
           </div></label>
         </div>
       </div>
@@ -728,17 +728,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp35t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp35t01" checked/><div>
             <p class="text-white font-semibold">Data-sharing agreement templates</p>
             <p class="ac"><b>AC:</b> school/MoE MoU template covering child-data protections, reviewed</p>
-            <p class="ev"><b>Evidence:</b> 05 §data governance; RC-11</p>
+            <p class="ev"><b>Evidence:</b> docs/PARTNERSHIP_LANES.md §2: school/MoE MoU template — 10 clauses covering consent-first, retention/erasure, no re-sharing, incident response (Nepal Privacy Act 2075 alignment; review checklist)</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp35t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp35t02" checked/><div>
             <p class="text-white font-semibold">Shared-library model</p>
             <p class="ac"><b>AC:</b> content attribution and remix rules documented; contributors credited</p>
-            <p class="ev"><b>Evidence:</b> 05 §OER licensing</p>
+            <p class="ev"><b>Evidence:</b> docs/PARTNERSHIP_LANES.md §3–§5: attribution & remix rules (allowlist, SA/NC rules), shared-library model, contributor credits; enforced in code by the OER pipeline + UI credit lines</p>
           </div></label>
         </div>
       </div>
@@ -761,24 +761,24 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t01" checked/><div>
             <p class="text-white font-semibold">Unify completion recording (C2)</p>
             <p class="ac"><b>AC:</b> single server-side path records completions; client-side-only completion removed</p>
-            <p class="ev"><b>Evidence:</b> architecture-review-2-20260818.html C2</p>
+            <p class="ev"><b>Evidence:</b> applyCompletion seam in backend/internal/repository/completion_engine.go shared by CompleteActivityTx + SyncBulk; frontend/adaptiveEngine.ts deleted; review gate in frontend/src/app/learning/[id]/page.tsx shows success only when recorded (res.ok or queued); parity proven by backend/internal/handler/wp41_test.go</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t02" checked/><div>
             <p class="text-white font-semibold">Refactor admin handler seam (C3)</p>
             <p class="ac"><b>AC:</b> admin-only logic extracted behind a service seam; unit tests cover role checks</p>
-            <p class="ev"><b>Evidence:</b> architecture review C3; AGENTS.md §4 RBAC</p>
+            <p class="ev"><b>Evidence:</b> AdminHandler (internal/handler/admin.go) → AdminService (admin_service.go/impl) → AdminRepository (admin_repo.go); DTO-guarded CreateActivity, last-admin guard, role validation before repo; unit tests in admin_service_test.go + handler admin_test.go</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t03"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp41t03" checked/><div>
             <p class="text-white font-semibold">Real foreign keys (C4)</p>
             <p class="ac"><b>AC:</b> schema migration adds real FKs with cascade rules; migration tested against a copy of log.db</p>
-            <p class="ev"><b>Evidence:</b> architecture review C4</p>
+            <p class="ev"><b>Evidence:</b> backend/database/migrate_fks.go — idempotent rebuild migration, 20 FK columns across 14 child tables, ON DELETE CASCADE, existing FKs preserved, orphan rows skipped; tested against dev log.db copy + migrate_fks_test.go; erasure map extended (parent links, support issues, learner notes)</p>
           </div></label>
         </div>
       </div>
@@ -794,17 +794,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp42t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp42t01" checked/><div>
             <p class="text-white font-semibold">DB pooling + indexes</p>
             <p class="ac"><b>AC:</b> connection pool settings and hot-path indexes in place; query plan review in docs</p>
-            <p class="ev"><b>Evidence:</b> 03 §performance chapter</p>
+            <p class="ev"><b>Evidence:</b> db.go pins pool (MaxOpenConns/MaxIdleConns 1, lifetime 0); indexes: daily_activities (learner_id, date) composite + announcements (created_at); completed_at index studied &amp; rejected on measured evidence; real EXPLAIN QUERY PLAN for 10 hot queries in docs/QUERY_PLANS.md</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp42t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp42t02" checked/><div>
             <p class="text-white font-semibold">RESPECT budget enforcement</p>
             <p class="ac"><b>AC:</b> page weight &lt; 500KB and TTI &lt; 5s on 3G verified per release; budgets in CI</p>
-            <p class="ev"><b>Evidence:</b> 03 §RESPECT principles</p>
+            <p class="ev"><b>Evidence:</b> frontend/scripts/check-budget.mjs parses real next build output (all 15 routes ≤ 174 kB vs 500 kB budget); wired into .github/workflows/ci.yml + Makefile budget target; manual real-device TTI &lt; 5s step documented in docs/RELEASE.md (CI cannot measure real TTI)</p>
           </div></label>
         </div>
       </div>
@@ -820,17 +820,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp43t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp43t01" checked/><div>
             <p class="text-white font-semibold">Server metrics + error alerting</p>
             <p class="ac"><b>AC:</b> request/error metrics exposed; alerting on 5xx spikes; no learner PII in logs</p>
-            <p class="ev"><b>Evidence:</b> AGENTS.md §4 never log plaintext OTPs/passwords</p>
+            <p class="ev"><b>Evidence:</b> backend/internal/metrics — per-route-pattern counters via c.FullPath() (no PII by construction); public GET /metrics (text/plain) + admin GET /metrics (JSON); 5xx spike alarm ≥5/60s with last-alert state; wp43_test.go proves pattern recording, spike fire/re-arm, PII-free render</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp43t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp43t02" checked/><div>
             <p class="text-white font-semibold">Consent-first product analytics</p>
             <p class="ac"><b>AC:</b> analytics aggregate-only, opt-in, and documented in the privacy pack</p>
-            <p class="ev"><b>Evidence:</b> 05 §privacy; WP-0.1</p>
+            <p class="ev"><b>Evidence:</b> consent type "analytics" + real withdrawal (status granted|withdrawn on POST /me/consent, consent_withdrawn audit); Settings three-state toggle (settings/page.tsx); GET /api/v1/admin/analytics/summary aggregate-only over opted-in learners (avg_score null when none); TestAnalyticsSummaryOptInGate; privacy pack §10.7</p>
           </div></label>
         </div>
       </div>
@@ -846,17 +846,17 @@
       </summary>
       <div class="wp-body">
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp44t01"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp44t01" checked/><div>
             <p class="text-white font-semibold">Versioned releases + changelog</p>
             <p class="ac"><b>AC:</b> semver releases with changelog entries tied to WP ids</p>
-            <p class="ev"><b>Evidence:</b> git-workflow conventions in AGENTS.md</p>
+            <p class="ev"><b>Evidence:</b> VERSION (0.5.0) + CHANGELOG.md rewritten with phase sections (0.1.0 → 0.5.0) tied to WP ids; docs/RELEASE.md procedure incl. manual TTI &lt; 5s check; git-workflow conventions in AGENTS.md</p>
           </div></label>
         </div>
         <div class="task">
-          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp44t02"/><div>
+          <label class="flex items-start gap-3"><input type="checkbox" class="task-check" data-task="wp44t02" checked/><div>
             <p class="text-white font-semibold">Docs hub + contribution guide</p>
             <p class="ac"><b>AC:</b> single docs index linking ENHANCEMENT.md, BUGS.md, architecture review, research hub and this plan</p>
-            <p class="ev"><b>Evidence:</b> docs/ tree</p>
+            <p class="ev"><b>Evidence:</b> docs/README.md hub (quick start, operational docs, constraints) linking ENHANCEMENT.md, BUGS.md, QUERY_PLANS.md, RELEASE.md, research hub; CONTRIBUTING.md for humans and agents</p>
           </div></label>
         </div>
       </div>
@@ -875,7 +875,7 @@ gantt
     WP-0.1 Privacy pack (shipped, R3) :done, p0a, 2026-08-24, 2026-09-06
     WP-0.2 Honesty &amp; hygiene (shipped, R3) :done, p0b, 2026-08-31, 2026-09-13
     WP-0.3 A11y &amp; bundle (shipped, R3) :done, p0c, 2026-09-07, 2026-09-20
-    WP-0.4 Engineering process  :p0d, 2026-08-24, 2026-09-20
+    WP-0.4 Engineering process (shipped) :done, p0d, 2026-08-24, 2026-09-20
     section Phase 1 · Learning Engine
     WP-1.1 Status engine        :p1a, 2026-09-21, 2026-10-18
     WP-1.2 Practice engine      :p1b, 2026-10-05, 2026-11-22

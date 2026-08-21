@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>19 — WP-2.3 — Gradebook Honesty | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 19 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-2.3 — Gradebook Honesty</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-2.3 work package (tracker tasks wp23t01–wp23t02, RC-08): a gradebook that shows real grades or honestly none — real accuracy/attempts, "Not yet assessed" states, sanitized CSV export, and supportive per-learner teacher annotations.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">RC-08</span>
+      <span class="badge badge-ok">Real grades, honestly none</span>
+      <span class="badge badge-ok">Not-yet-assessed states</span>
+      <span class="badge badge-ok">Sanitized CSV</span>
+      <span class="badge badge-ok">Teacher annotations</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp23t01 ✓</span>
+      <h2 class="text-2xl font-bold">Honest gradebook</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>no invented grades; "not yet assessed" states; CSV export reflects only real data.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">GET /moderator/gradebook?class_id=</code> — real accuracy/attempts per learner × activity from the completion engine; attempts=0 renders "Not yet assessed" (never an invented 0% or dash).</li>
+            <li>• <code class="code">GET /moderator/gradebook.csv</code> — UTF-8 BOM + <code class="code">sanitizeCSVCell</code> formula-injection guard; frontend exports via direct authenticated fetch + blob download.</li>
+            <li>• <code class="code">GradebookOverview</code> on <code class="code">/moderator</code> (student × activity matrix, honest empty/error states).</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp23_test.go</code> TestGradebookHonest + TestGradebookCSV; <code class="code">GradebookOverview.test.tsx</code> (3 tests).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp23t02 ✓</span>
+      <h2 class="text-2xl font-bold">Teacher annotations</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>per-learner notes stored; supportive template chips (e.g. "This area could use more practice").</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">LearnerNote</code> table + <code class="code">GET/PUT /moderator/students/:id/note</code> (teacher-scoped); inline note editor in <code class="code">GradebookOverview</code>.</li>
+            <li>• Supportive-language guidance per AGENTS.md §1; <code class="code">/note</code> mutations clear the whole API cache.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp23_test.go</code> TestLearnerNoteCreateUpdate; inline editor UI.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 19 · WP-2.3 — Gradebook Honesty · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

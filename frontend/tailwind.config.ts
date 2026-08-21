@@ -25,16 +25,18 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'sans-serif'],
+        sans: ['var(--font-inter)', 'var(--font-devanagari)', 'sans-serif'],
       },
       boxShadow: {
-        'bento': '0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.2)',
-        'glow': '0 0 20px rgba(0, 240, 255, 0.15)',
-        'glow-strong': '0 0 40px rgba(0, 240, 255, 0.4)',
+        'bento': '0 0 0 1px rgba(15, 23, 42, 0.06), 0 4px 6px -1px rgba(15, 23, 42, 0.12)',
+        // WP-4.6: glows are subtle elevation halos now — never neon blooms,
+        // never hover-triggered (see AGENTS.md §2a).
+        'glow': '0 2px 12px -2px rgb(var(--glow-rgb) / 0.15)',
+        'glow-strong': '0 4px 20px -4px rgb(var(--glow-rgb) / 0.25)',
       },
       backgroundImage: {
         'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
-        'neon-gradient': 'linear-gradient(90deg, #00B4D8, #7000FF, #FF0070)',
+        'neon-gradient': 'linear-gradient(90deg, #2563EB, #0D9488, #F59E0B)',
       },
       animation: {
         'spin-slow': 'spin 8s linear infinite',
@@ -62,8 +64,8 @@ const config: Config = {
           }
         },
         'pulse-glow': {
-          '0%, 100%': { opacity: '1', boxShadow: '0 0 20px rgba(0, 240, 255, 0.15)' },
-          '50%': { opacity: '.5', boxShadow: '0 0 10px rgba(0, 240, 255, 0.05)' },
+          '0%, 100%': { opacity: '1', boxShadow: '0 2px 12px -2px rgb(var(--glow-rgb) / 0.15)' },
+          '50%': { opacity: '.75', boxShadow: '0 1px 8px -2px rgb(var(--glow-rgb) / 0.05)' },
         }
       }
     },

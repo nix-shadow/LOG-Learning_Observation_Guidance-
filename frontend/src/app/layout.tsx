@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import { Toaster } from "react-hot-toast";
@@ -11,6 +11,8 @@ import ThreeBackground from "@/components/ThreeBackground";
 import SyncIsland from "@/components/SyncIsland";
 import dynamic from "next/dynamic";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import LocaleProvider from "@/i18n/LocaleProvider";
+import A11yProvider from "@/components/A11yProvider";
 
 // WP-0.3 bundle research round: CommandPalette (cmdk + lucide) is now loaded
 // on demand — the palette only renders its trigger until the first ⌘K or click.
@@ -20,6 +22,14 @@ const CommandPalette = dynamic(() => import("@/components/CommandPalette"), {
 });
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
+
+// WP-1.3: Devanagari subset is bundled at build time so Nepali UI renders
+// correctly even fully offline (school-LAN reality, no font CDN).
+const devanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  variable: "--font-devanagari",
+  weight: ["400", "500", "700"],
+});
 
 export const metadata: Metadata = {
   title: "LOG | Learning Observation Guidance",
@@ -31,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#00B4D8",
+  themeColor: "#2563EB",
   width: "device-width",
   initialScale: 1,
 };
@@ -43,7 +53,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} min-h-screen flex flex-col bg-white dark:bg-brand-darker text-gray-900 dark:text-brand-text font-sans antialiased overflow-x-hidden transition-colors duration-300`}>
+      <body className={`${inter.variable} ${devanagari.variable} min-h-screen flex flex-col bg-white dark:bg-brand-darker text-gray-900 dark:text-brand-text font-sans antialiased overflow-x-hidden transition-colors duration-300`}>
+        <LocaleProvider>
+        {/* WP-3.4 (RC-12): font-scale + high-contrast packs, applied at
+            mount so there is no flash of the unstyled interface. */}
+        <A11yProvider>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           {/* WP-0.3 a11y research round: skip link surfaces on keyboard focus
               (WCAG 2.4.1) so users who cannot use a mouse bypass the nav. */}
@@ -83,8 +97,8 @@ export default function RootLayout({
                 },
                 success: {
                   style: {
-                    background: 'var(--toast-success-bg, rgba(0,180,216,0.2))',
-                    border: '1px solid var(--toast-success-border, rgba(0,180,216,0.5))',
+                    background: 'var(--toast-success-bg, rgb(var(--teal-rgb)/0.2))',
+                    border: '1px solid var(--toast-success-border, rgb(var(--teal-rgb)/0.5))',
                   },
                 },
               }}
@@ -93,7 +107,9 @@ export default function RootLayout({
             </AuthProvider>
           </MotionConfig>
           </LazyMotion>
-        </ThemeProvider>
+          </ThemeProvider>
+          </A11yProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

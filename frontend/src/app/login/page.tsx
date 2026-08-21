@@ -12,7 +12,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Login() {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'parent'>('login');
   
   // Form states
   const [name, setName] = useState('');
@@ -21,6 +21,13 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // WP-2.1: parent claim form (teacher-issued invite code)
+  const [parentName, setParentName] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
+  const [parentPassword, setParentPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [parentConsentChecked, setParentConsentChecked] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
@@ -39,6 +46,15 @@ export default function Login() {
   const CONSENT_NOTICE_NP =
     'मेरा अभिभावकले मेरो सिकाइ प्रगति डेटा शैक्षिक उद्देश्यका लागि सङ्कलन, प्रयोग र सुरक्षित भण्डारण गरिने कुरा बुझेर सहमति दिनुभएको छ भनी पुष्टि गर्दछु। LOG ले विद्यार्थी डेटा तेस्रो पक्षसँग कहिल्यै साझा गर्दैन। डेटा अन्तिम गतिविधि भएको २ वर्षसम्म मात्र राखिनेछ; अडिट रेकर्ड बढीमा ३ वर्ष; तपाईं कुनै पनि समय डेटा निर्यात वा खाता मेटाउन सक्नुहुन्छ।';
   const CONSENT_NOTICE = `Guardian Consent · अभिभावकको सहमति\n${CONSENT_NOTICE_EN}\n${CONSENT_NOTICE_NP}`;
+
+  // WP-2.1: the EXACT parent-portal notice presented at claim time. Its
+  // sha256 travels as disclosure_hash so the school can prove the guardian
+  // saw precisely this text before accessing their child's digest.
+  const PARENT_NOTICE_EN =
+    'I confirm that I am the guardian of a learner at this school and agree to view my child\'s learning progress through the LOG parent portal, per LOG\'s privacy policy (version 2026-08-v1). The portal is read-only: progress and guidance only, never contact details or teacher observations. LOG never discloses learner data to third parties. Data is kept at most 2 years after last activity; I can export or delete my child\'s data at any time.';
+  const PARENT_NOTICE_NP =
+    'म यस विद्यालयका विद्यार्थीको अभिभावक हुँ भनी पुष्टि गर्दछु र LOG अभिभावक पोर्टलमार्फत आफ्नो छोराछोरीको सिकाइ प्रगति हेर्न सहमत छु। पोर्टल केवल पढ्नका लागि हो: प्रगति र मार्गदर्शन मात्र — सम्पर्क विवरण वा शिक्षकका टिप्पणीहरू होइनन्। LOG ले विद्यार्थी डेटा तेस्रो पक्षसँग कहिल्यै साझा गर्दैन। डेटा अन्तिम गतिविधि भएको २ वर्षसम्म मात्र राखिनेछ; तपाईं कुनै पनि समय डेटा निर्यात वा मेटाउन सक्नुहुन्छ।';
+  const PARENT_NOTICE = `Parent Portal Consent · अभिभावक पोर्टल सहमति\n${PARENT_NOTICE_EN}\n${PARENT_NOTICE_NP}`;
 
   // WP-0.1: guardian consent is recorded as evidence after every successful
   // registration path (register + Google). Offline, the POST is queued like
@@ -135,6 +151,45 @@ export default function Login() {
     }
   };
 
+  // WP-2.1: parent claim — one atomic flow (create PARENT account + claim the
+  // teacher-issued invite + record the parent_access consent with the notice's
+  // disclosure hash). The returned token carries the PARENT role, so
+  // AuthContext lands on /parent.
+  const handleParentClaim = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!parentConsentChecked) {
+      toast.error('Please accept the parent portal consent to continue.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetchWithCache('/auth/parent-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: parentName,
+          email: parentEmail,
+          password: parentPassword,
+          invite_code: inviteCode.trim(),
+          disclosure_hash: await disclosureHash(PARENT_NOTICE),
+          language: 'ne',
+        })
+      });
+      if (res.token) {
+        toast.success('Parent account created — your child is linked!');
+        login(res.user, res.token);
+        afterAuth();
+      } else {
+        toast.error(res.error || res.detail || 'Could not claim the invite. Ask the teacher to check the code.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not claim the invite. Ask the teacher to check the code.';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     if (!consentChecked) {
       toast.error('Please accept the guardian consent to continue.');
@@ -181,7 +236,7 @@ export default function Login() {
         className="card-glow bg-black/40 backdrop-blur-2xl border border-white/10 w-full max-w-md p-8 shadow-bento"
       >
         <div className="text-center mb-8">
-          <Image src="/assets/log-logo.png" alt="LOG Logo" width={150} height={60} className="mx-auto mb-6 dark:invert drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
+          <Image src="/assets/log-logo.png" alt="LOG Logo" width={150} height={60} className="mx-auto mb-6 dark:invert" />
           <h2 className="text-3xl font-bold text-white tracking-tight">Welcome</h2>
           <p className="text-white/60 mt-2">Sign in or create an account to continue.</p>
         </div>
@@ -207,6 +262,16 @@ export default function Login() {
             onClick={() => setActiveTab('register')}
           >
             Register
+          </button>
+          <button
+            className={`flex-1 pb-3 text-center text-sm font-medium transition-colors ${
+              activeTab === 'parent' 
+                ? 'text-brand-neon border-b-2 border-brand-neon' 
+                : 'text-brand-muted hover:text-white/80'
+            }`}
+            onClick={() => setActiveTab('parent')}
+          >
+            Parent · अभिभावक
           </button>
         </div>
 
@@ -239,11 +304,11 @@ export default function Login() {
                 </button>
               </div>
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-lg mt-4 shadow-glow">
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-lg mt-4">
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
-        ) : (
+        ) : activeTab === 'register' ? (
           <form onSubmit={handleRegister} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-white/80 mb-2">Full Name</label>
@@ -328,8 +393,71 @@ export default function Login() {
                 className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all text-sm"
               />
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-lg mt-4 shadow-glow">
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-lg mt-4">
               {loading ? 'Registering...' : 'Register'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleParentClaim} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">Parent Name</label>
+              <input
+                type="text" required
+                value={parentName} onChange={(e) => setParentName(e.target.value)}
+                placeholder="Jane Doe"
+                className={inputClasses}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">Email</label>
+              <input
+                type="email" required
+                value={parentEmail} onChange={(e) => setParentEmail(e.target.value)}
+                placeholder="you@example.com"
+                className={inputClasses}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">Password</label>
+              <input
+                type="password" required minLength={8}
+                value={parentPassword} onChange={(e) => setParentPassword(e.target.value)}
+                placeholder="•••••••• (Min 8 chars)"
+                className={inputClasses}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                Invite code <span className="text-brand-muted">(from your child&apos;s teacher)</span>
+              </label>
+              <input
+                type="text" required
+                value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="e.g. A1B2C3"
+                className={`${inputClasses} font-mono tracking-widest uppercase`}
+              />
+            </div>
+            {/* WP-2.1: parent portal consent — read-only digest access,
+                evidence recorded server-side as disclosure_hash. */}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={parentConsentChecked}
+                  onChange={(e) => setParentConsentChecked(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-brand-teal"
+                />
+                <span className="text-xs text-white/70 leading-relaxed">
+                  <strong className="text-white/90">Parent Portal Consent · अभिभावक पोर्टल सहमति</strong>
+                  <br />
+                  {PARENT_NOTICE_EN}
+                  <br />
+                  <span className="text-white/50" lang="ne">{PARENT_NOTICE_NP}</span>
+                </span>
+              </label>
+            </div>
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-lg mt-4">
+              {loading ? 'Creating account...' : 'Claim my child'}
             </button>
           </form>
         )}

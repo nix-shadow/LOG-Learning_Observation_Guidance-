@@ -30,6 +30,15 @@ func (r *schoolRepo) FindClassByID(ctx context.Context, id string) (*domain.Clas
 	return &class, nil
 }
 
+// FindClassByInviteCode resolves the class behind a join code (WP-1.5).
+func (r *schoolRepo) FindClassByInviteCode(ctx context.Context, code string) (*domain.Class, error) {
+	var class domain.Class
+	if err := r.db.WithContext(ctx).First(&class, "invite_code = ?", code).Error; err != nil {
+		return nil, err
+	}
+	return &class, nil
+}
+
 func (r *schoolRepo) ListClasses(ctx context.Context) ([]domain.Class, error) {
 	var classes []domain.Class
 	if err := r.db.WithContext(ctx).Order("grade, section").Find(&classes).Error; err != nil {
@@ -95,6 +104,32 @@ func (r *schoolRepo) ClassesOfLearner(ctx context.Context, learnerID string) ([]
 		Order("classes.grade, classes.section").
 		Find(&classes).Error
 	return classes, err
+}
+
+// StudentInTeacherClasses is the WP-1.5 per-student progress scope check: the
+// learner must be a member of at least one class the teacher owns. Honest
+// false on any miss — a teacher can never read a stranger's progress.
+func (r *schoolRepo) StudentInTeacherClasses(ctx context.Context, teacherID, learnerID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&domain.ClassMember{}).
+		Joins("JOIN classes ON classes.id = class_members.class_id").
+		Where("class_members.user_id = ? AND classes.teacher_id = ?", learnerID, teacherID).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// FindUserByEmail / CreateStudentUser back the roster CSV import (WP-1.5).
+func (r *schoolRepo) FindUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	var user domain.User
+	if err := r.db.WithContext(ctx).First(&user, "email = ?", email).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *schoolRepo) CreateStudentUser(ctx context.Context, user *domain.User) error {
+	return r.db.WithContext(ctx).Create(user).Error
 }
 
 func (r *schoolRepo) CreateAnnouncement(ctx context.Context, ann *domain.Announcement) error {

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>13 — WP-1.2 — Practice Engine + SEE-First Content | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 13 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-1.2 — Practice Engine + SEE-First Content</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-1.2 work package (tracker tasks wp12t01–wp12t03, RC-02): a practice engine that explains answers, SEE 9–12 pilot content, and honest attempt/accuracy bookkeeping in both write paths.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">RC-02</span>
+      <span class="badge badge-ok">Explanations for right AND wrong</span>
+      <span class="badge badge-ok">SEE 9–12 content</span>
+      <span class="badge badge-ok">Accuracy area + totals</span>
+      <span class="badge badge-ok">Dual write paths</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp12t01 ✓</span>
+      <h2 class="text-2xl font-bold">Practice that teaches</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>explanation shown for correct AND incorrect answers; quiz correctness feeds real progress.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Explanation shown after every answer — correct and incorrect — so practice teaches, not just scores.</li>
+            <li>• The explanation copy lives in the bilingual message files (EN + NP), consistent with WP-1.3.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Lesson/quiz UI on <code class="code">learning/[id]/page.tsx</code>; explanation messages in <code class="code">messages/*.json</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp12t02 ✓</span>
+      <h2 class="text-2xl font-bold">SEE 9–12 pilot content</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>Nepal SEE-grade content seeded as real backend data.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• 3 activities, 18 modules seeded (Quadratic Equations, Electricity, Tenses) — real rows, not literals.</li>
+            <li>• Content is structured as activities → modules for the status engine to score.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Seed data in the backend DB init; catalog renders the seeded activities.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp12t03 ✓</span>
+      <h2 class="text-2xl font-bold">Honest attempt & accuracy bookkeeping</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>attempts and accuracy are stored per activity and aggregated honestly for charts.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">DailyActivity.Attempts</code> / <code class="code">Accuracy</code> with a weighted running mean maintained in BOTH write paths (online completion + offline sync replay).</li>
+            <li>• Observation chart renders the accuracy area + practice totals from these real rows only.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">completion_repo.go</code> + <code class="code">sync_repo.go</code>; chart tests (<code class="code">TestAttemptStats…</code>, <code class="code">TestSyncBulkTimestampParity</code>).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 13 · WP-1.2 — Practice Engine + SEE-First Content · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

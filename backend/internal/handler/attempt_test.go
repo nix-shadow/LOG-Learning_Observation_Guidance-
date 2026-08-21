@@ -35,7 +35,7 @@ func setupAttemptRouter() (*gin.Engine, *LearnerHandler) {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
-	lh := NewLearnerHandler(learnerService, courseService, moderatorService)
+	lh := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 	r.POST("/api/v1/activities/:id/complete", lh.CompleteActivity)
 	return r, lh
 }
@@ -56,7 +56,10 @@ func newAttemptLearner(t *testing.T) string {
 	t.Helper()
 	learnerID := service.GenerateSecureID("user")
 	phone := service.GenerateSecureID("ph")
-	database.DB.Create(&domain.User{ID: learnerID, Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
+	// Unique email: soft-deleted rows keep their unique-index entries, so a
+	// shared empty string would block every later test run on the same DB.
+	email := service.GenerateSecureID("em") + "@test.local"
+	database.DB.Create(&domain.User{ID: learnerID, Email: email, Phone: &phone, Role: domain.RoleStudent, IsVerified: true})
 	cleanupAttemptLearner(t, learnerID)
 	return learnerID
 }
@@ -213,8 +216,8 @@ func TestCompleteActivityTransitionsInProgressRow(t *testing.T) {
 
 	var la domain.LearnerActivity
 	database.DB.First(&la, "learner_id = ? AND activity_id = ?", learnerID, "act-2")
-	if la.Status != "Completed" {
-		t.Errorf("expected status Completed, got %q", la.Status)
+	if la.Status != domain.StatusCompleted {
+		t.Errorf("expected status %q, got %q", domain.StatusCompleted, la.Status)
 	}
 	if la.Score != 100.0 {
 		t.Errorf("expected score 100, got %v", la.Score)

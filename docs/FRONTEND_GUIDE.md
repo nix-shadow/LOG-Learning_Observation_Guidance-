@@ -27,7 +27,6 @@ frontend/src/
 ├── components/
 │   ├── Navigation.tsx         # Sticky desktop nav and mobile bottom bar
 │   ├── PageTransition.tsx     # Framer Motion page transition wrapper
-│   ├── OfflineBanner.tsx      # Amber banner + floating badge when offline
 │   ├── InstallPrompt.tsx      # PWA beforeinstallprompt with 7-day dismissal
 │   ├── SkeletonLoader.tsx     # Animated loading placeholders (card/stats/text/chart)
 │   ├── MicroModuleViewer.tsx  # Swipeable bite-sized module player

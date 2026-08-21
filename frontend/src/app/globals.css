@@ -3,26 +3,55 @@
 @tailwind utilities;
 
 @layer base {
+  /* ============================================================
+     LOG Brand Palette (source of truth — mirrored in AGENTS.md)
+     ------------------------------------------------------------
+       Role              | Light mode hex  | Dark mode hex
+     ------------------------------------------------------------
+       Primary Blue      | #2563EB         | #60A5FA (accents) / #3B82F6 (fills)
+       Secondary Teal    | #0D9488         | #2DD4BF
+       Accent Amber      | #F59E0B         | #FBBF24
+       Background        | #F8FAFC         | #0B1220 (brand navy, not black)
+       Surface           | #FFFFFF         | #122036
+       Primary Text      | #0F172A         | #E9F0FA
+       Secondary Text    | #64748B         | #9DB0C9
+     ------------------------------------------------------------
+     Dark mode is the native design (default, class present on <html>).
+     Light mode (ThemeToggle / Settings) is the official palette: soft white
+     canvas, navy text, blue/teal/amber accents. Components consume the
+     hsl(var(--brand-*)) tokens, so both modes re-skin from here.
+     ============================================================ */
+
   :root {
-    /* HSL Tokens for Brand Colors - Dark Mode Base */
-    --brand-blue: 210 73% 15%; /* #0A2540 */
-    --brand-teal: 190 100% 42%; /* #00B4D8 */
-    --brand-amber: 43 100% 51%; /* #FFB703 */
-    --brand-white: 210 20% 98%; /* #F8F9FA */
-    --brand-gray: 210 16% 93%; /* #E9ECEF */
-    
-    /* New Dark Mode specific tokens */
-    --brand-dark: 210 10% 8%; /* Very dark slate, almost black */
-    --brand-darker: 0 0% 4%; /* OLED Black */
-    --brand-text: 210 20% 98%; /* White text by default */
-    --brand-neon: 190 100% 50%; /* Bright glowing teal */
+    /* --- Dark mode tokens (default) --- */
+    --brand-blue: 217 91% 60%;   /* #3B82F6 — primary fills/buttons */
+    --brand-teal: 172 66% 50%;   /* #2DD4BF — secondary accents */
+    --brand-amber: 38 92% 50%;   /* #FBBF24 — accent */
+    --brand-white: 210 20% 98%;  /* #F8F9FA */
+    --brand-gray: 210 16% 93%;   /* #E9ECEF */
+
+    --brand-dark: 217 45% 14%;   /* #122036 — cards/panels on navy */
+    --brand-darker: 222 47% 8%;  /* #0B1220 — page canvas (brand navy, not black) */
+    --brand-text: 215 55% 95%;   /* #E9F0FA — primary text */
+    --brand-neon: 213 94% 68%;   /* #60A5FA — bright brand blue: focus rings,
+                                    glows, active nav, gradient accents */
 
     /* Contrast-safe text tokens (WP-0.3 C6). Computed against --brand-darker
-       (relative luminance 0.003) — see docs/html/11-accessibility-audit.html.
-       muted: >= 7:1 (AA AAA for normal text) — for all secondary copy.
+       (#0B1220, relative luminance ≈0.012) — see docs/html/11-accessibility-audit.html.
+       muted: >= 7:1 (AA AAA for normal text) — all secondary copy.
        faint: decorative/large-only; never used for essential copy. */
-    --brand-muted: 210 16% 70%;
-    --brand-faint: 210 16% 55%;
+    --brand-muted: 214 30% 70%;  /* #9DB0C9 ≈ 7.5:1 on navy */
+    --brand-faint: 214 20% 53%;  /* #70839F ≈ 4.4:1 — decorative only */
+
+    /* Glow/neon color used by shadow utilities and inline glows; the whole
+       design's cyan glow (0,240,255) is rebranded to LOG blue via this var. */
+    --glow-rgb: 96 165 250;      /* #60A5FA */
+
+    /* Amber glow color (LOG amber, per mode) for rating stars, guidance icons. */
+    --amber-rgb: 251 191 36;     /* #FBBF24 */
+
+    /* Teal glow color (LOG teal, per mode) for teal icon accents. */
+    --teal-rgb: 45 212 191;      /* #2DD4BF */
   }
 
   /* Visible keyboard focus ring (WP-0.3 WCAG 2.4.11/2.4.7) */
@@ -31,6 +60,112 @@
     outline-offset: 2px;
     border-radius: 6px;
   }
+
+  /* --- Light mode (html:not(.dark)) — the official LOG palette --- */
+  html { color-scheme: dark; }
+  html:not(.dark) {
+    color-scheme: light;
+
+    --brand-blue: 221 83% 53%;   /* #2563EB — primary (LOG blue) */
+    --brand-teal: 175 84% 32%;   /* #0D9488 — secondary (LOG teal) */
+    --brand-amber: 38 92% 50%;   /* #F59E0B — accent (LOG amber) */
+    --brand-white: 210 20% 98%;  /* #F8F9FA */
+    --brand-gray: 210 16% 93%;   /* #E9ECEF */
+
+    --brand-dark: 0 0% 100%;     /* #FFFFFF — cards */
+    --brand-darker: 210 33% 98%; /* #F8FAFC — page canvas (LOG soft white) */
+    --brand-text: 222 47% 11%;   /* #0F172A — primary text (LOG navy/slate) */
+    --brand-neon: 221 83% 53%;   /* #2563EB — focus rings, glows, accents */
+
+    /* Contrast on the #F8FAFC canvas: muted (LOG slate grey #64748B) ≈ 4.7:1
+       AA normal text; faint (slate-400) decorative only. */
+    --brand-muted: 215 16% 47%;  /* #64748B */
+    --brand-faint: 215 20% 65%;  /* #94A3B8 — decorative/large only */
+
+    --glow-rgb: 37 99 235;       /* #2563EB */
+    --amber-rgb: 245 158 11;     /* #F59E0B */
+    --teal-rgb: 13 148 136;      /* #0D9488 */
+  }
+
+  /* LOG amber/teal as *text* are darkened in light mode to pass WCAG AA
+     (the pure palette hexes are for fills/accents, not body text). */
+  html:not(.dark) .text-brand-amber { color: #B45309; }   /* amber-700 ≈ 4.9:1 on white */
+  html:not(.dark) .text-brand-teal { color: #0F766E; }    /* teal-700 ≈ 5.0:1 on white */
+
+  /* Solid brand fills keep white labels in light mode too — the generic
+     text-white remap below would otherwise turn them navy-on-blue. Higher
+     specificity (html + fill + text class) beats the generic remap. */
+  html:not(.dark) .bg-brand-blue.text-white,
+  html:not(.dark) .bg-brand-blue\/90.text-white,
+  html:not(.dark) .bg-brand-teal.text-white { color: #ffffff; }
+  /* .btn-primary gets its white from @apply, not a literal text-white class,
+     and Tailwind merges plain `html:not(.dark) .btn-primary` into the text
+     remap — !important is the only way to keep the component rule intact. */
+  html:not(.dark) .btn-primary { color: #ffffff !important; }
+
+  /* Page grid: subtle slate lines on light, soft white on navy dark. */
+  html:not(.dark) body {
+    background-image: linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+  }
+
+  /* Literal white/black utilities used across components, remapped for
+     light surfaces. Text: darker on light. Surfaces: white translucency
+     becomes dark translucency on light cards (and vice versa for the
+     bg-black/* overlays that pair with text-white). */
+  html:not(.dark) .text-white,
+  html:not(.dark) .text-white\/90,
+  html:not(.dark) .text-white\/80 { color: hsl(var(--brand-text)); }
+  html:not(.dark) .text-white\/70,
+  html:not(.dark) .text-white\/60,
+  html:not(.dark) .text-white\/50 { color: hsl(var(--brand-muted)); }
+  html:not(.dark) .text-white\/40,
+  html:not(.dark) .text-white\/30,
+  html:not(.dark) .text-white\/20 { color: hsl(var(--brand-faint)); }
+  html:not(.dark) .text-black,
+  html:not(.dark) .text-neutral-800,
+  html:not(.dark) .text-gray-900 { color: hsl(var(--brand-text)); }
+  html:not(.dark) .text-neutral-400,
+  html:not(.dark) .text-neutral-500 { color: hsl(var(--brand-muted)); }
+
+  html:not(.dark) .border-white,
+  html:not(.dark) .border-white\/5,
+  html:not(.dark) .border-white\/10,
+  html:not(.dark) .border-white\/15,
+  html:not(.dark) .border-white\/20,
+  html:not(.dark) .border-white\/30,
+  html:not(.dark) .border-white\/40,
+  html:not(.dark) .border-white\/50,
+  html:not(.dark) .border-white\/60 { border-color: rgba(15, 23, 42, 0.14); }
+  html:not(.dark) .border-black\/5 { border-color: rgba(15, 23, 42, 0.08); }
+
+  html:not(.dark) .bg-white\/5,
+  html:not(.dark) .bg-white\/10,
+  html:not(.dark) .bg-white\/20,
+  html:not(.dark) .bg-white\/30 { background-color: rgba(15, 23, 42, 0.06); }
+  html:not(.dark) .bg-white\/40,
+  html:not(.dark) .bg-white\/50,
+  html:not(.dark) .bg-white\/60,
+  html:not(.dark) .bg-white\/70,
+  html:not(.dark) .bg-white\/80,
+  html:not(.dark) .bg-white\/90 { background-color: rgba(255, 255, 255, 0.85); }
+  html:not(.dark) .bg-white { background-color: #ffffff; }
+  html:not(.dark) .bg-black,
+  html:not(.dark) .bg-black\/20,
+  html:not(.dark) .bg-black\/30,
+  html:not(.dark) .bg-black\/40,
+  html:not(.dark) .bg-black\/50,
+  html:not(.dark) .bg-black\/60,
+  html:not(.dark) .bg-black\/70,
+  html:not(.dark) .bg-black\/80 { background-color: rgba(255, 255, 255, 0.7); }
+  html:not(.dark) .bg-gray-100 { background-color: #eef1f4; }
+  html:not(.dark) .bg-gray-200 { background-color: #e2e6ea; }
+
+  /* Gradient text stops that hardcode white — on light surfaces the "from"
+     end must be the navy text token, not white. */
+  html:not(.dark) .from-white { --tw-gradient-from: hsl(var(--brand-text)) var(--tw-gradient-from-position); }
+  html:not(.dark) .via-white { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--brand-text)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  html:not(.dark) .to-white { --tw-gradient-to: hsl(var(--brand-text)) var(--tw-gradient-to-position); }
 
   /* 44px minimum touch/click targets (WP-0.3 WCAG 2.5.8; exceptions documented
      in docs/html/11-accessibility-audit.html — inline links and user-agent
@@ -48,7 +183,7 @@
 
   body {
     @apply bg-brand-darker text-brand-text font-sans antialiased selection:bg-brand-neon/30;
-    /* Add a subtle dark grid background */
+    /* Subtle grid — soft white on navy (dark), slate on soft white (light). */
     background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 32px 32px;
@@ -72,27 +207,28 @@
 }
 
 @layer components {
-  /* Pro Max Button Styling */
+  /* Primary action — LOG brand blue. Solid fill with white label; the blue
+     token self-adjusts per mode (#2563EB light / #3B82F6 dark). */
   .btn-primary {
-    @apply relative overflow-hidden bg-brand-teal/10 border border-brand-teal/50 text-brand-neon px-6 py-2 rounded-full font-medium shadow-bento hover:shadow-glow hover:bg-brand-teal/20 hover:-translate-y-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2 focus:ring-offset-brand-darker;
+    @apply relative overflow-hidden bg-brand-blue text-white border border-brand-blue/60 px-6 py-2 rounded-full font-medium shadow-bento hover:bg-brand-blue/90 hover:-translate-y-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:ring-offset-2 focus:ring-offset-brand-darker;
   }
-  
+
   .btn-secondary {
-    @apply bg-brand-dark border border-white/10 text-white/80 px-6 py-2 rounded-full font-medium hover:bg-white/5 hover:text-white hover:border-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-brand-darker;
+    @apply bg-brand-dark border border-brand-blue/25 text-brand-muted px-6 py-2 rounded-full font-medium hover:bg-brand-blue/10 hover:text-brand-text hover:border-brand-blue/40 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:ring-offset-2 focus:ring-offset-brand-darker;
   }
 
   /* Glassmorphism Card (Anti-Slop) */
   .card {
-    @apply bg-brand-dark/50 backdrop-blur-xl border border-white/10 rounded-[24px] p-6 shadow-bento transition-all duration-500 hover:border-white/20 hover:shadow-glow;
+    @apply bg-brand-dark/50 backdrop-blur-xl border border-brand-blue/15 rounded-[24px] p-6 shadow-bento transition-all duration-500 hover:border-brand-blue/30 hover:shadow-glow;
   }
-  
-  /* Animated Gradient Border Card */
+
+  /* Animated Gradient Border Card — LOG blue → teal → amber */
   .card-glow {
     @apply relative bg-brand-dark/80 backdrop-blur-2xl rounded-[24px] p-6;
     background-clip: padding-box;
     border: 1px solid transparent;
   }
-  
+
   .card-glow::before {
     content: "";
     position: absolute;
@@ -100,19 +236,20 @@
     z-index: -1;
     margin: -1px;
     border-radius: inherit;
-    background: var(--brand-neon-gradient, linear-gradient(90deg, #00B4D8, #7000FF, #FF0070));
+    background: var(--brand-neon-gradient, linear-gradient(90deg, #2563EB, #0D9488, #F59E0B));
     background-size: 200% 200%;
     animation: gradient-x 4s ease infinite;
     opacity: 0.3;
     transition: opacity 0.5s ease;
   }
-  
+
   .card-glow:hover::before {
-    opacity: 1;
+    /* Calm hover feedback: the gradient border brightens, it never blooms. */
+    opacity: 0.55;
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar — navy thumb on dark, slate thumb on light. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -121,11 +258,20 @@
   background: rgba(0, 0, 0, 0.2);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(96, 165, 250, 0.25);
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(96, 165, 250, 0.45);
+}
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.06);
+}
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+}
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.6);
 }
 
 /* Reduced-motion (WP-0.3 WCAG 2.3.3): neutralize CSS animation/transition for
@@ -145,3 +291,31 @@
     animation: none !important;
   }
 }
+
+/* WP-3.4 (RC-12) accessibility packs — user-chosen, applied via data
+   attributes on <html> by A11yProvider (src/components/A11yProvider.tsx).
+   Font scale compounds on the root font size so every rem-sized element
+   grows together; high contrast replaces low-opacity text/borders with
+   solid, readable values (WCAG 1.4.3 AA+ intent). */
+html[data-font-scale="large"] { font-size: 1.18rem; }
+html[data-font-scale="xlarge"] { font-size: 1.35rem; }
+
+html[data-contrast="high"] { --brand-muted: 210 16% 92%; --brand-faint: 210 16% 85%; }
+html[data-contrast="high"] body { background: #0B1220; }
+html[data-contrast="high"]:not(.dark) {
+  --brand-muted: 222 47% 26%;  /* slate-800 — solid readable secondary text on white */
+  --brand-faint: 222 30% 32%;  /* slate-700 — "faint" becomes solid in high contrast */
+}
+html[data-contrast="high"]:not(.dark) body { background: #F8FAFC; }
+html[data-contrast="high"] .text-white\/60,
+html[data-contrast="high"] .text-white\/50,
+html[data-contrast="high"] .text-brand-muted,
+html[data-contrast="high"] .text-white\/70 { color: hsl(var(--brand-muted)) !important; }
+html[data-contrast="high"] .text-white\/40,
+html[data-contrast="high"] .text-white\/30,
+html[data-contrast="high"] .text-brand-faint { color: hsl(var(--brand-faint)) !important; }
+html[data-contrast="high"] .border-white\/5,
+html[data-contrast="high"] .border-white\/10,
+html[data-contrast="high"] .border-white\/15,
+html[data-contrast="high"] .border-white\/20 { border-color: rgba(96, 165, 250, 0.5) !important; }
+html[data-contrast="high"] a, html[data-contrast="high"] button { text-decoration-thickness: 2px; }

@@ -35,10 +35,10 @@ export default function Home() {
       <section className="w-full py-12 md:py-24 lg:py-32 flex flex-col items-center text-center relative">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-neon/20 rounded-full blur-[120px] pointer-events-none -z-10"></div>
         
-        <div className="gsap-stagger card-glow w-full max-w-4xl p-12 md:p-16 flex flex-col items-center border border-white/10 shadow-[0_0_80px_rgba(0,180,216,0.15)]">
-          <Image src="/assets/log-logo.png" alt="LOG Logo" width={250} height={100} className="mb-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] dark:invert" />
+        <div className="gsap-stagger card-glow w-full max-w-4xl p-12 md:p-16 flex flex-col items-center border border-white/10">
+          <Image src="/assets/log-logo.png" alt="LOG Logo" width={250} height={100} className="mb-10 dark:invert" />
           
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 text-transparent bg-clip-text bg-gradient-to-r from-white via-brand-neon to-brand-amber">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 text-transparent bg-clip-text bg-gradient-to-r from-brand-text via-brand-neon to-brand-amber">
             A smart learning companion.
           </h1>
           
@@ -47,7 +47,7 @@ export default function Home() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-6">
-            <Link href="/dashboard" className="btn-primary group flex items-center justify-center text-lg px-10 py-4 shadow-[0_0_20px_rgba(0,240,255,0.4)]">
+            <Link href="/dashboard" className="btn-primary group flex items-center justify-center text-lg px-10 py-4">
               Start Learning <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
@@ -70,8 +70,8 @@ export default function Home() {
           {steps.map((step, idx) => {
             const Icon = step.icon;
             return (
-              <div key={idx} className="gsap-stagger group flex flex-col items-center text-center p-8 bg-white/5 backdrop-blur-xl rounded-[24px] shadow-bento border border-white/10 hover:border-white/30 hover:shadow-glow hover:-translate-y-2 transition-all duration-300">
-                <div className="w-20 h-20 rounded-full bg-brand-teal/10 flex items-center justify-center text-brand-neon mb-6 border border-brand-teal/20 group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300">
+              <div key={idx} className="gsap-stagger group flex flex-col items-center text-center p-8 bg-white/5 backdrop-blur-xl rounded-[24px] shadow-bento border border-white/10 hover:border-white/30 hover:-translate-y-2 transition-all duration-300">
+                <div className="w-20 h-20 rounded-full bg-brand-teal/10 flex items-center justify-center text-brand-neon mb-6 border border-brand-teal/20 group-hover:scale-110 transition-all duration-300">
                   <Icon className="w-10 h-10" />
                 </div>
                 <h3 className="font-bold text-xl mb-3 text-white tracking-wide">{step.title}</h3>

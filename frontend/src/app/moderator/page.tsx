@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { BookOpen, WifiOff, GraduationCap } from 'lucide-react';
+import { BookOpen, WifiOff, GraduationCap, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchWithCache } from '@/lib/api';
 import { SchoolClass } from '@/lib/types';
@@ -13,16 +13,22 @@ import { prefersReducedMotion } from '@/lib/motion';
 import RosterOverview, { RosterData } from '@/components/moderator/RosterOverview';
 import AssignmentManager from '@/components/moderator/AssignmentManager';
 import AnnouncementComposer from '@/components/admin/AnnouncementComposer';
+import ClassWizard from '@/components/moderator/ClassWizard';
+import SupportInbox from '@/components/SupportInbox';
+import GradebookOverview from '@/components/moderator/GradebookOverview';
+import { useTranslations } from 'next-intl';
 
 export default function ModeratorDashboard() {
   const { user, isModerator } = useAuth();
   const router = useRouter();
+  const t = useTranslations('onboard');
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [rosterData, setRosterData] = useState<RosterData | null>(null);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const authHeaders = () => ({ headers: { 'Authorization': `Bearer ${localStorage.getItem('log_token')}` } });
 
@@ -73,6 +79,12 @@ export default function ModeratorDashboard() {
         </div>
         <div className="flex gap-3">
            <button
+             onClick={() => setWizardOpen(true)}
+             className="bg-brand-neon/15 hover:bg-brand-neon/25 text-brand-neon transition-all px-5 py-2.5 rounded-full flex items-center gap-2 backdrop-blur-xl border border-brand-neon/30 font-semibold text-sm"
+           >
+             <GraduationCap className="w-4 h-4" /> {t('newClass')}
+           </button>
+           <button
              onClick={() => {
                toast.promise(
                  fetchWithCache('/moderator/roster', authHeaders()),
@@ -90,6 +102,33 @@ export default function ModeratorDashboard() {
         </div>
       </div>
 
+      {classes.length === 0 && !rosterData && (
+        <div className="gsap-stagger card-glow border border-brand-neon/30 bg-gradient-to-br from-brand-neon/10 to-transparent rounded-3xl p-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <span className="p-3 rounded-2xl bg-brand-neon/20 text-brand-neon">
+                <Sparkles className="w-7 h-7" />
+              </span>
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight mb-2">{t('welcome')}</h2>
+                <p className="text-white/60">{t('welcomeHint')}</p>
+                <ol className="mt-4 space-y-2 text-sm text-white/70">
+                  <li>1. {t('step1')}</li>
+                  <li>2. {t('step2')}</li>
+                  <li>3. {t('step3')}</li>
+                </ol>
+              </div>
+            </div>
+            <button
+              onClick={() => setWizardOpen(true)}
+              className="btn-primary px-7 py-3.5 font-bold whitespace-nowrap"
+            >
+              {t('startWizard')} →
+            </button>
+          </div>
+        </div>
+      )}
+
       <RosterOverview token={token} onLoaded={setRosterData} />
 
       {/* My Classes */}
@@ -99,13 +138,26 @@ export default function ModeratorDashboard() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes.length === 0 ? (
-            <p className="text-brand-muted">No classes assigned yet. Ask the admin to create one for you.</p>
+            <p className="text-brand-muted">{t('noClasses')}</p>
           ) : classes.map(c => (
-            <button key={c.id} onClick={() => setSelectedClass(c.id)}
-              className={`text-left p-5 rounded-2xl border transition-all ${selectedClass === c.id ? 'border-brand-neon bg-brand-neon/10 shadow-glow' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
-              <p className="font-bold text-white text-lg">{c.name}</p>
-              <p className="text-sm text-white/50 mt-1">{c.member_count ?? 0} students</p>
-            </button>
+            <div key={c.id} className="p-5 rounded-2xl border transition-all border-white/10 bg-white/5">
+              <button onClick={() => setSelectedClass(c.id)}
+                className={`text-left w-full ${selectedClass === c.id ? '' : ''}`}>
+                <p className="font-bold text-white text-lg">{c.name}</p>
+                <p className="text-sm text-white/50 mt-1">{c.member_count ?? 0} students</p>
+              </button>
+              {c.invite_code && (
+                <p className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+                  <span className="text-xs text-white/40 uppercase tracking-wider">Invite code</span>
+                  <button
+                    onClick={() => navigator.clipboard?.writeText(c.invite_code ?? '').then(() => toast.success('Code copied'))}
+                    className="font-mono font-bold tracking-widest text-brand-neon hover:text-white transition-colors"
+                  >
+                    {c.invite_code}
+                  </button>
+                </p>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -115,10 +167,25 @@ export default function ModeratorDashboard() {
         <AssignmentManager token={token} classId={selectedClass} className={selectedClassName} />
       </div>
 
+      {/* WP-2.3: honest gradebook — real accuracy/attempts per activity,
+          CSV export, and per-student supportive notes */}
+      <div className="gsap-stagger">
+        <GradebookOverview token={token} selectedClass={selectedClass} />
+      </div>
+
       {/* Announcement */}
       <div className="gsap-stagger card-glow p-6 border border-white/10">
         <AnnouncementComposer token={token} endpoint="/moderator/announcements" />
       </div>
+
+      {/* WP-2.2: support inbox — escalated learner issues, resolved here */}
+      <div className="gsap-stagger">
+        <SupportInbox />
+      </div>
+
+      {wizardOpen && (
+        <ClassWizard token={token} onClose={() => setWizardOpen(false)} onCreated={loadClasses} />
+      )}
     </div>
   );
 }

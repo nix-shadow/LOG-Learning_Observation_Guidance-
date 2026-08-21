@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>28 — WP-4.3 — Monitoring &amp; Honesty | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 28 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-4.3 — Monitoring &amp; Honesty</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-4.3 work package (tracker tasks wp43t01–wp43t02): a PII-free request metrics registry with a real 5xx alarm, and an opt-in analytics consent with a real withdrawal path — plus an analytics summary that never fabricates a number.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">PII-free by design</span>
+      <span class="badge badge-ok">5xx alarm</span>
+      <span class="badge badge-ok">Analytics consent</span>
+      <span class="badge badge-ok">Real withdrawal</span>
+      <span class="badge badge-ok">Aggregate-only admin</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp43t01 ✓</span>
+      <h2 class="text-2xl font-bold">Metrics registry &amp; 5xx alarm</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>registry counts request outcomes without PII; a 5xx spike alarms once per episode</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/metrics/metrics.go</code> — per-route-pattern counters keyed by <code class="code">c.FullPath()</code> (pattern, never user ids): keys cannot carry PII by construction.</li>
+            <li>• Middleware records every request (unmatched 404s recorded with the empty pattern, kept out of render); spike alarm fires at ≥5 5xx within a 60s sliding window, once per episode, re-arming only when the window empties — no alert storms.</li>
+            <li>• Public <code class="code">GET /metrics</code> serves Prometheus-style text; admin <code class="code">GET /api/v1/admin/metrics</code> serves JSON snapshot. Uptime is honest: a server up 3 seconds says 3, not 0.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/metrics/wp43_test.go</code> — pattern recording, spike fires once and re-arms, render never contains user ids, uptime honesty.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp43t02 ✓</span>
+      <h2 class="text-2xl font-bold">Opt-in analytics consent</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>analytics tracking is opt-in, withdrawable, and the admin summary only counts opted-in learners</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">analytics</code> consent type (policy 2026-08-v1) with a real withdrawal path: <code class="code">POST /me/consent</code> accepts <code class="code">status: granted|withdrawn</code> — withdrawal sets <code class="code">WithdrawnAt</code> and writes a <code class="code">privacy.consent_withdrawn</code> audit row (vs <code class="code">privacy.consent_granted</code>).</li>
+            <li>• Settings toggle is three-state (<code class="code">null | true | false</code>) — "not loaded yet" is never shown as "opted out"; switch is accessible (<code class="code">role="switch"</code> + <code class="code">aria-checked</code>).</li>
+            <li>• <code class="code">GET /api/v1/admin/analytics/summary</code> is aggregate-only, computed exclusively over opted-in learners (<code class="code">consent_records WHERE consent_type='analytics' AND status='granted'</code>); <code class="code">avg_score</code> is <code class="code">null</code> when there is no opted-in completion — a fabricated 0 is impossible.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/handler/admin_test.go</code> — <code class="code">TestAnalyticsSummaryOptInGate</code> (opted-out completions excluded, null avg never fabricated), <code class="code">TestAnalyticsConsentWithdrawal</code>, <code class="code">TestAnalyticsSummaryDelegatesAndIsNeverFabricated</code>.</li>
+            <li>• Frontend: <code class="code">frontend/src/app/settings/page.tsx</code> toggle; privacy pack doc §10.7 "Round 4 — opt-in analytics".</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 28 · WP-4.3 — Monitoring &amp; Honesty · generated 2026-08-20 · tracker wp43t01–wp43t02 ✓
+  </footer>
+</div>
+<nav class="doc-nav">
+  <a class="doc-nav-link" href="27-wp42-scale-performance.html">← 27 · WP-4.2 Scale &amp; Performance</a>
+  <a class="doc-nav-home" href="index.html">Research Hub</a>
+  <a class="doc-nav-link" href="29-wp44-release-docs.html">29 · WP-4.4 Release &amp; Docs →</a>
+</nav>
+<footer class="doc-footer">LOG Research Hub &middot; compiled 2026-08-20 &middot; evidence-based, offline-first, no invented numbers</footer>
+</body>
+</html>

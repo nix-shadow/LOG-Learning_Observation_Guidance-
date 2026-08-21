@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>17 — WP-2.1 — Parent Portal | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 17 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-2.1 — Parent Portal</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-2.1 work package (tracker tasks wp21t01–wp21t03, RC-04): guardian linking via teacher-issued codes with evidenced consent, a read-only progress digest with no sensitive raw data, and an opt-in digest toggle. Every acceptance criterion maps to code or a test below.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">RC-04</span>
+      <span class="badge badge-ok">Teacher-issued invite codes</span>
+      <span class="badge badge-ok">Consent + disclosure_hash</span>
+      <span class="badge badge-ok">Read-only sanitized digest</span>
+      <span class="badge badge-ok">Opt-in only</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp21t01 ✓</span>
+      <h2 class="text-2xl font-bold">Parent invite/link flow</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>guardian links to a learner via school verification; consent captured and recorded.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">ParentLink</code> + <code class="code">ClaimParentLinkTx</code> — a single transaction that creates the PARENT user, transitions pending→linked, and records the <code class="code">parent_access</code> consent.</li>
+            <li>• <code class="code">POST /moderator/students/:id/parent-invite</code> issues a teacher-verified 6-char one-time code; <code class="code">POST /auth/parent-signup</code> claims it (rate limited 5/IP).</li>
+            <li>• <code class="code">disclosure_hash</code> is required and validated — the sha256 of the exact bilingual notice text the guardian saw (<code class="code">PARENT_NOTICE_EN/NP</code>); <code class="code">djb2-&lt;hex&gt;</code> accepted on non-secure-context school LANs.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp21_test.go</code> TestParentInviteAndClaim; login page "Parent · अभिभावक" tab; <code class="code">disclosureHash()</code> in <code class="code">src/lib/crypto.ts</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp21t02 ✓</span>
+      <h2 class="text-2xl font-bold">Parent dashboard</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>read-only progress digest; no sensitive raw data exposed (no OTPs, no contacts).</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">GET /parents/children</code> + <code class="code">/children/:id/digest</code> — scoped to the caller’s linked children only.</li>
+            <li>• <code class="code">ParentChild</code> = id + name + opt-in only; <code class="code">ChildDigest</code> rebuilt from <code class="code">GetDashboardData</code> with observations excluded; no contacts ever.</li>
+            <li>• <code class="code">/parent</code> page gated to the PARENT role in <code class="code">middleware.ts</code>; role-based landing after login; parent-only nav item.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp21_test.go</code> TestParentDigestReadOnlySanitized; ParentPortal UI on <code class="code">/parent</code> with honest empty/loading states.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp21t03 ✓</span>
+      <h2 class="text-2xl font-bold">Opt-in digest notifications</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>email/SMS digest template reviewed for supportive tone; opt-in only.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">POST /parents/children/:id/opt-in</code> — opt-in only, default off; <code class="code">digest_opt_in</code> surfaced in the children list.</li>
+            <li>• Toggled in the <code class="code">/parent</code> UI; the action is audit-logged (<code class="code">parent.opt_in</code>); supportive copy in the parent namespace.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp21_test.go</code> TestParentDigestOptIn; audit trail in the admin UI.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 17 · WP-2.1 — Parent Portal · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

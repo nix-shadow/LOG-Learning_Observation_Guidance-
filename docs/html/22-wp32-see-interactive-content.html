@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>22 — WP-3.2 — SEE 9–12 Interactive Content | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 22 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-3.2 — SEE 9–12 Interactive Content</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-3.2 work package (tracker tasks wp32t01–wp32t02): five new SEE subject units with practice-first quiz banks and supportive explanations, ready for offline completion.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">5 SEE subjects</span>
+      <span class="badge badge-ok">24 new modules</span>
+      <span class="badge badge-ok">NP + EN content</span>
+      <span class="badge badge-ok">Practice-first</span>
+      <span class="badge badge-ok">Offline-ready</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp32t01 ✓</span>
+      <h2 class="text-2xl font-bold">Full SEE unit coverage</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>all major SEE subjects covered with practice-first units in NP + EN</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• New activities act-6..act-10: SEE Mathematics: Statistics, SEE Science: Chemical Reactions, SEE Social Studies: Our Federal Republic, SEE Computer Science: Number Systems, SEE Nepali: व्याकरण (grammar, bilingual NP content).</li>
+            <li>• Curriculum-aligned units: mean/median/mode/range, balancing equations, federal structure + provinces + civic duties, binary/bytes/hex, and संज्ञा/सर्वनाम/क्रिया/वचन.</li>
+            <li>• Per-activity seed gating (<code class="code">seedModulesFor</code>) so existing databases receive the new units on next startup without ever duplicating existing ones.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/database/seed_phase3.go</code> — mm-49..mm-72 across five units.</li>
+            <li>• <code class="code">GET /learning-journey</code> + <code class="code">/activities/:id/modules</code> serve them through the standard cache path.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp32t02 ✓</span>
+      <h2 class="text-2xl font-bold">Interactive practice-first formats</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>each unit ships quiz banks + explanations; supports offline completion</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Every module is a real quiz bank entry: content text + 4 options + correct index + supportive explanation (the vocabulary never says “failed” — AGENTS.md §1).</li>
+            <li>• Completion flows through the existing engine: <code class="code">fetchWithCache</code> caching + sync queue mean a learner can do the whole unit with no signal and sync later.</li>
+            <li>• Explanations are written as encouragement + the correct reasoning (e.g. “A rectangle with width 2 and length 5 has area 10.”).</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">MicroModuleViewer</code> (existing) renders questions/options/explanations; <code class="code">MicroModuleViewer.test.tsx</code> covers the attempt + explanation flow.</li>
+            <li>• Offline path verified by the sync-layer suites (<code class="code">syncExport.test.ts</code>, crypto/queue tests).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 22 · WP-3.2 — SEE 9–12 Interactive Content · generated 2026-08-20 · WP-3.2 — SEE 9–12 Interactive Content
+  </footer>
+</div>
+</body>
+</html>

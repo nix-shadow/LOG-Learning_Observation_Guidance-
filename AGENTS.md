@@ -19,6 +19,27 @@ This document outlines the core architecture, constraints, and engineering guide
 - **Database:** SQLite (`log.db`) is currently used for local development and persistence. The schema is auto-migrated on startup.
 - **Offline Layer:** `next-pwa` handles the Service Worker. `idb` handles IndexedDB.
 
+### 2a. Brand & Theme — THE LOG PALETTE (source of truth, WP-4.5)
+The design system is driven entirely by CSS custom properties in `frontend/src/app/globals.css`. Both themes use the same brand hues — dark mode is the native design (`.dark` class on `<html>`), light mode (`html:not(.dark)`) is the official palette. **Never introduce hardcoded off-brand colors** (cyan `#00B4D8`, magenta `#FF0070`, purple `#7000FF`, old amber `#FFB703`) — the legacy neon/black scheme was replaced (WP-4.5) and these are banned; use the tokens below.
+
+| Role | Light mode (hex) | Dark mode (hex) |
+|---|---|---|
+| Primary Blue | `#2563EB` | `#60A5FA` (accents/glow) / `#3B82F6` (button fills) |
+| Secondary Teal | `#0D9488` | `#2DD4BF` |
+| Accent Amber | `#F59E0B` | `#FBBF24` |
+| Background | `#F8FAFC` | `#0B1220` (brand navy — not black) |
+| Surface / card | `#FFFFFF` | `#122036` |
+| Primary text | `#0F172A` | `#E9F0FA` |
+| Secondary text | `#64748B` | `#9DB0C9` |
+
+Rules that keep it coherent:
+- **Tokens:** `--brand-blue/teal/amber/white/gray/dark/darker/text/neon/muted/faint` are HSL triplets; components consume them via `hsl(var(--brand-*))`, so both modes re-skin from the token block alone. `--glow-rgb`/`--teal-rgb`/`--amber-rgb` hold the RGB triplets used by shadow/glow utilities.
+- **Literal utilities** (`text-white`, `border-white/*`, `bg-white/*`, `bg-black/*`, `from-white`, gray/neutral scales) are remapped under `html:not(.dark)` so component markup stays theme-agnostic.
+- **Text contrast (WCAG):** on light, amber/teal *text* uses darker shades (`#B45309`/`#0F766E`); solid brand fills keep white labels via `html:not(.dark) .btn-primary { color:#fff !important }` (Tailwind merges a bare `.btn-primary` selector into the `text-white` remap otherwise).
+- **Never fabricate colors:** charts/graphs use the brand hexes (`#2563EB` score, `#0D9488` accuracy, `#F59E0B` engagement); the goal ring is a fixed navy badge (`#0B1220`) with `#60A5FA` path in both modes.
+- **No glow-on-hover (WP-4.6):** hover/focus feedback is a border/background tint or a lift — never a colored bloom. `shadow-glow`/`shadow-glow-strong` are subtle elevation halos only (see `tailwind.config.ts`); do not attach them to `hover:` variants, and do not add `drop-shadow-[0_0_*]` glows to icons. Semantic state glows on quiz correct/incorrect chips are the only exception.
+- **Navigation layout (WP-4.6, research-driven):** desktop is a `1fr auto 1fr` grid — logo far-left | truly-centered learner links (exactly 5: Dashboard, Learning, Catalog, Observation, Guidance) | utilities (language, theme, avatar). **No logout on the bar** — it lives as the LAST item of the avatar disclosure menu (`AccountMenu` in `Navigation.tsx`: identity header + role chip → Settings/Support → role-scoped Parent/Moderator/Admin → divider → Log out). Menus follow the APG disclosure pattern (`aria-expanded`, Escape-closes-and-refocuses, pointerdown-outside close, close on route change); active links carry `aria-current="page"` + brand-blue pill. The mobile bottom bar renders **outside `<nav>`** — `backdrop-filter` on the nav makes it the containing block for `position:fixed` and would pin the bar under the header; bar = 5 equal-width tabs (`flex-1 min-w-0`, ≥48px targets), utilities live inside the mobile account menu.
+
 ---
 
 ## 3. Advanced Offline Syncing Strategy
@@ -79,7 +100,10 @@ cp frontend/.env.example frontend/.env  # frontend: NEXT_PUBLIC_API_URL
 Generate a strong secret with `openssl rand -base64 48`.
 
 ### Backend
-The backend auto-seeds initial data on the first run.
+The backend auto-seeds initial data on the first run. Seeded demo accounts (dev/testing only — bcrypt-hashed at startup, never in production):
+- `admin@log.edu` / `Admin@123` (ADMIN)
+- `teacher@log.edu` / `Teacher@123` (MODERATOR)
+- `aisha@example.com` / `Student@123` (STUDENT)
 ```bash
 cd backend
 go build -o server main.go
@@ -113,6 +137,7 @@ Backend tests run against a real local `log.db` — wipe it before a demo run if
 cd backend
 go test ./...
 ```
+Linting (enforced in CI): `golangci-lint run ./...` from `backend/` (config: `backend/.golangci.yml` — gosec, staticcheck, errcheck; run `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6` to install) and `npm run lint` from `frontend/`. Everything is also reachable from the root `Makefile`: `make build`, `make test`, `make lint`.
 
 ### Known Limitations & Roadmap
 See `docs/ENHANCEMENT.md` for the audited issue list and phased improvement plan (GoogleAuth verification, per-learner activity status, queue idempotency, CI/CD, etc.).

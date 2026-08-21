@@ -1,0 +1,29 @@
+version: "2"
+run:
+  go: "1.25.0"
+linters:
+  default: standard
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - unused
+    - misspell
+    - gosec
+  settings:
+    gosec:
+      excludes:
+        - G115
+        - G402
+        - G404
+        - G304
+  exclusions:
+    generated: lax
+    rules:
+      - path: (_test\.go|main\.go)$
+        linters:
+          - gosec
+      - text: "weak cryptographic primitive"
+        linters:
+          - gosec

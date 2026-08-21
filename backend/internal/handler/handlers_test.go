@@ -27,14 +27,14 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("failed to create temp dir: " + err.Error())
 	}
-	os.Setenv("DB_PATH", filepath.Join(tmpDir, "test.db"))
+	_ = os.Setenv("DB_PATH", filepath.Join(tmpDir, "test.db"))
 	database.InitDB() // AutoMigrates and AutoSeeds into the temp DB
 
 	// Run tests
 	code := m.Run()
 
-	os.Unsetenv("DB_PATH")
-	os.RemoveAll(tmpDir)
+	_ = os.Unsetenv("DB_PATH")
+	_ = os.RemoveAll(tmpDir)
 	os.Exit(code)
 }
 
@@ -55,7 +55,7 @@ func TestGetCourses(t *testing.T) {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
-	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 
 	r.GET("/api/v1/courses", learnerHandler.GetCourses)
 
@@ -110,7 +110,7 @@ func TestEnrollUnenroll(t *testing.T) {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
-	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 
 	r.POST("/api/v1/courses/:id/enroll", learnerHandler.Enroll)
 	r.DELETE("/api/v1/courses/:id/enroll", learnerHandler.Unenroll)
@@ -209,7 +209,7 @@ func TestGetModeratorRoster(t *testing.T) {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
-	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 
 	r.GET("/api/v1/moderator/roster", learnerHandler.GetModeratorRoster)
 
@@ -263,7 +263,7 @@ func TestCompleteActivityCreatesProgressForNewLearner(t *testing.T) {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
-	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 
 	r.POST("/api/v1/activities/:id/complete", learnerHandler.CompleteActivity)
 
@@ -300,7 +300,7 @@ func TestGetModeratorRosterComputesNeedsAttention(t *testing.T) {
 	)
 	courseService := service.NewCourseService(repository.NewCourseRepository(database.DB))
 	moderatorService := service.NewModeratorService(repository.NewModeratorRepository(database.DB))
-	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := NewLearnerHandler(learnerService, courseService, moderatorService, nil)
 
 	r.GET("/api/v1/moderator/roster", learnerHandler.GetModeratorRoster)
 

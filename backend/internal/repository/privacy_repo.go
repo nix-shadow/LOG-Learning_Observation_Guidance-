@@ -157,14 +157,21 @@ func (r *privacyRepo) ExportData(ctx context.Context, userID string) (*domain.Ex
 	return bundle, nil
 }
 
-// DeleteAccountTx implements the erasure data map. No FK constraints exist in
-// this schema (gorm.AutoMigrate does not create them), so every table that can
-// reference a user is handled explicitly, child tables first:
+// DeleteAccountTx implements the erasure data map (WP-4.1 C4: the map now
+// covers every user-referencing table the C4 foreign keys touch, so the
+// constraints can cascade with the same semantics the map always had).
+// No FK constraints existed in the legacy schema (gorm.AutoMigrate does not
+// create them), so every table that can reference a user is handled
+// explicitly, child tables first:
 //
 //	DELETE   — learner-private rows and auth plumbing
 //	ANONYMIZE — rows that must survive for others' context (audit trail,
 //	            announcements, assignments, classes), user reference blanked
 //	DELETE   — the user row itself (hard delete, Unscoped)
+//
+// Tables with real CASCADE FKs (added by migrateForeignKeys) reach the same
+// end state through the constraint — the explicit deletes above make the
+// map self-sufficient even on legacy databases that predate the migration.
 func (r *privacyRepo) DeleteAccountTx(ctx context.Context, userID string, audit *domain.AuditLog) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var user domain.User
@@ -205,6 +212,20 @@ func (r *privacyRepo) DeleteAccountTx(ctx context.Context, userID string, audit 
 		// Consent evidence — the record is the user's own data; it is erased
 		// with the account (the anonymized audit entry below is the trail).
 		if err := tx.Where("user_id = ?", userID).Delete(&domain.ConsentRecord{}).Error; err != nil {
+			return err
+		}
+		// Phase 2 rows (WP-4.1 C4 erasure-map gap): guardian links, support
+		// issues, and teacher notes are the learner's own data — deleted with
+		// the account so the C4 foreign keys (ON DELETE CASCADE) and the
+		// erasure map stay consistent. A parent account's links die with the
+		// parent; a student's links die with the student.
+		if err := tx.Where("parent_id = ? OR student_id = ?", userID, userID).Delete(&domain.ParentLink{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("user_id = ?", userID).Delete(&domain.SupportIssue{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("student_id = ?", userID).Delete(&domain.LearnerNote{}).Error; err != nil {
 			return err
 		}
 		if user.Phone != nil {

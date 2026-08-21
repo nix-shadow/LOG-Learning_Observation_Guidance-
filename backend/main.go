@@ -12,6 +12,7 @@ import (
 	"log-backend/database"
 	"log-backend/internal/domain"
 	"log-backend/internal/handler"
+	"log-backend/internal/metrics"
 	"log-backend/internal/repository"
 	"log-backend/internal/service"
 
@@ -50,6 +51,10 @@ func main() {
 	completionRepo := repository.NewCompletionRepository(database.DB)
 	schoolRepo := repository.NewSchoolRepository(database.DB)
 	privacyRepo := repository.NewPrivacyRepository(database.DB)
+	parentRepo := repository.NewParentRepository(database.DB)
+	supportRepo := repository.NewSupportRepository(database.DB)
+	noteRepo := repository.NewNoteRepository(database.DB)
+	pilotRepo := repository.NewPilotRepository(database.DB)
 
 	// Initialize Services
 	authService := service.NewAuthService(userRepo, authRepo)
@@ -57,15 +62,33 @@ func main() {
 	learnerService := service.NewLearnerService(userRepo, activityRepo, progressRepo, learnerDataRepo, completionRepo)
 	courseService := service.NewCourseService(courseRepo)
 	moderatorService := service.NewModeratorService(modRepo)
+	adminService := service.NewAdminService(repository.NewAdminRepository(database.DB))
 	schoolService := service.NewSchoolService(schoolRepo)
 	privacyService := service.NewPrivacyService(privacyRepo)
+	parentService := service.NewParentService(parentRepo, userRepo, schoolRepo, learnerService)
+	supportService := service.NewSupportService(supportRepo)
+	gradebookService := service.NewGradebookService(schoolRepo, activityRepo, progressRepo, noteRepo)
+	oerService := service.NewOERService(activityRepo)
+	pilotService := service.NewPilotService(pilotRepo, func(ctx context.Context, activityID string) (bool, error) {
+		_, err := activityRepo.FindByID(ctx, activityID)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
 
 	// Initialize Handlers
 	authHandler := handler.NewAuthHandler(authService, schoolService)
 	syncHandler := handler.NewSyncHandler(syncService)
-	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService)
+	learnerHandler := handler.NewLearnerHandler(learnerService, courseService, moderatorService, schoolService)
 	schoolHandler := handler.NewSchoolHandler(schoolService)
+	adminHandler := handler.NewAdminHandler(adminService)
 	privacyHandler := handler.NewPrivacyHandler(privacyService)
+	parentHandler := handler.NewParentHandler(parentService, schoolService)
+	supportHandler := handler.NewSupportHandler(supportService, schoolService)
+	gradebookHandler := handler.NewGradebookHandler(gradebookService, schoolService)
+	oerHandler := handler.NewOERHandler(oerService, schoolService)
+	pilotHandler := handler.NewPilotHandler(pilotService)
 
 	// ---------------------------------------------------------------------------
 	// Retention purge job (WP-0.1 enforcement round): runs at startup and then
@@ -95,7 +118,10 @@ func main() {
 	r := gin.New()
 	// Trust no reverse proxies: ClientIP resolves to the direct peer address so
 	// X-Forwarded-For cannot spoof the rate limiter's per-IP key.
-	r.SetTrustedProxies(nil)
+	if err := r.SetTrustedProxies(nil); err != nil {
+		slog.Error("failed to trust no proxies", "error", err)
+		os.Exit(1)
+	}
 	r.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/api/ping"},
 	}))
@@ -146,6 +172,11 @@ func main() {
 	// Global request ID + audit logging
 	r.Use(handler.RequestIDMiddleware())
 
+	// WP-4.3: aggregate HTTP metrics keyed by route pattern (no PII) —
+	// mounted inside recovery so panic-derived 500s are counted honestly.
+	metricsReg := metrics.NewRegistry()
+	r.Use(metrics.Middleware(metricsReg))
+
 	// ---------------------------------------------------------------------------
 	// Public Auth Routes — rate limited per route: each endpoint gets its own
 	// bucket so a classroom of 30 students behind one school IP can verify OTPs
@@ -157,13 +188,23 @@ func main() {
 		authRoutes.POST("/verify-otp", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitVerifyOTP, time.Minute)), authHandler.VerifyOTP)
 		authRoutes.POST("/forgot-password", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPassword, time.Minute)), authHandler.ForgotPassword)
 		authRoutes.POST("/google", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitLogin, time.Minute)), authHandler.GoogleAuth)
+		authRoutes.POST("/register", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitLogin, time.Minute)), authHandler.Register)
 		authRoutes.POST("/login", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitLogin, time.Minute)), authHandler.Login)
+		// WP-2.1: guardian self-service signup — creates the PARENT account,
+		// claims the teacher-issued invite code, records parent_access consent.
+		authRoutes.POST("/parent-signup", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitParentSignup, time.Minute)), parentHandler.ParentSignup)
 	}
 
 	// ---------------------------------------------------------------------------
 	// Public Health Probes
 	// ---------------------------------------------------------------------------
 	r.GET("/api/ping", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
+	// WP-4.3: public aggregate metrics — route patterns and status counts
+	// only, never user ids or IPs. Content-Type is text/plain on purpose so
+	// a school LAN monitor can curl it without scraping tooling.
+	r.GET("/metrics", func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte(metricsReg.RenderText()))
+	})
 	r.GET("/healthz", func(c *gin.Context) {
 		sqlDB, err := database.DB.DB()
 		if err != nil || sqlDB.Ping() != nil {
@@ -173,6 +214,17 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 	r.GET("/readyz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ready"}) })
+
+	// ---------------------------------------------------------------------------
+	// QR Pilot public routes (WP-3.3 RC-10) — a poster QR must work before
+	// login, so scans are public but rate limited per IP. Scans record only a
+	// poster id + moment; no IP or device data is persisted.
+	// ---------------------------------------------------------------------------
+	pilotRoutes := r.Group("/api/v1/pilot")
+	{
+		pilotRoutes.POST("/scans", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPilotScan, time.Minute)), pilotHandler.RecordScan)
+		pilotRoutes.POST("/scans/:id/start", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPilotScan, time.Minute)), pilotHandler.MarkStarted)
+	}
 
 	// ---------------------------------------------------------------------------
 	// Protected Student Routes — requires valid JWT with STUDENT role minimum
@@ -192,6 +244,9 @@ func main() {
 		apiRoutes.DELETE("/courses/:id/enroll", handler.RequireConsent(privacyRepo), learnerHandler.Unenroll)
 		apiRoutes.GET("/activities/:id/modules", learnerHandler.GetMicroModules)
 		apiRoutes.POST("/activities/:id/complete", handler.RequireConsent(privacyRepo), learnerHandler.CompleteActivity)
+		// WP-1.5: learners join a class with their teacher's invite code.
+		// A learner mutation → behind the consent gate like enroll/complete.
+		apiRoutes.POST("/classes/join", handler.RequireConsent(privacyRepo), schoolHandler.JoinClass)
 		apiRoutes.POST("/sync/bulk", handler.RequireConsent(privacyRepo), syncHandler.SyncBulk)
 		// Logout: revokes the caller's JWT by adding its JTI to the blocklist
 		apiRoutes.POST("/auth/logout", authHandler.LogoutHandler)
@@ -208,6 +263,22 @@ func main() {
 		apiRoutes.GET("/me/consent", privacyHandler.GetMyConsent)
 		apiRoutes.GET("/me/export", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPrivacyExport, time.Minute)), privacyHandler.ExportMyData)
 		apiRoutes.DELETE("/me", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPrivacyWrite, time.Minute)), privacyHandler.DeleteAccount)
+		// WP-2.2: the who-to-call funnel — any user can file an issue; the
+		// wizard decides whether it escalates to the moderator inbox.
+		apiRoutes.POST("/support/issue", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitSupportIssue, time.Minute)), supportHandler.CreateIssue)
+		apiRoutes.GET("/support/my-issues", supportHandler.MyIssues)
+	}
+
+	// ---------------------------------------------------------------------------
+	// Protected Parent Routes — requires PARENT role (WP-2.1 RC-04). Read-only
+	// digests; the only mutation is the parent's own digest opt-in.
+	// ---------------------------------------------------------------------------
+	parentRoutes := r.Group("/api/v1/parents")
+	parentRoutes.Use(handler.AuthMiddleware(authRepo, userRepo, schoolRepo, domain.RoleParent))
+	{
+		parentRoutes.GET("/children", parentHandler.ListChildren)
+		parentRoutes.GET("/children/:id/digest", parentHandler.ChildDigest)
+		parentRoutes.POST("/children/:id/opt-in", parentHandler.SetDigestOptIn)
 	}
 
 	// ---------------------------------------------------------------------------
@@ -218,11 +289,26 @@ func main() {
 	{
 		modRoutes.GET("/roster", learnerHandler.GetModeratorRoster)
 		modRoutes.GET("/classes", schoolHandler.ListMyClasses)
+		// WP-1.5: teachers create their own classes and read per-student
+		// progress built on the WP-1.1 status engine.
+		modRoutes.POST("/classes", schoolHandler.CreateModeratorClass)
+		modRoutes.POST("/classes/:id/roster/import", schoolHandler.ImportClassRoster)
+		modRoutes.GET("/students/:id", learnerHandler.GetModeratorStudentProgress)
 		modRoutes.GET("/classes/:id/assignments", schoolHandler.ListAssignmentsForClass)
 		modRoutes.POST("/classes/:id/assignments", schoolHandler.CreateAssignment)
 		modRoutes.GET("/classes/:id/assignments/:assignment_id/submissions", schoolHandler.SubmissionsForAssignment)
 		// Teachers may publish announcements too
 		modRoutes.POST("/announcements", schoolHandler.CreateAnnouncement)
+		// WP-2.1: the teacher's invite IS the school verification.
+		modRoutes.POST("/students/:id/parent-invite", parentHandler.CreateParentInvite)
+		// WP-2.3: honest gradebook + per-learner teacher notes.
+		modRoutes.GET("/gradebook", gradebookHandler.ClassGradebook)
+		modRoutes.GET("/gradebook.csv", gradebookHandler.GradebookCSV)
+		modRoutes.GET("/students/:id/note", gradebookHandler.GetNote)
+		modRoutes.PUT("/students/:id/note", gradebookHandler.SaveNote)
+		// WP-2.2: escalated issues land here for moderator/admin resolution.
+		modRoutes.GET("/support/inbox", supportHandler.Inbox)
+		modRoutes.PUT("/support/issue/:id", supportHandler.ResolveIssue)
 	}
 
 	// ---------------------------------------------------------------------------
@@ -231,10 +317,10 @@ func main() {
 	adminRoutes := r.Group("/api/v1/admin")
 	adminRoutes.Use(handler.AuthMiddleware(authRepo, userRepo, schoolRepo, domain.RoleAdmin))
 	{
-		adminRoutes.GET("/dashboard", handler.GetAdminDashboard)
-		adminRoutes.GET("/users", handler.GetUsers)
-		adminRoutes.PUT("/users/:id/role", handler.UpdateUserRole)
-		adminRoutes.POST("/activities", handler.CreateActivity)
+		adminRoutes.GET("/dashboard", adminHandler.Dashboard)
+		adminRoutes.GET("/users", adminHandler.GetUsers)
+		adminRoutes.PUT("/users/:id/role", adminHandler.UpdateUserRole)
+		adminRoutes.POST("/activities", adminHandler.CreateActivity)
 		adminRoutes.POST("/classes", schoolHandler.CreateClass)
 		adminRoutes.GET("/classes", schoolHandler.ListClasses)
 		adminRoutes.GET("/classes/:id/roster", schoolHandler.ClassRoster)
@@ -242,8 +328,20 @@ func main() {
 		adminRoutes.DELETE("/classes/:id/enroll/:user_id", schoolHandler.UnenrollStudent)
 		adminRoutes.POST("/announcements", schoolHandler.CreateAnnouncement)
 		adminRoutes.GET("/audit-log", schoolHandler.ListAuditLog)
+		// WP-4.3: same aggregate counters as /metrics, JSON view for the
+		// admin dashboard.
+		adminRoutes.GET("/metrics", func(c *gin.Context) {
+			c.JSON(http.StatusOK, metricsReg.Snapshot())
+		})
+		// WP-4.3: aggregate usage statistics over analytics-consented learners
+		// only (never learner-level rows).
+		adminRoutes.GET("/analytics/summary", adminHandler.AnalyticsSummary)
 		adminRoutes.GET("/export/students.csv", schoolHandler.ExportStudentsCSV)
 		adminRoutes.POST("/maintenance/purge", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitPrivacyWrite, time.Minute)), privacyHandler.PurgeNow)
+		// WP-3.1: batch OER pack import (validated licenses, audit-logged).
+		adminRoutes.POST("/oer/import", handler.RateLimitMiddlewareWith(handler.NewLimiter(handler.RateLimitOERImport, time.Minute)), oerHandler.ImportPack)
+		// WP-3.3: honest pilot measurement (real scan rows only).
+		adminRoutes.GET("/pilot/stats", pilotHandler.Stats)
 	}
 
 	port := os.Getenv("PORT")

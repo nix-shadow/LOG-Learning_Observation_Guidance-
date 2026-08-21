@@ -135,7 +135,7 @@ export default function CommandPalette() {
         aria-haspopup="dialog"
         aria-expanded={open}
         title="Command menu (⌘K)"
-        className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-[90] flex items-center gap-2 px-4 py-3 bg-brand-dark/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-glow-strong text-brand-muted hover:text-white hover:border-brand-teal/50 transition-colors"
+        className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-[90] flex items-center gap-2 px-4 py-3 bg-brand-dark/80 backdrop-blur-2xl border border-white/10 rounded-full text-brand-muted hover:text-white hover:border-brand-teal/50 transition-colors"
       >
         <Search className="w-4 h-4" />
         <span className="hidden sm:inline text-sm font-medium">Menu</span>
@@ -154,7 +154,7 @@ export default function CommandPalette() {
 
           <div
             ref={dialogRef}
-            className="relative w-full max-w-xl bg-brand-dark/90 border border-white/10 rounded-2xl shadow-glow-strong overflow-hidden flex flex-col"
+            className="relative w-full max-w-xl bg-brand-dark/90 border border-white/10 rounded-2xl overflow-hidden flex flex-col"
           >
             <Command label="Global Command Menu" className="w-full">
               <div className="flex items-center border-b border-white/10 px-4 py-3">

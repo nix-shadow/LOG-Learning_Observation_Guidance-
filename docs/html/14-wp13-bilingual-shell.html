@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>14 — WP-1.3 — Bilingual Shell (EN/NP) | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 14 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-1.3 — Bilingual Shell (EN/NP)</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-1.3 work package (tracker tasks wp13t01–wp13t04): the whole learner surface in English and Nepali — next-intl without URL prefixes, bundled Devanagari type, Bikram Sambat dates, and a Jest mock that asserts the real copy.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">EN + NP everywhere</span>
+      <span class="badge badge-ok">Noto Sans Devanagari</span>
+      <span class="badge badge-ok">Bikram Sambat dates</span>
+      <span class="badge badge-ok">No URL-prefix routing</span>
+      <span class="badge badge-ok">Real-copy jest mock</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp13t01 ✓</span>
+      <h2 class="text-2xl font-bold">Locale shell</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>language switching works across the learner surface without URL prefixes.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• next-intl configured client-side via <code class="code">src/i18n/LocaleProvider.tsx</code>; locale persisted in <code class="code">log-locale</code> with <code class="code">navigator.language</code> fallback.</li>
+            <li>• No URL-prefix routing — per-device language, the right call for offline school LANs.</li>
+            <li>• EN/NP switcher in the nav.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">LocaleProvider.tsx</code>; nav switcher; AGENTS.md offline-first alignment.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp13t02 ✓</span>
+      <h2 class="text-2xl font-bold">Nepali typography</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>Devanagari renders correctly on low-end classroom devices.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Noto Sans Devanagari bundled locally (no font CDN dependency on the school LAN).</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Bundled font in the Next.js app; layout font stack.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp13t03 ✓</span>
+      <h2 class="text-2xl font-bold">Bikram Sambat dates</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>dates render in BS with Devanagari digits; AD⇄BS round-trip is tested.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">src/lib/bikramSambat.ts</code> — AD⇄BS round-trip, Devanagari digits, based on <code class="code">@sbmdkl/nepali-date-converter</code> (BS 1978–2099) with a TS shim.</li>
+            <li>• Used for dashboard/observation date labels (e.g. 2026-08-20 ⇄ Bhadra 4, 2083).</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• 7 unit tests for the round-trip; shim at <code class="code">src/types/nepali-date-converter.d.ts</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp13t04 ✓</span>
+      <h2 class="text-2xl font-bold">NP copy + real-copy tests</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>nav, status, quiz, chart, review and reminder copy available in Nepali; tests assert the actual strings.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• NP translations for nav, status, quiz, chart, review, reminder namespaces in <code class="code">messages/np.json</code>.</li>
+            <li>• <code class="code">jest.setup.ts</code> mocks next-intl against the real <code class="code">en.json</code> with dotted-key resolution, so component tests assert real user-facing English copy.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">messages/en.json</code> + <code class="code">np.json</code> validated; component suites assert EN copy.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 14 · WP-1.3 — Bilingual Shell (EN/NP) · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

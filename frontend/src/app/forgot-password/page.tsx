@@ -31,7 +31,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-glow bg-black/40 backdrop-blur-3xl border border-white/10 w-full max-w-md p-8 md:p-12 rounded-[2rem] shadow-glow">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-glow bg-black/40 backdrop-blur-3xl border border-white/10 w-full max-w-md p-8 md:p-12 rounded-[2rem]">
         <Link href="/login" className="flex items-center text-sm font-bold text-white/50 hover:text-brand-neon mb-8 transition-colors tracking-wide">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Login
         </Link>
@@ -51,14 +51,14 @@ export default function ForgotPassword() {
                   className="w-full px-4 py-4 bg-black/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-neon/50 transition-all placeholder-white/30"
                 />
               </div>
-              <button type="submit" disabled={loading} className="btn-primary w-full py-4 text-lg font-bold tracking-wide shadow-glow">
+              <button type="submit" disabled={loading} className="btn-primary w-full py-4 text-lg font-bold tracking-wide">
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
             </form>
           </>
         ) : (
           <div className="text-center py-6">
-            <div className="w-20 h-20 bg-brand-neon/20 border border-brand-neon/30 text-brand-neon rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+            <div className="w-20 h-20 bg-brand-neon/20 border border-brand-neon/30 text-brand-neon rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <h3 className="text-2xl font-bold text-white mb-3">Check your email</h3>

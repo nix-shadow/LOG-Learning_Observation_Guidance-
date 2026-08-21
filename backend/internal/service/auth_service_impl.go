@@ -15,7 +15,11 @@ import (
 
 // ErrOTPCooldown lets handlers map the re-request window to a real 429
 // instead of a misleading 500.
-var ErrOTPCooldown = errors.New("Please wait 1 minute before requesting another OTP")
+var ErrOTPCooldown = errors.New("please wait 1 minute before requesting another OTP")
+
+// ErrEmailTaken lets the register handler answer 409 with the honest state
+// instead of leaking a raw unique-constraint error.
+var ErrEmailTaken = errors.New("a user with this email already exists")
 
 type authService struct {
 	userRepo domain.UserRepository
@@ -38,7 +42,9 @@ func (s *authService) RequestOTP(ctx context.Context, phone string) error {
 	// Only delete when the previous OTP is dead (expired or near-expiry) —
 	// refreshing a live OTP would let anyone who knows a phone number keep the
 	// victim permanently locked out by re-requesting every minute.
-	s.authRepo.DeleteExpiredOTPs(ctx)
+	if err := s.authRepo.DeleteExpiredOTPs(ctx); err != nil {
+		slog.Warn("cleanup of expired OTPs failed", "error", err)
+	}
 
 	otpInt, err := generateSecureOTP()
 	if err != nil {
@@ -66,29 +72,29 @@ func (s *authService) RequestOTP(ctx context.Context, phone string) error {
 func (s *authService) VerifyOTP(ctx context.Context, phone, otp string) (*domain.User, string, error) {
 	record, err := s.authRepo.FindOTPByPhone(ctx, phone)
 	if err != nil {
-		return nil, "", fmt.Errorf("Invalid OTP")
+		return nil, "", fmt.Errorf("invalid OTP")
 	}
 
 	if record.ExpiresAt.Before(time.Now()) {
-		s.authRepo.DeleteOTP(ctx, phone)
-		return nil, "", fmt.Errorf("OTP has expired")
+		_ = s.authRepo.DeleteOTP(ctx, phone)
+		return nil, "", fmt.Errorf("otp has expired")
 	}
 
 	if !CheckPasswordHash(otp, record.OTP) {
 		err := s.authRepo.IncrementOTPAttempts(ctx, phone)
 		if err != nil {
-			return nil, "", fmt.Errorf("Invalid OTP")
+			return nil, "", fmt.Errorf("invalid OTP")
 		}
 
 		updatedRecord, err := s.authRepo.FindOTPByPhone(ctx, phone)
 		if err == nil && updatedRecord.Attempts >= 5 {
-			s.authRepo.DeleteOTP(ctx, phone)
-			return nil, "", fmt.Errorf("Too many incorrect attempts. Please request a new OTP")
+			_ = s.authRepo.DeleteOTP(ctx, phone)
+			return nil, "", fmt.Errorf("too many incorrect attempts, please request a new OTP")
 		}
-		return nil, "", fmt.Errorf("Invalid OTP")
+		return nil, "", fmt.Errorf("invalid OTP")
 	}
 
-	s.authRepo.DeleteOTP(ctx, phone)
+	_ = s.authRepo.DeleteOTP(ctx, phone)
 
 	user, err := s.userRepo.FindByPhoneUnscoped(ctx, phone)
 	if err != nil {
@@ -121,14 +127,44 @@ func (s *authService) VerifyOTP(ctx context.Context, phone, otp string) (*domain
 	return user, token, nil
 }
 
+func (s *authService) Register(ctx context.Context, name, email, password string) (*domain.User, string, error) {
+	if existing, err := s.userRepo.FindByEmail(ctx, email); err == nil && existing != nil {
+		return nil, "", ErrEmailTaken
+	}
+
+	hashed, err := HashPassword(password)
+	if err != nil {
+		return nil, "", err
+	}
+
+	user := &domain.User{
+		ID:           GenerateSecureID("user"),
+		Name:         name,
+		Email:        email,
+		PasswordHash: hashed,
+		Role:         domain.RoleStudent,
+		IsVerified:   true,
+		CreatedAt:    time.Now(),
+	}
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		return nil, "", err
+	}
+
+	token, err := GenerateJWT(user.ID, user.Role)
+	if err != nil {
+		return nil, "", err
+	}
+	return user, token, nil
+}
+
 func (s *authService) Login(ctx context.Context, email, password string) (*domain.User, string, error) {
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return nil, "", fmt.Errorf("Invalid email or password")
+		return nil, "", fmt.Errorf("invalid email or password")
 	}
 
 	if !CheckPasswordHash(password, user.PasswordHash) {
-		return nil, "", fmt.Errorf("Invalid email or password")
+		return nil, "", fmt.Errorf("invalid email or password")
 	}
 
 	token, err := GenerateJWT(user.ID, user.Role)
@@ -141,7 +177,7 @@ func (s *authService) Login(ctx context.Context, email, password string) (*domai
 func (s *authService) GoogleAuth(ctx context.Context, token string) (*domain.User, string, error) {
 	clientID := os.Getenv("GOOGLE_CLIENT_ID")
 	if clientID == "" {
-		return nil, "", fmt.Errorf("Google Auth is not configured on the server")
+		return nil, "", fmt.Errorf("google auth is not configured on the server")
 	}
 
 	payload, err := idtoken.Validate(ctx, token, clientID)
@@ -149,15 +185,15 @@ func (s *authService) GoogleAuth(ctx context.Context, token string) (*domain.Use
 		// Log the provider detail server-side; the client gets one generic
 		// message (validation internals are not user-facing information).
 		slog.Warn("google token validation failed", "error", err)
-		return nil, "", fmt.Errorf("Invalid Google token")
+		return nil, "", fmt.Errorf("invalid google token")
 	}
 
 	email, ok := payload.Claims["email"].(string)
 	if !ok {
-		return nil, "", fmt.Errorf("Email not found in Google token")
+		return nil, "", fmt.Errorf("email not found in google token")
 	}
 	if verified, ok := payload.Claims["email_verified"].(bool); !ok || !verified {
-		return nil, "", fmt.Errorf("Google email is not verified")
+		return nil, "", fmt.Errorf("google email is not verified")
 	}
 	name, _ := payload.Claims["name"].(string)
 

@@ -15,15 +15,25 @@ export function useSyncQueue() {
     // Check immediately
     checkQueue();
 
-    // Poll every 5 seconds while mounted
-    const interval = setInterval(checkQueue, 5000);
+    // Event-driven refresh — no constant polling:
+    //   - 'log:queue-changed' fires after an enqueue or a flush (api.ts)
+    //   - 'online' fires when connectivity returns (api.ts flushes on it)
+    //   - visibilitychange covers cross-tab changes / returns from background,
+    //     and only reads while the tab is visible
+    const onQueueChanged = () => void checkQueue();
+    const onOnline = () => void checkQueue();
+    const onVisibility = () => {
+      if (!document.hidden) void checkQueue();
+    };
 
-    // Also check when returning online, as a sync might have just happened
-    window.addEventListener('online', checkQueue);
+    window.addEventListener('log:queue-changed', onQueueChanged);
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('online', checkQueue);
+      window.removeEventListener('log:queue-changed', onQueueChanged);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 

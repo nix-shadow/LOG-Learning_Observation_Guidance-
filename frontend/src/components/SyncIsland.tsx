@@ -90,7 +90,7 @@ export default function SyncIsland() {
             disabled={isFlushing}
             aria-label={isOffline ? 'Offline mode — reconnect to sync' : isSyncing ? `Sync ${pendingCount} saved changes` : 'Sync complete'}
             className={`
-              flex items-center justify-center gap-2 px-4 py-3 shadow-glow-strong
+              flex items-center justify-center gap-2 px-4 py-3
               backdrop-blur-2xl border pointer-events-auto overflow-hidden cursor-pointer
               ${isOffline ? 'bg-black/80 border-red-500/50 text-red-400' : ''}
               ${isSyncing ? 'bg-black/80 border-brand-teal/50 text-brand-neon' : ''}

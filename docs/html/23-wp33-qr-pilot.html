@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>23 — WP-3.3 — QR Pilot | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 23 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-3.3 — QR Pilot</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-3.3 work package (tracker tasks wp33t01–wp33t02): paper posters become digital classrooms — scanning a poster QR warms the learner's offline cache and the pilot measures itself with honest, aggregate-only numbers.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">Poster QR program</span>
+      <span class="badge badge-ok">Offline cache-warm</span>
+      <span class="badge badge-ok">Scan events, no PII</span>
+      <span class="badge badge-ok">Honest pilot stats</span>
+      <span class="badge badge-ok">7 tests</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp33t01 ✓</span>
+      <h2 class="text-2xl font-bold">Poster QR program</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>partner schools get posters; scanning warms the local cache (offline demo kit)</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Admin <code class="code">PilotPosters</code> panel renders a printable QR per activity (qrcode lib, bundled offline) pointing at <code class="code">/qr/&lt;activityId&gt;</code> on the serving origin — school-LAN deployments print correct URLs.</li>
+            <li>• <code class="code">/qr/[activityId]</code> landing records the scan (fire-and-forget), then warms <code class="code">/activities/:id/modules</code> + <code class="code">/learning-journey</code> through <code class="code">fetchWithCache</code> — the scanned lesson works with no signal.</li>
+            <li>• Honest offline copy: when the scan POST fails (offline), the page says the scan is not counted — it never invents a scan.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">frontend/src/app/qr/[activityId]/page.tsx</code> + <code class="code">components/admin/PilotPosters.tsx</code>.</li>
+            <li>• <code class="code">QRLanding.test.tsx</code> — 3 tests: record+warm, mark-started on click-through, honest offline state.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp33t02 ✓</span>
+      <h2 class="text-2xl font-bold">Pilot measurement</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>pilot records scans, installs and first-session drop-off; honest report published</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">PilotScan {poster_id, source, started, created_at}</code> — deliberately no IP/device/user columns (privacy by design, AGENTS.md §3b).</li>
+            <li>• Public <code class="code">POST /api/v1/pilot/scans</code> + <code class="code">/scans/:id/start</code> (rate-limited 30/IP); unknown poster → 404; admin <code class="code">GET /admin/pilot/stats</code> returns scans, 24h scans, starts, distinct posters, start rate and per-poster breakdown — all derived from real rows, honest zeros when empty.</li>
+            <li>• Admin panel renders the numbers; the start-rate is scans-vs-click-throughs, i.e. the pilot's first-session drop-off signal.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">backend/internal/handler/wp33_test.go</code> — 4 tests incl. <code class="code">TestPilotStatsHonestZeros</code>.</li>
+            <li>• <code class="code">PilotPosters.test.tsx</code> — 4 tests: real numbers, honest zeros, load failure, refresh.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 23 · WP-3.3 — QR Pilot · generated 2026-08-20 · WP-3.3 — QR Pilot
+  </footer>
+</div>
+</body>
+</html>

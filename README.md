@@ -1,5 +1,7 @@
 # LOG (Learning Observation Guidance)
 
+[![CI](https://github.com/nix-shadow/LOG-Learning_Observation_Guidance-/actions/workflows/ci.yml/badge.svg)](https://github.com/nix-shadow/LOG-Learning_Observation_Guidance-/actions/workflows/ci.yml)
+
 LOG is an educational technology platform built for learners in low-connectivity regions. It functions as a smart learning companion that helps users Understand their progress and receive actionable Guidance.
 
 ## Core Cycle
@@ -33,6 +35,13 @@ NEXT_PUBLIC_API_URL=http://localhost:6101/api/v1
 
 ### Running the Application
 Read the `AGENTS.md` file for detailed instructions on running, testing, and developing the application.
+
+Public health probes (never moved behind auth — monitoring needs them unauthenticated):
+```
+GET /api/ping   liveness
+GET /healthz    real SQLite ping (200 ok / 503 unhealthy)
+GET /readyz     readiness
+```
 
 ## Documentation & Architecture Specifications
 

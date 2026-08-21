@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>10 — WP-0.4 — Engineering Process | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 10 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-0.4 — Engineering Process</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-0.4 work package (tracker tasks wp04t01–wp04t04): a CI pipeline as a real PR gate, a Makefile + golangci-lint floor, a single consolidated connectivity surface, and public health probes that stay public. Every acceptance criterion maps to code, a config, or a live check below.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">CI gate on every PR</span>
+      <span class="badge badge-ok">make build/test/lint</span>
+      <span class="badge badge-ok">0 lint issues</span>
+      <span class="badge badge-ok">SyncIsland single surface</span>
+      <span class="badge badge-ok">Probes public + documented</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp04t01 ✓</span>
+      <h2 class="text-2xl font-bold">CI pipeline as PR gate</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em><code>go test ./...</code>, <code>npx jest</code>, <code>go vet</code>, <code>go build</code> and golangci-lint run on every PR; README badges.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">.github/workflows/ci.yml</code> runs three jobs: backend (build, <code class="code">go vet</code>, <code class="code">go test ./...</code>, golangci-lint), frontend (<code class="code">tsc --noEmit</code>, <code class="code">next build</code>, <code class="code">npx jest</code>) and a hygiene job.</li>
+            <li>• The frontend job enforces the type-check chain that caught the pre-existing TS2540 in <code class="code">crypto.test.ts</code> — now fixed and green.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">.github/workflows/ci.yml</code>; README CI badge.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp04t02 ✓</span>
+      <h2 class="text-2xl font-bold">Makefile + golangci-lint</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em><code>make build/test/lint</code> works; lint clean (0 issues on backend, 0 ESLint warnings).</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• Root <code class="code">Makefile</code> targets: <code class="code">make build</code>, <code class="code">make test</code>, <code class="code">make lint</code> covering both stacks.</li>
+            <li>• <code class="code">backend/.golangci.yml</code> enforces gosec, staticcheck and errcheck with golangci-lint v2.1.6.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">golangci-lint run ./...</code> → 0 issues; <code class="code">next lint</code> → 0 warnings/errors.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp04t03 ✓</span>
+      <h2 class="text-2xl font-bold">Listener consolidation</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>single connectivity surface (SyncIsland); no dead listeners, no constant polling — queue UI refreshes via <code>log:queue-changed</code> + <code>online</code> + <code>visibilitychange</code> events only.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">OfflineBanner.tsx</code> deleted (unmounted); <code class="code">SyncIsland</code> is the one connectivity surface.</li>
+            <li>• <code class="code">useSyncQueue.ts</code> is event-driven; <code class="code">api.ts</code> dispatches <code class="code">log:queue-changed</code> so the queue UI refreshes on real events, never by polling.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">useSyncQueue.ts</code>, <code class="code">SyncIsland.tsx</code>, <code class="code">api.ts</code> event dispatch; ENHANCEMENT.md backlog item closed.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp04t04 ✓</span>
+      <h2 class="text-2xl font-bold">Public health probes documented</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em><code>/api/ping</code>, <code>/healthz</code>, <code>/readyz</code> stay public and are documented; never moved behind auth.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">/api/ping</code> (liveness), <code class="code">/healthz</code> (real SQLite ping) and <code class="code">/readyz</code> remain public routes in <code class="code">main.go</code>.</li>
+            <li>• The rule is documented in AGENTS.md §4 (health probes) and the README health-probe reference.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• AGENTS.md §4 rule; README reference; <code class="code">main.go</code> public routes.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 10 · WP-0.4 — Engineering Process · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

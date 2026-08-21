@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"log-backend/internal/domain"
-	"log-backend/internal/service"
 
 	"gorm.io/gorm"
 )
@@ -20,6 +19,12 @@ func NewSyncRepository(db *gorm.DB) domain.SyncRepository {
 	return &syncRepo{db: db}
 }
 
+// SyncBulk replays a batch of offline-queued requests inside one transaction.
+// Only completion-shaped items are accepted; anything else is counted as
+// failed. Each item delegates to the single shared completion seam
+// applyCompletion (architecture review C2) — the offline flush and the
+// online route (completion_repo.CompleteActivityTx) share one implementation
+// and can never drift.
 func (r *syncRepo) SyncBulk(ctx context.Context, learnerID string, data []domain.SyncRequestItem) (int, int, error) {
 	processedCount := 0
 	failedCount := 0
@@ -45,7 +50,7 @@ func (r *syncRepo) SyncBulk(ctx context.Context, learnerID string, data []domain
 			}
 
 			// Parse the same attempt payload the online completion accepts so
-			// offline quizzes land with real accuracy (parity with completion_repo).
+			// offline quizzes land with real accuracy (parity with the seam).
 			stats := domain.AttemptStats{}
 			if req.Body != "" {
 				if err := json.Unmarshal([]byte(req.Body), &stats); err != nil {
@@ -55,146 +60,9 @@ func (r *syncRepo) SyncBulk(ctx context.Context, learnerID string, data []domain
 			}
 			stats = stats.Clamp()
 
-			newCompletion := false
-			var learnerAct domain.LearnerActivity
-			// WP-0.2 research round: date the completion by the client's
-			// reported instant (clamped), not the flush instant.
-			completedAt := stats.CompletedAt(time.Now())
-			if err := tx.First(&learnerAct, "learner_id = ? AND activity_id = ?", learnerID, actID).Error; err != nil {
-				learnerAct = domain.LearnerActivity{
-					LearnerID:      learnerID,
-					ActivityID:     actID,
-					Status:         "Completed",
-					CompletedAt:    completedAt,
-					Score:          stats.Score(),
-					Accuracy:       stats.Accuracy(),
-					ElapsedSeconds: stats.ElapsedSeconds,
-					Attempts:       1,
-				}
-				newCompletion = true
-				if err := tx.Create(&learnerAct).Error; err != nil {
-					return err
-				}
-			} else if learnerAct.Status == "Completed" {
-				// Idempotent replay or improving re-attempt: never double-bump
-				// progress/streak/score, but refresh elapsed and keep the best
-				// score (mirrors completion_repo semantics).
-				improved := stats.HasQuiz() && stats.Accuracy() > learnerAct.Accuracy
-				learnerAct.ElapsedSeconds = stats.ElapsedSeconds
-				if improved {
-					learnerAct.Score = stats.Score()
-					learnerAct.Accuracy = stats.Accuracy()
-					learnerAct.Attempts++
-				}
-				if err := tx.Save(&learnerAct).Error; err != nil {
-					return err
-				}
-				if !improved {
-					// Replay: no new observation/guidance, no progress changes.
-					continue
-				}
-			} else {
-				learnerAct.Status = "Completed"
-				learnerAct.CompletedAt = completedAt
-				learnerAct.Score = stats.Score()
-				learnerAct.Accuracy = stats.Accuracy()
-				learnerAct.ElapsedSeconds = stats.ElapsedSeconds
-				learnerAct.Attempts = 1
-				newCompletion = true
-				if err := tx.Save(&learnerAct).Error; err != nil {
-					return err
-				}
-			}
-
-			// Scoped progress update: only touch the calling user's progress,
-			// creating the record the first time a new learner syncs.
-			// Only genuinely new completions bump progress/streak/daily rows —
-			// an improving re-attempt must not count the activity twice (the
-			// online path gates identically).
-			if newCompletion {
-				var progress domain.Progress
-				if err := tx.First(&progress, "learner_id = ?", learnerID).Error; err != nil {
-					var totalTopics int64
-					tx.Model(&domain.Activity{}).Count(&totalTopics)
-					progress = domain.Progress{
-						LearnerID:   learnerID,
-						TotalTopics: int(totalTopics),
-					}
-				}
-				progress.Completed++
-				if progress.Completed > progress.TotalTopics {
-					progress.Completed = progress.TotalTopics
-				}
-
-				// Date-aware streak (mirrors the online completion path):
-				// same-day completions do not double the streak. Calendar date
-				// and day name use the learner's local timezone.
-				loc := stats.Location()
-				local := completedAt.In(loc)
-				today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
-				switch {
-				case progress.LastActivityDate.IsZero():
-					progress.CurrentStreak = 1
-				case progress.LastActivityDate.Equal(today):
-					// same-day replay: keep the streak as-is
-				case progress.LastActivityDate.Equal(today.Add(-24 * time.Hour)):
-					progress.CurrentStreak++
-				default:
-					progress.CurrentStreak = 1
-				}
-				progress.LastActivityDate = today
-
-				if progress.OverallScore < 95.0 {
-					progress.OverallScore += 2.5
-				}
-				if err := tx.Save(&progress).Error; err != nil {
-					return err
-				}
-
-				// Real DailyActivity row so the chart-data endpoint reflects
-				// syncs, not just online completions. Duration accumulates
-				// like the online path (was zeroed on every sync before).
-				var daily domain.DailyActivity
-				if err := tx.Where("learner_id = ? AND date = ?", learnerID, today).First(&daily).Error; err != nil {
-					daily = domain.DailyActivity{
-						ID:        service.GenerateSecureID("dly"),
-						LearnerID: learnerID,
-						Date:      today,
-						DayName:   local.Weekday().String()[:3],
-						Score:     100.0,
-						Duration:  stats.ElapsedSeconds,
-					}
-					if err := tx.Create(&daily).Error; err != nil {
-						return err
-					}
-				} else {
-					daily.Score += 100.0
-					daily.Duration += stats.ElapsedSeconds
-					if err := tx.Save(&daily).Error; err != nil {
-						return err
-					}
-				}
-			}
-
-			// Mirror the online completion flow: supportive observation
-			// + actionable next-step guidance derived from real accuracy.
-			if err := tx.Create(&domain.Observation{
-				ID:        service.GenerateSecureID("obs"),
-				LearnerID: learnerID,
-				Category:  "strengths",
-				Text:      stats.ObservationText(act.Title),
-				CreatedAt: time.Now(),
-			}).Error; err != nil {
-				return err
-			}
-			if err := tx.Create(&domain.Guidance{
-				ID:        service.GenerateSecureID("gui"),
-				LearnerID: learnerID,
-				Text:      stats.GuidanceText(),
-				Action:    "/learning",
-				Type:      "next_step",
-				CreatedAt: time.Now(),
-			}).Error; err != nil {
+			if _, _, err := applyCompletion(tx, learnerID, actID, act.Title, stats, time.Now()); err != nil {
+				// A write failure aborts the whole flush — partial syncs must
+				// never be reported as complete (the queue retries the rest).
 				return err
 			}
 			processedCount++

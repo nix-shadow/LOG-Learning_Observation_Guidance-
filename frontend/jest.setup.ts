@@ -33,3 +33,29 @@ jest.mock('framer-motion', () => ({
   useReducedMotion: () => false,
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// WP-1.3: next-intl ships untranspiled ESM that jest's CJS pipeline cannot
+// load. Mock it against the REAL en.json messages so component tests keep
+// asserting the actual English copy users see — the mock is the dictionary,
+// not a fake. Dotted keys (e.g. "cat.connectivity") resolve through nested
+// namespaces, matching next-intl's lookup semantics.
+jest.mock('next-intl', () => {
+  const en = require('@/messages/en.json');
+  const resolve = (ns: string, key: string): string => {
+    const base = en[ns];
+    if (!base) return key;
+    let node: unknown = base;
+    for (const part of key.split('.')) {
+      if (node && typeof node === 'object' && part in (node as Record<string, unknown>)) {
+        node = (node as Record<string, unknown>)[part];
+      } else {
+        return key;
+      }
+    }
+    return typeof node === 'string' ? node : key;
+  };
+  return {
+    useTranslations: (ns: string) => (key: string) => resolve(ns, key),
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});

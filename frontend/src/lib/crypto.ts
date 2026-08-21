@@ -65,7 +65,7 @@ export async function ensureQueueKey(): Promise<CryptoKey> {
   if (!cryptoSubtleAvailable()) {
     throw new Error('crypto.subtle unavailable — cannot encrypt queue');
   }
-  const db = await openDB('log-db', 4, {
+  const db = await openDB('log-db', 5, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(KEY_STORE)) {
         db.createObjectStore(KEY_STORE);
@@ -223,7 +223,7 @@ export async function decryptQueuePayload(
 
 /** Wipes all locally stored user data: queue, cache, and the queue key. */
 export async function wipeLocalData(): Promise<void> {
-  const db = await openDB('log-db', 4, {
+  const db = await openDB('log-db', 5, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(KEY_STORE)) {
         db.createObjectStore(KEY_STORE);

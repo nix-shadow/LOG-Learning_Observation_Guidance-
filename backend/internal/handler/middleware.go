@@ -63,9 +63,9 @@ func (rl *rateLimiter) allow(ip string) (bool, int) {
 	v, exists := rl.visitors[ip]
 	now := time.Now()
 
-	if !exists || now.Sub(v.lastReset) > rateLimitWindow {
-		rl.visitors[ip] = &visitorEntry{tokens: rateLimitMax - 1, lastReset: now}
-		return true, rateLimitMax - 1
+	if !exists || now.Sub(v.lastReset) > rl.window {
+		rl.visitors[ip] = &visitorEntry{tokens: rl.limit - 1, lastReset: now}
+		return true, rl.limit - 1
 	}
 
 	if v.tokens <= 0 {
@@ -101,6 +101,15 @@ const (
 	// nature; export is read-heavy so its bucket is tighter per IP.
 	RateLimitPrivacyWrite  = 10
 	RateLimitPrivacyExport = 5
+
+	// Phase 2 (WP-2.1/2.2): parent signup is a one-time-per-guardian action,
+	// so its bucket is tight; support filing is capped per IP like the rest.
+	RateLimitParentSignup = 5
+	RateLimitSupportIssue = 10
+	// Phase 3 (WP-3.1/3.3): a classroom poster wall can be scanned in bursts,
+	// and an admin import is a deliberate low-frequency action.
+	RateLimitPilotScan = 30
+	RateLimitOERImport = 5
 )
 
 // NewLimiter builds a per-route token bucket (main.go wires one per auth route).

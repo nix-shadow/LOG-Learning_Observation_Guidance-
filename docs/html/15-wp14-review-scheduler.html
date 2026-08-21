@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>15 — WP-1.4 — Review Scheduler + Streaks | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 15 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-1.4 — Review Scheduler + Streaks</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-1.4 work package (tracker tasks wp14t01–wp14t03, RC-09): a pure SM-2 spaced-repetition scheduler that never fabricates streak activity, an honest review-queue card, and permission-gated daily reminders with the school-LAN limitation disclosed.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">RC-09</span>
+      <span class="badge badge-ok">Pure SM-2 (9 tests)</span>
+      <span class="badge badge-ok">Honest review queue</span>
+      <span class="badge badge-ok">Reminders opt-in + disclosed</span>
+      <span class="badge badge-ok">Streaks backend-derived</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp14t01 ✓</span>
+      <h2 class="text-2xl font-bold">SM-2 scheduler</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>review scheduling is deterministic and derived from real completion accuracy.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">src/lib/spacedRepetition.ts</code> — pure SM-2: quality = round(accuracy × 5) from REAL <code class="code">correct_count/total_count</code>; q&lt;3 resets to a 1-day interval (ease factor survives — a lapse is scheduling noise, never a verdict); ease clamped ≥ 1.3; UTC-date math.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• 9 unit tests.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp14t02 ✓</span>
+      <h2 class="text-2xl font-bold">Review queue (local-first)</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>due/overdue reviews surface on the dashboard; empty schedule is an honest empty state.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">src/lib/reviewStore.ts</code> + <code class="code">api.ts</code>/<code class="code">crypto.ts</code> DB v5 (<code class="code">review-schedule</code> store, keyPath <code class="code">activityId</code>). Never encrypted — scheduler state is device-local.</li>
+            <li>• Every review is a real completion replay, so reviews flow through the AES-GCM queue and sync.</li>
+            <li>• <code class="code">ReviewQueueCard.tsx</code> lists genuinely due/overdue items; empty schedule renders "Nothing is due right now."</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• 3-test honesty suite for ReviewQueueCard; DB v5 migration.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp14t03 ✓</span>
+      <h2 class="text-2xl font-bold">Reminders + honest streaks</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>daily reminders are opt-in and disclose their limitation; streaks stay backend-derived.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">ReminderToggle.tsx</code> (settings): <code class="code">Notification.requestPermission()</code> only on explicit click; daily time picker; fires once per day while the tab is open.</li>
+            <li>• UI explicitly discloses "no push server on the school LAN" (no VAPID — an honest local approximation).</li>
+            <li>• Streaks remain backend <code class="code">Progress.CurrentStreak</code> — derived exclusively from genuinely new completions, date-aware in the learner’s timezone (<code class="code">completion_repo.go</code>).</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">ReminderToggle.tsx</code>; <code class="code">completion_repo.go</code> streak math; ENHANCEMENT.md WP-1.4 notes.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 15 · WP-1.4 — Review Scheduler + Streaks · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

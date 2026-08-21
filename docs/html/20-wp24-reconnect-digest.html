@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>20 — WP-2.4 — Reconnect Digest | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 20 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-2.4 — Reconnect Digest</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-2.4 work package (tracker tasks wp24t01–wp24t02): making offline sync visible instead of silent — a digest card that tells the learner what actually synced after reconnect, on top of the existing SyncIsland status indicator.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">Sync made visible</span>
+      <span class="badge badge-ok">log:digest-ready event</span>
+      <span class="badge badge-ok">Honest zero state</span>
+      <span class="badge badge-ok">SyncIsland indicator</span>
+      <span class="badge badge-ok">5 tests</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp24t01 ✓</span>
+      <h2 class="text-2xl font-bold">Offline activity digest</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>after reconnect, learner sees what synced; queued items surface with a confirmation.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">syncQueue</code> writes <code class="code">{synced, failed, at}</code> to <code class="code">log_reconnect_digest</code> and dispatches <code class="code">log:digest-ready</code> — a single choke point covering the window-<code class="code">online</code> listener AND manual flushes.</li>
+            <li>• Written only when synced&gt;0 || failed&gt;0 — an honest zero state, never an invented summary.</li>
+            <li>• <code class="code">ReconnectDigest</code> card on the dashboard ("Back online — changes synced: N · failed: M"), dismiss clears; helpers <code class="code">get/clearReconnectDigest</code> in <code class="code">src/lib/api.ts</code>.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">ReconnectDigest.test.tsx</code> — 5 tests: event fire, pre-mount read, dismiss, zero state, helper round-trip.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp24t02 ✓</span>
+      <h2 class="text-2xl font-bold">Sync status indicator</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>persistent offline/syncing indicator with live queue count.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">SyncIsland</code> (WP-0.3) — persistent offline/syncing pill, live queue count, manual "Sync now" via the consolidated event surface (<code class="code">log:queue-changed</code>, <code class="code">online</code>, <code class="code">visibilitychange</code>).</li>
+            <li>• The digest explains what that sync actually did — the two surfaces together make sync visible, never silent.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">SyncIsland.tsx</code> + <code class="code">useSyncQueue.ts</code>; AGENTS.md §3 offline-first honesty.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 20 · WP-2.4 — Reconnect Digest · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

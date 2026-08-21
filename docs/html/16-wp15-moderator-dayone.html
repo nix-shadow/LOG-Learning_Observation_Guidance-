@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>16 — WP-1.5 — Moderator Day-One Experience | LOG Research Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/log-docs.css" />
+</head>
+<body class="text-white min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Header -->
+  <header class="mb-12">
+    <p class="text-amber-300/80 text-sm font-bold uppercase tracking-[0.25em] mb-3"><a href="index.html" class="hover:text-white/80">← Research Hub</a> · Report 16 · Shipped</p>
+    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">WP-1.5 — Moderator Day-One Experience</h1>
+    <p class="text-white/60 text-lg mb-6">The shipped record for the WP-1.5 work package (tracker tasks wp15t01–wp15t03, RC-03): a teacher can run a class from the first login — class wizard + invite codes, CSV roster import with one-time passwords, and per-student progress through the WP-1.1 status engine.</p>
+    <div class="flex flex-wrap gap-3">
+      <span class="badge badge-ok">RC-03</span>
+      <span class="badge badge-ok">Class wizard + invite codes</span>
+      <span class="badge badge-ok">CSV roster import</span>
+      <span class="badge badge-ok">One-time passwords</span>
+      <span class="badge badge-ok">Per-student progress</span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp15t01 ✓</span>
+      <h2 class="text-2xl font-bold">Class onboarding + invite-by-code</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>moderators create classes and share a join code; students join with consent.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">Class.InviteCode</code> (uniqueness enforced in service via re-roll loop — no DB unique index, keeping legacy empty rows migration-safe); seed class <code class="code">cls-1</code> code <code class="code">LOG101</code>.</li>
+            <li>• <code class="code">POST /moderator/classes</code>, <code class="code">POST /classes/join</code> (consent-gated learner mutation), <code class="code">GET /moderator/classes</code> now exposes <code class="code">invite_code</code>.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp15_test.go</code>; <code class="code">ClassWizard.tsx</code> (3 steps incl. show/copy invite code); onboarding banner when <code class="code">classes.length === 0</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp15t02 ✓</span>
+      <h2 class="text-2xl font-bold">CSV roster import</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>bulk-add students from a CSV with per-row honest errors and one-time passwords returned exactly once.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">POST /moderator/classes/:id/roster/import</code> (multipart CSV: <code class="code">name,email[,phone,password]</code>); per-row 1-based honest errors.</li>
+            <li>• Generated temp passwords returned exactly once in <code class="code">report.passwords</code>, never logged.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp15_test.go</code>; roster import UI + password table + row errors in <code class="code">ClassWizard.tsx</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="mb-14">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <span class="badge badge-ok">wp15t03 ✓</span>
+      <h2 class="text-2xl font-bold">Per-student progress</h2>
+    </div>
+    <div class="deep rounded-3xl p-7 mb-6">
+      <p class="text-white/70 text-sm leading-relaxed mb-4">AC: <em>teachers see real per-learner progress, scoped to their own classes.</em></p>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold mb-3">What was implemented</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">GET /moderator/students/:id</code> reuses <code class="code">GetDashboardData</code> (WP-1.1 status engine) with a hard-404 scope gate via <code class="code">StudentInTeacherClasses</code>.</li>
+            <li>• <code class="code">StudentProgressModal</code> shows canonical status chips with translated supportive labels (EN+NP); roster rows clickable.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-3">Proof</h4>
+          <ul class="text-white/70 text-sm space-y-1.5">
+            <li>• <code class="code">wp15_test.go</code>; <code class="code">StudentProgressModal.tsx</code>; <code class="code">JoinClassCard.tsx</code> (uppercases + trims code, honest "No class found" toast).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-6 text-white/40 text-sm">
+    LOG Research Hub · Report 16 · WP-1.5 — Moderator Day-One Experience · generated 2026-08-20
+  </footer>
+</div>
+</body>
+</html>

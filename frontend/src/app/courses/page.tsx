@@ -131,8 +131,8 @@ export default function CoursesCatalog() {
           </div>
         </div>
         <div className="absolute top-0 right-0 -mt-32 -mr-32 w-[500px] h-[500px] bg-brand-neon/10 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="hidden md:block relative z-10 bg-white/5 p-8 rounded-[2rem] backdrop-blur-md border border-white/10 shadow-glow rotate-12 hover:rotate-0 transition-transform duration-700">
-          <BookOpen className="w-24 h-24 text-brand-neon drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]" />
+        <div className="hidden md:block relative z-10 bg-white/5 p-8 rounded-[2rem] backdrop-blur-md border border-white/10 rotate-12 hover:rotate-0 transition-transform duration-700">
+          <BookOpen className="w-24 h-24 text-brand-neon" />
         </div>
       </section>
 
@@ -149,7 +149,7 @@ export default function CoursesCatalog() {
               onClick={() => setActiveCategory(cat)}
               className={`px-6 py-2 rounded-full text-sm font-bold tracking-wide transition-all ${
                 activeCategory === cat
-                  ? 'bg-brand-neon/20 border-brand-neon text-brand-neon shadow-[0_0_15px_rgba(0,240,255,0.2)]'
+                  ? 'bg-brand-neon/20 border-brand-neon text-brand-neon'
                   : 'bg-white/5 border border-white/10 text-white/60 hover:border-brand-neon/50 hover:text-white'
               }`}
             >
@@ -172,11 +172,11 @@ export default function CoursesCatalog() {
           {filteredCourses.map((course) => (
             <div
               key={course.id}
-              className="course-card card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-0 overflow-hidden flex flex-col group hover:-translate-y-1 hover:shadow-glow transition-all duration-300"
+              className="course-card card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-0 overflow-hidden flex flex-col group hover:-translate-y-1 transition-all duration-300"
             >
               <div className={`h-40 w-full ${CATEGORY_COLORS[stringToIndex(course.id)]} bg-opacity-30 relative overflow-hidden flex items-center justify-center border-b border-white/10`}>
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors duration-500"></div>
-                <PlayCircle className="w-16 h-16 text-white/70 group-hover:text-brand-neon group-hover:drop-shadow-[0_0_10px_rgba(0,240,255,0.8)] transition-all transform group-hover:scale-110 duration-500 z-10" />
+                <PlayCircle className="w-16 h-16 text-white/70 group-hover:text-brand-neon transition-all transform group-hover:scale-110 duration-500 z-10" />
                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-white uppercase tracking-widest border border-white/10 z-10">
                   {course.category}
                 </div>
@@ -191,7 +191,7 @@ export default function CoursesCatalog() {
                     {course.difficulty}
                   </span>
                   <span className="flex items-center text-sm font-medium text-white/80">
-                    <Star className="w-4 h-4 text-brand-amber mr-1 fill-current drop-shadow-[0_0_5px_rgba(255,183,3,0.5)]" /> {Number(course.rating).toFixed(1)}
+                    <Star className="w-4 h-4 text-brand-amber mr-1 fill-current" /> {Number(course.rating).toFixed(1)}
                   </span>
                 </div>
 
@@ -216,7 +216,7 @@ export default function CoursesCatalog() {
                     Enrolled ✓
                   </button>
                 )}
-                <Link href={`/learning/${course.id}`} className="flex-1 py-3 bg-white/5 border border-white/10 hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow text-white hover:text-brand-neon rounded-xl font-bold tracking-wide flex items-center justify-center transition-all duration-300">
+                <Link href={`/learning/${course.id}`} className="flex-1 py-3 bg-white/5 border border-white/10 hover:border-brand-neon hover:bg-brand-neon/10 text-white hover:text-brand-neon rounded-xl font-bold tracking-wide flex items-center justify-center transition-all duration-300">
                   Start Learning <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>

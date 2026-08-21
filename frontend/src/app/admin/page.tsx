@@ -13,6 +13,8 @@ import { prefersReducedMotion } from '@/lib/motion';
 import ClassManager from '@/components/admin/ClassManager';
 import AnnouncementComposer from '@/components/admin/AnnouncementComposer';
 import AuditLogTable from '@/components/admin/AuditLogTable';
+import SupportInbox from '@/components/SupportInbox';
+import PilotPosters from '@/components/admin/PilotPosters';
 
 export default function AdminDashboard() {
   const { user, isAdmin } = useAuth();
@@ -90,7 +92,7 @@ export default function AdminDashboard() {
   return (
     <div ref={containerRef} className="max-w-6xl mx-auto w-full space-y-8">
       <div className="gsap-stagger flex items-center mb-8">
-        <ShieldAlert className="w-10 h-10 text-red-500 mr-4 animate-pulse-glow" />
+        <ShieldAlert className="w-10 h-10 text-red-500 mr-4" />
         <div>
           <h1 className="text-4xl font-bold text-white tracking-tight mb-2">Admin Control Center</h1>
           <p className="text-white/60 text-lg">Platform analytics and administrative actions.</p>
@@ -134,6 +136,16 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* WP-2.2: support inbox — escalated learner issues, resolved here */}
+      <div className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-8">
+        <SupportInbox />
+      </div>
+
+      {/* WP-3.3: QR pilot posters + honest pilot measurement */}
+      <div className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-8">
+        <PilotPosters token={token} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
         <div className="gsap-stagger card-glow bg-black/40 backdrop-blur-3xl border border-white/10 p-8 space-y-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-brand-neon/5 opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -172,17 +184,17 @@ export default function AdminDashboard() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button onClick={() => document.querySelector('#class-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-neon hover:bg-brand-neon/10 hover:shadow-glow transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-neon group">
+              className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-neon hover:bg-brand-neon/10 transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-neon group">
               <GraduationCap className="w-8 h-8 mb-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
               <span className="font-bold tracking-tight">Manage Classes</span>
             </button>
             <button onClick={() => document.querySelector('#announcement-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-amber hover:bg-brand-amber/10 hover:shadow-[0_0_20px_rgba(255,183,3,0.3)] transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-amber group">
+              className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-amber hover:bg-brand-amber/10 transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-amber group">
               <Megaphone className="w-8 h-8 mb-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
               <span className="font-bold tracking-tight">Send Broadcast</span>
             </button>
             <button onClick={handleExport} disabled={exporting}
-              className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-blue hover:bg-brand-blue/10 hover:shadow-[0_0_20px_rgba(0,180,216,0.3)] transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-blue group disabled:opacity-50">
+              className="p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-brand-blue hover:bg-brand-blue/10 transition-all flex flex-col items-center justify-center text-white/60 hover:text-brand-blue group disabled:opacity-50">
               <Download className="w-8 h-8 mb-3 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
               <span className="font-bold tracking-tight">{exporting ? 'Exporting…' : 'Export Students'}</span>
             </button>

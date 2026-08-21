@@ -50,23 +50,25 @@ type ConsentInput struct {
 	Language        string
 	Source          string
 	DisclosureHash  string
+	Status          string // "" or "granted" (default) | "withdrawn" (WP-4.3 toggle)
 	IP              string
 }
 
 // Sentinel errors for privacy operations.
 var (
-	ErrInvalidConsentType = errors.New("Invalid consent type. Must be guardian, terms, or privacy.")
-	ErrInvalidGrantedBy   = errors.New("Invalid consent giver. Must be guardian, self, or school.")
-	ErrInvalidLanguage    = errors.New("Invalid notice language. Must be ne or en.")
-	ErrInvalidPolicy      = errors.New("Invalid policy version.")
+	ErrInvalidConsentType = errors.New("invalid consent type; must be guardian, terms, privacy, or analytics")
+	ErrInvalidGrantedBy   = errors.New("invalid consent giver; must be guardian, self, or school")
+	ErrInvalidLanguage    = errors.New("invalid notice language; must be ne or en")
+	ErrInvalidPolicy      = errors.New("invalid policy version")
 )
 
 // ConsentTypeValues mirrors the domain constants for validation without
 // importing implementation details into the validation switch.
 var consentTypeValues = map[string]bool{
-	domain.ConsentTypeGuardian: true,
-	domain.ConsentTypeTerms:    true,
-	domain.ConsentTypePrivacy:  true,
+	domain.ConsentTypeGuardian:  true,
+	domain.ConsentTypeTerms:     true,
+	domain.ConsentTypePrivacy:   true,
+	domain.ConsentTypeAnalytics: true,
 }
 
 var grantedByValues = map[string]bool{
@@ -118,13 +120,19 @@ func (s *privacyService) RecordConsent(ctx context.Context, userID string, in Co
 	if in.Version == "" {
 		return nil, ErrInvalidPolicy
 	}
+	// WP-4.3: the settings toggle can withdraw (flip the same row). Empty
+	// defaults to a grant so existing callers keep working.
+	withdraw := in.Status == "withdrawn"
+	if in.Status != "" && in.Status != "granted" && !withdraw {
+		return nil, errors.New("invalid consent status; must be granted or withdrawn")
+	}
 	// WP-0.1 research (COPPA 16 CFR §312.5 practice): log the hash of the
 	// exact disclosure text that was presented, so the school can later prove
 	// what the guardian actually saw at consent time. Guardian consent without
 	// it is rejected — an unprovable guardian grant is no evidence at all.
 	if in.ConsentType == domain.ConsentTypeGuardian {
 		if hash := sha256HexOf(in.DisclosureHash); hash == "" {
-			return nil, errors.New("Guardian consent requires disclosure_hash (sha256 hex of the notice text presented).")
+			return nil, errors.New("guardian consent requires disclosure_hash (sha256 hex of the notice text presented)")
 		} else {
 			in.DisclosureHash = hash
 		}
@@ -144,6 +152,10 @@ func (s *privacyService) RecordConsent(ctx context.Context, userID string, in Co
 		DisclosureHash:  in.DisclosureHash,
 		GrantedAt:       time.Now(),
 		IP:              in.IP,
+	}
+	if withdraw {
+		record.Status = domain.ConsentStatusWithdrawn
+		record.WithdrawnAt = &record.GrantedAt
 	}
 	if err := s.repo.UpsertConsent(ctx, record); err != nil {
 		return nil, err

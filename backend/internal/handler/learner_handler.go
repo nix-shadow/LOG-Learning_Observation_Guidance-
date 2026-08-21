@@ -19,10 +19,11 @@ type LearnerHandler struct {
 	learnerService   service.LearnerService
 	courseService    service.CourseService
 	moderatorService service.ModeratorService
+	schoolService    service.SchoolService
 }
 
-func NewLearnerHandler(l service.LearnerService, c service.CourseService, m service.ModeratorService) *LearnerHandler {
-	return &LearnerHandler{learnerService: l, courseService: c, moderatorService: m}
+func NewLearnerHandler(l service.LearnerService, c service.CourseService, m service.ModeratorService, s service.SchoolService) *LearnerHandler {
+	return &LearnerHandler{learnerService: l, courseService: c, moderatorService: m, schoolService: s}
 }
 
 // callerID resolves the authenticated learner from the request context.
@@ -280,5 +281,44 @@ func (h *LearnerHandler) GetModeratorRoster(c *gin.Context) {
 			"limit": limit,
 			"total": total,
 		},
+	})
+}
+
+// GetModeratorStudentProgress (WP-1.5) exposes one student's full progress to
+// their own teacher. Built directly on the WP-1.1 status engine via the same
+// GetDashboardData path — no separate (drift-prone) computation. The scope
+// gate is a hard 404: a teacher can never read a student outside their
+// classes, and the response uses the same canonical statuses + supportive
+// vocabulary the learner sees.
+func (h *LearnerHandler) GetModeratorStudentProgress(c *gin.Context) {
+	callerID, ok := callerID(c)
+	if !ok {
+		RespondError(c, http.StatusUnauthorized, "Unauthorized", "Authenticated user not found")
+		return
+	}
+	studentID := c.Param("id")
+
+	scoped, err := h.schoolService.StudentInTeacherClasses(c.Request.Context(), callerID, studentID)
+	if err != nil {
+		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to verify class membership")
+		return
+	}
+	if !scoped {
+		RespondError(c, http.StatusNotFound, "Not Found", "Student not found in your classes")
+		return
+	}
+
+	user, progress, activities, observations, guidance, err := h.learnerService.GetDashboardData(c.Request.Context(), studentID)
+	if err != nil {
+		RespondError(c, http.StatusInternalServerError, "Internal Server Error", "Failed to load student progress")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"student":      user,
+		"progress":     progress,
+		"activities":   activities,
+		"observations": observations,
+		"guidance":     guidance,
 	})
 }

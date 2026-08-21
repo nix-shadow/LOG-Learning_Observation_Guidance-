@@ -4,7 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import { setManualOffline, clearApiCache, getStoragePersistence } from '@/lib/api';
 import { wipeLocalData } from '@/lib/crypto';
 import toast from 'react-hot-toast';
-import { Wifi, WifiOff, Lock, Save, Loader2, Settings as SettingsIcon, LogOut, ShieldCheck, Download, Trash2 } from 'lucide-react';
+import { Wifi, WifiOff, Lock, Save, Loader2, Settings as SettingsIcon, LogOut, ShieldCheck, Download, Trash2, Bell, Type, Contrast, Moon, Sun } from 'lucide-react';
+import ReminderToggle from '@/components/ReminderToggle';
+import { useA11y } from '@/components/A11yProvider';
+import { FONT_SCALE_LABELS } from '@/lib/a11y';
+import { useTheme } from 'next-themes';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -16,11 +20,14 @@ export default function SettingsPage() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isRevokingAll, setIsRevokingAll] = useState(false);
   const [consentStatus, setConsentStatus] = useState<{ granted: boolean; version?: string }>({ granted: false });
+  const [analyticsConsent, setAnalyticsConsent] = useState<boolean | null>(null);
   const [storageGrant, setStorageGrant] = useState<boolean | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { prefs: a11y, setPrefs: setA11y } = useA11y();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     setMounted(true);
@@ -49,10 +56,42 @@ export default function SettingsPage() {
         (c: { consent_type: string; status: string }) =>
           c.consent_type === 'guardian' && c.status === 'granted'
       );
+      const analytics = (data.consent || []).find(
+        (c: { consent_type: string; status: string }) =>
+          c.consent_type === 'analytics' && c.status === 'granted'
+      );
       setConsentStatus({ granted: !!guardian, version: guardian?.version || data.policy?.version });
+      // WP-4.3: null = not loaded; false/true = the real recorded state.
+      setAnalyticsConsent(analytics ? true : false);
     } catch {
       // Offline — leave the honest "not loaded" state.
     }
+  };
+
+  // WP-4.3: the analytics participation toggle. Granting records a
+  // self-granted analytics consent; toggling off withdraws the same row
+  // (the backend flips status, it never deletes the evidence).
+  const handleAnalyticsToggle = async (enabled: boolean) => {
+    const token = localStorage.getItem('log_token');
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6101/api/v1'}/me/consent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        consent_type: 'analytics',
+        version: '2026-08-v1',
+        granted_by: 'self',
+        language: 'en',
+        source: 'settings',
+        status: enabled ? 'granted' : 'withdrawn',
+      }),
+    });
+    if (!res.ok) {
+      toast.error('Could not update analytics preference. Please try again.');
+      setAnalyticsConsent(!enabled);
+      return;
+    }
+    setAnalyticsConsent(enabled);
+    toast.success(enabled ? 'Analytics participation enabled.' : 'Analytics participation disabled.');
   };
 
   // WP-0.1: personal-data export (server-side envelope, never cached).
@@ -225,17 +264,17 @@ export default function SettingsPage() {
             Manage your preferences and security
           </p>
         </div>
-        <div className="p-4 bg-white/5 rounded-2xl backdrop-blur-xl border border-white/10 shadow-glow">
+        <div className="p-4 bg-white/5 rounded-2xl backdrop-blur-xl border border-white/10">
           <SettingsIcon className="w-8 h-8 text-brand-neon animate-spin-slow" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Network Card */}
-        <div className="settings-card card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-teal/50 hover:shadow-glow transition-all duration-300">
+        <div className="settings-card card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-teal/50 transition-all duration-300">
           <div className="absolute inset-0 bg-brand-neon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            <Wifi className="w-5 h-5 text-brand-teal drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
+            <Wifi className="w-5 h-5 text-brand-teal" />
             Network
           </h2>
           <div className="flex-1 flex items-center justify-between relative z-10">
@@ -245,18 +284,109 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={handleOfflineToggle}
-              className={`p-3 rounded-xl border transition-all duration-300 ${isOffline ? 'bg-brand-neon/20 border-brand-neon text-brand-neon shadow-glow' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/60 hover:text-white'}`}
+              className={`p-3 rounded-xl border transition-all duration-300 ${isOffline ? 'bg-brand-neon/20 border-brand-neon text-brand-neon' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/60 hover:text-white'}`}
             >
               {isOffline ? <WifiOff className="w-5 h-5" /> : <Wifi className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
+        {/* Reminders Card (WP-1.4) */}
+        <div className="settings-card card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-neon/50 transition-all duration-300">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+            <Bell className="w-5 h-5 text-brand-neon" />
+            Daily Reminders
+          </h2>
+          <ReminderToggle />
+        </div>
+
+        {/* Appearance Card — dark/light theme, saved on this device */}
+        <div className="settings-card card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-teal/50 transition-all duration-300">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+            <Moon className="w-5 h-5 text-brand-teal" />
+            Appearance
+          </h2>
+          <div className="space-y-6 relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-white flex items-center gap-2">
+                  {mounted && theme === 'dark' ? <Moon className="w-4 h-4 text-brand-teal" /> : <Sun className="w-4 h-4 text-brand-amber" />}
+                  Dark Mode
+                </p>
+                <p className="text-sm text-white/60">
+                  Dark is the default. Switch to light for bright classrooms — saved on this device, works offline.
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={mounted ? theme === 'dark' : true}
+                aria-label="Toggle dark mode"
+                onClick={() => setTheme(mounted && theme === 'dark' ? 'light' : 'dark')}
+                className={`p-3 rounded-xl border transition-all duration-300 ${!mounted || theme === 'dark' ? 'bg-brand-teal/20 border-brand-teal text-brand-teal' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/60 hover:text-white'}`}
+              >
+                {!mounted || theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Accessibility Card (WP-3.4 RC-12) */}
+        <div className="settings-card card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-amber/50 transition-all duration-300">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+            <Contrast className="w-5 h-5 text-brand-amber" />
+            Accessibility
+          </h2>
+          <div className="space-y-6 relative z-10">
+            <div>
+              <p className="font-bold text-white mb-3 flex items-center gap-2">
+                <Type className="w-4 h-4 text-brand-amber" />
+                Text Size
+              </p>
+              <div className="flex gap-2">
+                {FONT_SCALE_LABELS.map((scale) => (
+                  <button
+                    key={scale}
+                    aria-pressed={a11y.fontScale === scale}
+                    onClick={() => setA11y({ ...a11y, fontScale: scale })}
+                    className={`px-4 py-2.5 rounded-xl border text-sm font-bold transition-all ${
+                      a11y.fontScale === scale
+                        ? 'bg-brand-amber/20 border-brand-amber text-brand-amber'
+                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                    }`}
+                    style={{ fontSize: scale === 'normal' ? 13 : scale === 'large' ? 15 : 17 }}
+                  >
+                    {scale === 'normal' ? 'A' : scale === 'large' ? 'A' : 'A'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-brand-muted mt-2">
+                Saved on this device and applied everywhere, even offline.
+              </p>
+            </div>
+            <div className="flex items-center justify-between border-t border-white/10 pt-5">
+              <div>
+                <p className="font-bold text-white">High Contrast</p>
+                <p className="text-sm text-white/60">
+                  Stronger text and borders for low-light classrooms and low-vision screens.
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={a11y.highContrast}
+                onClick={() => setA11y({ ...a11y, highContrast: !a11y.highContrast })}
+                className={`p-3 rounded-xl border transition-all duration-300 ${a11y.highContrast ? 'bg-brand-amber/20 border-brand-amber text-brand-amber' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/60 hover:text-white'}`}
+              >
+                <Contrast className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Security Card */}
-        <div className="settings-card md:col-span-2 card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-blue/50 hover:shadow-[0_0_20px_rgba(0,180,216,0.2)] transition-all duration-300">
+        <div className="settings-card md:col-span-2 card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-blue/50 transition-all duration-300">
           <div className="absolute inset-0 bg-brand-blue/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            <Lock className="w-5 h-5 text-brand-blue drop-shadow-[0_0_8px_rgba(0,180,216,0.8)]" />
+            <Lock className="w-5 h-5 text-brand-blue" />
             Security
           </h2>
           
@@ -300,7 +430,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={isUpdatingPassword}
-                className="btn-primary w-full md:w-auto px-8 py-3 text-lg flex items-center justify-center font-bold tracking-wide shadow-glow"
+                className="btn-primary w-full md:w-auto px-8 py-3 text-lg flex items-center justify-center font-bold tracking-wide"
               >
                 {isUpdatingPassword ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -334,10 +464,10 @@ export default function SettingsPage() {
         </div>
 
         {/* Privacy & Data Card (WP-0.1) */}
-        <div className="settings-card md:col-span-2 card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-teal/50 hover:shadow-glow transition-all duration-300">
+        <div className="settings-card md:col-span-2 card-glow bg-black/40 rounded-3xl backdrop-blur-3xl border border-white/10 p-6 relative overflow-hidden group hover:border-brand-teal/50 transition-all duration-300">
           <div className="absolute inset-0 bg-brand-teal/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-brand-teal drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
+            <ShieldCheck className="w-5 h-5 text-brand-teal" />
             Privacy &amp; Data
           </h2>
 
@@ -366,6 +496,36 @@ export default function SettingsPage() {
               >
                 {consentStatus.granted ? 'Granted' : 'Pending'}
               </span>
+            </div>
+
+            {/* Analytics participation (WP-4.3) — aggregate-only, opt-in.
+                Null = not loaded yet (honest three-state, never a guess). */}
+            <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-5">
+              <div>
+                <p className="font-bold text-white">Analytics Participation</p>
+                <p className="text-sm text-white/60">
+                  When on, anonymous usage totals (number of activities completed,
+                  average scores) may be included in school-level reports. This is
+                  aggregate data only — your individual progress is never shown.
+                </p>
+              </div>
+              <button
+                onClick={() => handleAnalyticsToggle(!analyticsConsent)}
+                disabled={analyticsConsent === null}
+                aria-checked={analyticsConsent === true}
+                role="switch"
+                className={`shrink-0 w-14 h-8 rounded-full p-1 transition-all disabled:opacity-40 ${
+                  analyticsConsent === true
+                    ? 'bg-brand-teal'
+                    : 'bg-white/10'
+                }`}
+              >
+                <span
+                  className={`block w-6 h-6 rounded-full bg-white transition-transform ${
+                    analyticsConsent === true ? 'translate-x-6' : ''
+                  }`}
+                />
+              </button>
             </div>
 
             {/* Offline storage persistence (WP-0.1 research round) — honest
